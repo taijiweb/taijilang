@@ -78,7 +78,7 @@ below is some samples:
 
 [npm: npmjs.org/chaosim/taiji](https://www.npmjs.org/package/taiji)
 
-[google groups: taijilang](https://groups.google.com/forum/?hl=en#forum/taijilang!)
+[google groups: taijilang](https://groups.google.com/forum/#!forum/taijilang)
  
 [G+: taiji lang](https://plus.google.com/u/0/114446069949044102399/posts/p/pub)
 
@@ -88,7 +88,7 @@ QQ group: 太极语言 194928684
 The creator of taijilang is [曹星明( Caoxingming, assumed name 太极真人(Taiji Zhenren) ) taijiweeb@gmail.com](taijiweeb@gmail.com).
 
 ### contributors
-Everyone is welcome to becoming the contributors.
+Everyone is welcome to become the contributors.
 
 ### thanks
 Thanks to the people who make the great things, I learned so much from them:
