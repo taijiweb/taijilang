@@ -1,0 +1,76 @@
+["begin!",
+  ["require",["string!","\"./require\""]],
+  ["=","fs",["require",["string!","\"fs\""]]],
+  ["=","tj",["require",["string!","\"./tj\""]]],
+  ["=","repl",["require",["string!","\"./repl\""]]],
+  ["=","isValidFlag",["regexp!","/-h\\b|-r\\b|-v\\b|-b\\b/"]],
+  ["=", "error",
+    ["->", ["err"],
+      [[["attribute!","console","error"],["attribute!","err","message"]]
+        [["attribute!","process","exit"],1]]]],
+  ["=", "help_str",
+"\"\\r\\nUsage: taiji [-h] [-r] [-v] [-b] [<infile>] [<outfile>]\\r\\n\\r\\nAlso compile stdin to stdout\\r\\neg. $ echo 'console.log \\\"hello\\\"' | lispy\\r\\n\\r\\n<no arguments>    Run REPL\\r\\n-h                Show this help\\r\\n-r                Compile and run\\r\\n-v                Show Version\\r\\n-b                Create browser-bundle.js in same folder.\\r\\n<infile>          Input file to compile\\r\\n<outfile>         Output JS file. If not given\\r\\n                 <outfile> will be <infile> with .js extension\\n\""],
+  ["lineComment!","\"// We use maybe monad to carry out each step, so that we can\r\n\""],
+  ["lineComment!","\"// halt the operation anytime in between if needed.\r\n\r\n\""],
+  ["extern!","doMonad","maybeMonad"],
+  ["doMonad","maybeMonad",["=", "args",
+    [["attribute!",["attribute!","process","argv"],"slice"],2]]
+    ["=","arg1",["call!",["attribute!","args","shift"],[]]]],
+  ["extern!","noargs","when","isUndefined","setTimeout"],
+  ["noargs",["when",["call!","isUndefined",["arg1"]],["=", "input",
+    ["attribute!","process","stdin"]]
+    ["=","output",["attribute!","process","stdout"]]
+    ["call!",["attribute!","input","resume"],[]]
+    [["attribute!","input","setEncoding"],["string!","\"utf8\""]]
+    ["=","source",["string!"]]
+    [["attribute!","input","on"],["string!","\"data\""]
+      ["->", ["chunck"],
+        [["+=","source",["call!",["attribute!","chunck","toString"],[]]]]]]
+    [["attribute!","input","on"],["string!","\"end\""],["->",[],[]]]
+    [["attribute!","input","on"],["string!","\"error\""],"error"]
+    [["attribute!","output","on"],["string!","\"error\""],"error"]
+    ["setTimeout",["->", [],
+      [["if", ["=",["attribute!","input","bytesRead"],0],
+        ["begin!",
+          [["attribute!","input","removeAllListeners"]
+            ["string!","\"data\""]],
+          [["attribute!","repl","runrepl"],20]]]]]]
+    "null"]],
+  ["lineComment!","\"// If arg1 = flag verify valid flag and halt\r\n   \""],
+  ["lineComment!","\"// otherwise set arg1 to next arg in args\r\n   \""],
+  ["extern!","flag","Error","run","infile","outfile","unless"],
+  ["flag",["when",["==",["string!","\"-\""],["/","arg1",0]]
+    ["var",["flag","=","arg1"]]
+    ["=","arg1",["call!",["attribute!","args","shift"],[]]]
+    ["if", ["call!",["attribute!","isValidFlag","test"],["flag"]],
+      ["begin!",
+        "flag",
+        ["error",["new",["Error",["+",["string!","\"Error: Invalid flag \""],"flag"]]]]]]]
+    "run"],
+  ["lineComment!","\"// if infile undefined\r\n  \""],
+  ["infile",["if", "arg1",
+    "arg1",
+    ["error",["new",["Error",["string!","\"Error: No Input file given\""]]]]]],
+  ["lineComment!","\"// set outfile args.shift. ! outfile set outfile to infile.js\r\n  \""],
+  ["outfile",["begin!",
+    ["=","outfile",["call!",["attribute!","args","shift"],[]]],
+    ["unless","outfile",["=", "outfile",
+      [["attribute!","infile","replace"],["regexp!","/\\.ls$/"]
+        ["string!","\".js\""]]]
+      ["if", ["==","outfile","infile"],
+        ["error",["new",["Error",["string!","\"Error: Input file must have extension '.tj'\""]]]]]],
+    "outfile"]],
+  ["lineComment!","\"// compile infile to outfile. if not run return null.\r\n  \""],
+  ["extern!","js","tryDo","node"],
+  ["js",["tryDo",[["attribute!","fs","writeFileSync"],"outfile"
+    [["attribute!","tj","_compile"],[["attribute!","fs","readFileSync"],"infile"
+      ["string!","\"utf8\""]]
+      "infile"]]
+    ["string!","\"utf8\""]
+    ["if","run",["call!","run",[]],"null"]
+    ["->",["err"],[["error","err"],"null"]]]],
+  ["lineComment!","\"// we are here if -r true, so run it!\r\n  \""],
+  ["->", [],
+    [["require",["string!","\"child_process\""]]
+      [["attribute!","node","spawn"],["call!","outfile",[]]
+        ["stdio",["string!","\"inherit\""]]]]]]

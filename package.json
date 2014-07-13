@@ -3,7 +3,7 @@
   "description": "taiji language",
   "keywords": ["javascript", "language", "taijilang", "compiler", "taiji"],
   "author": "曹星明(Caoxingming, or Taiji Zhenren, simeon.chaos@gmail.com)",
-  "version": "0.1.0",
+  "version": "0.0.2",
   "licenses": [{
     "type": "MIT",
     "url": "https://raw.github.com/taijilang/taijilang/master/LICENSE"
@@ -12,17 +12,20 @@
     "node": ">=0.8.0"
   },
   "directories" : {
-    "lib" : "./dist"
+    "lib" : "./lib",
+     "bin": "./bin",
+     "doc": "./doc",
+     "example": "./samples"
   },
-  "main" : "./dist/lib/taiji.js",
+  "main" : "./lib/taiji.js",
   "bin": {
-    "lispy": "./bin/taiji"
+    "taiji": "./bin/taiji"
   },
   "homepage": "https://github.com/taijiweb/taijilang",
   "bugs": "https://github.com/taijiweb/taijilang/issues",
   "repository": {
     "type": "git",
-    "url": "git://github.com/taijilang/taijilang.git"
+    "url": "git://github.com/taijiweb/taijilang.git"
   },
   "dependencies": {
     "mkdirp": "~0.3.5"
@@ -46,7 +49,6 @@
      "run-sequence": "~0.3.6"
   },
   "scripts": {
-    "prepublish": ""
   },
   "preferGlobal": true
 }

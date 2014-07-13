@@ -1,6 +1,6 @@
-# Taijilang
+## Taijilang
 
-## introduction
+### introduction
 Taijilang is a new powerful general programming language. Taijilang have more  extensibility and customizability than all other existing programming languages. 
 
 In general, the features of Taijilang can be summed up: more useful macro than in lisp, more important white space in syntax than in python, more general preprocess than in C, more powerful meta compilation than metalua, more flexible dialect than rebol, more optimized object code than in coffee-script. 
@@ -19,29 +19,27 @@ e.g. white space can change the precedence of operator, see the examples below:
 * Everything are expressions 
 * Macro in lisp style
 
-Based on quasi quoted list, Taijilang have macro simliar to lisp. Combined with a friendly, extendable dynamic syntax, macro in Taijilang becomes even more powerful than lisp:
+Based on back quoted list, Taijilang have macro simliar to lisp. Combined with a friendly, extendable dynamic syntax, macro in Taijilang becomes even more powerful than in lisp:
 
-    /. "/." starts a indent block comment, which stop until meeting an undent.
-      taijilang implements macro in lisp style, but with different symbol in accordance with  traditional grammar, i.e.
-      "~" equal to "'" in lisp
-      "^" eqaul to "," in lisp
-      "^&" equal to ",@" in lisp
+    /. "/." starts an indent block comment, which stops until meeting an undent.
+      taijilang implements macro in lisp style, but with different symbol in accordance with  traditional grammar, e.g.
+      "~" equal to "'" in lisp, "`" is the same as in lisp, ^" eqaul to "," in lisp, "^&" equal to ",@" in lisp
     // below is a macro definition
     // line comment can lead a indented code block
       // do is a predefined keyword, we add \ before it to escape the meaning
-    \do #= (body..., clause) -=>
-      if clause[0]=='where' then
-      `{let ^&(clause.slice(1)) then ^&body}
-      else if clause[0]=='when' then
-      `{doWhile! ^clause[1] ^&body}
-      else if clause[0]=='until' then
-      `{doWhile! not(^clause[1]) ^&body}
-    // now the code below becomes valid:
-      do 
-        print a
-        print b 
-      where a=1, b=2
-      i = 0; do print i++ until i==10
+      \do #= (body..., clause) -=>
+        if clause[0]=='where' then
+          `{let ^&(clause.slice(1)) then ^&body}
+        else if clause[0]=='when' then
+          `{doWhile! ^clause[1] ^&body}
+        else if clause[0]=='until' then
+          `{doWhile! not(^clause[1]) ^&body}
+      // now the code below becomes valid:
+        do 
+          print a
+          print b 
+        where a=1, b=2
+        i = 0; do print i++ until i==10
       
 * Meta Language
 
@@ -97,14 +95,14 @@ Thanks to the people who make the great things, I learned so much from them:
 
 [Jeremy Ashkenas](http://ashkenas.com/), he [created coffee-script](https://github.com/jashkenas/coffeescript). I used to [coffee-script](http://coffeescript.org/) to write Tajilang and learned a lot from it on how to create an elegant language and compile it to javascript.
 
-[Ryan Dahl](http://www.youtube.com/watch?v=ztspvPYybIY), he created [node.js](http://nodejs.org/), Taijilang run on node.js.
+[Ryan Dahl](http://www.youtube.com/watch?v=ztspvPYybIY), he created [node.js](http://nodejs.org/), Taijilang runs on node.js.
 
-[Santosh Rajan](http://santoshrajan.com/), he create [lispyscript](github.com/santoshrajan/lispyscript), from which I got the original inspiration on how to design Taijilang.
+[Santosh Rajan](http://santoshrajan.com/), he created [lispyscript](github.com/santoshrajan/lispyscript), from which I got the original inspiration on how to design Taijilang.
 
 [TJ Holowaychuk](http://tjholowaychuk.com/), he shines the two letter "TJ" because of [so many great stuffs he have made](https://github.com/visionmedia), and I am honored to use .tj as the the extension name of taijilang code file.
 
-I need thank many other people and the stuffs made by them, too, although I can not list everyone of them.
+I need thank many other people and the stuffs made by them, too, although I can not list everyone of them here.
  
 At last, I'll thank to my family. 
 
-**Let it go, let's start the game of throne, to write a song of ice and fire in the taiji language.**
+**Let it go, let's start the game of throne, write a song of ice and fire in the taiji language.**

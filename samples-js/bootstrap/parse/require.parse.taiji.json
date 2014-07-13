@@ -1,0 +1,14 @@
+["begin!",
+  ["=","fs",["require",["string!","\"fs\""]]],
+  ["=","taiji",["require",["string!","\"../lib/taiji\""]]],
+  ["=", ["index!",["attribute!","require","extensions"]
+      ["string!","\".tj\""]],
+    ["->", ["module","filename"],
+      [["=", "code",
+        [["attribute!","fs","readFileSync"]
+          "filename"
+          ["string!","\"utf8\""]]]
+        [["attribute!","module","_compile"]
+          [["attribute!","taiji","_compile"],"code","filename"]
+          "filename"]]]],
+  ["require",["string!","\"../src/macros\""]]]
