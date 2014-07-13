@@ -1,0 +1,11 @@
+# files
+coverage.html
+.gitmodules
+.travis.yml
+History.md
+.gitattributes
+.gitignore
+
+# folders
+.git
+.idea

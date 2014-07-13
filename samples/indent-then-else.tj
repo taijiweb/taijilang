@@ -1,0 +1,25 @@
+taiji language 0.1
+
+// for extern variable, no var declaration is generated in the javascript.
+extern! add a b
+
+// the two code blocks below will generate the same javascript code
+if and 1
+     add  2 3
+  then print a // half dent after previous indent clause
+  else print b
+
+if and 1
+     add  2 3
+  print a // half dent after previous indent clause, 'then' keyword is optional.
+else print b // "else" clause can be the same indent as "if"
+
+if (a > 1)
+ then print a
+ else print b
+
+// one key comment
+// a statement can become a comment block by one key "/"
+/if (a > 1)
+ then print a
+ else print b

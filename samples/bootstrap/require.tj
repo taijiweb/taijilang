@@ -1,0 +1,12 @@
+taiji language 0.1
+
+  this program is used to demonstrate and test compilation, not a part of bootstrap of taijilang.
+
+fs = require "fs"
+taiji = require "../lib/taiji"
+
+require.extensions[".tj"] = (module, filename) ->
+    code = fs.readFileSync filename "utf8"
+    module._compile: taiji._compile code filename, filename
+
+require "../src/macros"

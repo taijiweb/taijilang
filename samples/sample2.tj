@@ -1,0 +1,34 @@
+taiji language 0.1
+
+if (a > 1) html : head : title : # tai ji; body : div : p : # something from taiji
+
+if (a > 1)
+  html : head  : title "tai ji"
+  ""
+
+if (a > 1) : if (b>1) : if (c>1) : print c
+                        else: print c
+             else: print b
+else: print a
+
+html : head : tile # taiji
+   link '1.css'
+   script '1.js'
+ body
+   div :
+     adf
+     dsfa
+     asdfj;l
+
+
+switch a
+  case: 1: sdaf
+  case: 2: dsa
+  default: dsaf
+
+// the code below generate the same internal representation as the above.
+switch a
+case: 1: sdaf
+case: 2: adfs
+default: dsafj
+

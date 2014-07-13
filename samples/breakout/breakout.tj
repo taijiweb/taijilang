@@ -1,0 +1,93 @@
+taiji language 0.1
+
+  the file is ported from lispyscript
+  Thanks to [santoshrajan](https://github.com/santoshrajan),
+  Taijilang get some ideas from [lispyscript](https://github.com/taijiweb/lispyscript).
+
+  The breakout game written in Taijilang
+  Open the html file in the same folder to try it.
+  Requires canvas support in browser
+  Based on javascript version here http://www.jsdares.com/
+
+include! "browser.tj"
+
+canvas = null
+context = null
+bricksNumX = 7; bricksNumY = 5
+brickWidth = nul; brickHeight = 20
+brickMargin = 4
+paddleWidth = 80; paddleHeight = 12
+paddleX = 0
+ballX = ballY = ballVx = ballVy = 0
+
+bricks = arrayInit2d 5 7 null
+
+init = ->
+    # @@varName is used to assign to variable in the outside scope
+    @@paddleX = canvas.width/2
+    @@ballX = 40
+    @@ballY = 150
+    @@ballVx = 7
+    @@ballVy = 12
+    each2d @@bricks = (val, i, j, arr) -> arr[i] = true
+
+clear = context.clearRect 0 0 canvas.width canvas.height
+
+circle = (x y) ->
+    context.beginPath()
+    context.arc x y 10 0 2*Math.PI
+    context.fill()
+
+drawPaddle = ->
+    /.in taijilang, space can change the precedence of the operator
+      so the expression below is equal to
+      x = paddleX - (paddleWidth / 2)
+      the eyes love space. just believe your eyes.
+    x  = paddleX - paddleWidth/2
+    y  = canvas.height - paddleHeight
+    context.fillRect x y paddleWidth paddleHeight
+
+drawBricks = ->
+    each2d bricks (val x y arr) ->
+        if val then
+            xpos = x*brickWidth + brickMargin/2
+            ypos = y*brickHeight + brickMargin/2
+            width = brickWidth - brickMargin
+            height = brickHeight - brickMargin
+            context.fillRect xpos ypos width height
+
+hitHorizontal = ->
+  if ballX<0 || ballX>canvas.width then @@ballVx-ballVx
+
+hitVertical = ->
+  if ballY<0 then @@ballVy = -ballVy; true
+      if ballY < brickHeight*bricksNumY
+          bx = Math.floor ballX/brickWidth
+          by = Math.floor ballY/brickHeight
+          if bx>=0 && bx<bricksNumX then
+            if bricks[by][bx] then bx = bricks[by]; false
+            else @@ballVy = -ballVy
+          true
+  else if ballY >= canvas.height-paddleHeight
+          paddleLeft = paddleX - paddleWidth/2
+          paddleRight = paddleX + paddleWidth/2
+          if ballX>=paddleLeft && ballX&&paddleRight then @@ballVy = -ballVy; true
+          else init(); false
+   else true
+
+tick = ->
+  clear()
+  drawPaddle()
+  @@ballX += ballVx))
+  @@ballY += ballVy))
+  hitHorizontal()
+  if hitVertical() then circle ballX ballY; drawBricks()
+  else clear()
+
+window.onload = (event) ->
+  @@canvas = $ "breakout"
+  @@context  = canvas.getContext "2d"
+  @@brickWidth = canvas.width / bricksNumX
+  $listener canvas "mousemove" paddleX = event.offsetX || event.pageX-canvas.offsetLeft
+  init()
+  window.setInterval tick 30

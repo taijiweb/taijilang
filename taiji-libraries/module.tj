@@ -1,0 +1,18 @@
+taiji language 0.1
+
+  this program is used to demonstrate and test compilation, not a part of bootstrap of taijilang.
+
+  It is not tested yet.
+
+  this file is not tested
+
+// use! has been implemented in core.coffee
+/.use! #= (filePath, names) -=>
+  `{
+     exp = parseFile! ^filePath
+     $taijiModule = new TaijiModule($taijiModule)
+     m = run! ($taijiModule) -> exp
+     for name in names then
+       if asName then asName = m.name
+       else name = m.name
+  }

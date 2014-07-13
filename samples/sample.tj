@@ -1,0 +1,67 @@
+taiji language 0.1
+
+1
+
+// this is a line comment
+
+// line comment can lead a code block
+  2
+  // multi level indent line comment block
+    3
+
+if (2 > 1) then 2
+if 1 then console.log 1 else console.log 2
+
+print 3+4
+// spaces affect the priority of operator
+print (3+4 * 5+6) // the parentheses is necessary for operator expression
+// so the above is equal to the below:
+print ((3 + 4) * (5 + 6))
+
+var a=1, b=2, c=3, x=4, y=5, z=6
+begin! 1 2
+
+// space can change the priority of operator
+// expression in different lines is computed from up to down
+// but indented expression is like in a parenthesis
+  (3+5*5 * 6+7 * 8+9 * a=1
+    + 3+5+6
+      * 7 + 8 + 9
+      + 5*6
+        + 7*9)
+  x=(1
+    +2*3
+    +4*5
+      +7*8
+      +9/9)
+
+a.!=1 // a! can be a taiji language identifier, so we should separate a and != by "."
+a<>1 // or we can use <> instead.
+a.!==1; a<*>1 // for the same reason as the above
+y+.!1 // y+!1 will be parsed as [+. y 1], so we separate + and ! by "."
+y+.!x
+y+.!!1 // !!x equal to !(!x) or !.!x
+x+.!!y
+
+// ~ is the same as the lisp quote "'"
+~ print 1
+
+// ":" lead a sequence of clauses.
+print : and 1 2  // this a line tail comment
+print: and 1 2, or 3 4
+
+/. this is a block comment
+  any line
+    indented
+      is a part of the block comment
+  no end tag is needed for a block comment
+// the all of above is one single block comment, and this line is a line comment
+
+// line comment can lead a indented block
+  console.log : and 1 2
+  console.log: and 1 2
+  // indent again
+    let a=[\ 1 \] then a[1]
+    let a=[ 1 ] then a[1]
+
+=> @a; @, @x([]+@), -> @a; @, @x([]+@)

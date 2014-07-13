@@ -1,0 +1,19 @@
+taiji language 0.1
+
+let name="Jonh",  email="john@example.com", tel= "555-555-5556" then
+  console.log "name: $name email: $email tel:$tel"
+
+let a=1 then let a=2 then print a
+
+letrec! f = (x) -> if! x==1 1 f(x-1) then f(3)
+
+letloop! f = (x, acc) -> if! x==1 acc f(x-1, x+acc) then f(3, 0)
+
+letloop! f = (x) -> if! x==1 1 x+f(x-1) then f(3)
+
+letloop!
+  odd = (x) -> if! x==0 0 even(x-1)
+  even = (x) -> if! x==0 1 odd(x-1)
+then odd(3)
+
+letloop! gcd = (a, b) -> if! a>b gcd(a-b, b) {if! b>a gcd(a, b-a) a} then gcd 9 12

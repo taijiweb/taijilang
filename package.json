@@ -1,0 +1,52 @@
+{
+  "name": "taiji",
+  "description": "taiji language",
+  "keywords": ["javascript", "language", "taijilang", "compiler", "taiji"],
+  "author": "曹星明(Caoxingming, or Taiji Zhenren, simeon.chaos@gmail.com)",
+  "version": "0.1.0",
+  "licenses": [{
+    "type": "MIT",
+    "url": "https://raw.github.com/taijilang/taijilang/master/LICENSE"
+  }],
+  "engines": {
+    "node": ">=0.8.0"
+  },
+  "directories" : {
+    "lib" : "./dist"
+  },
+  "main" : "./dist/lib/taiji.js",
+  "bin": {
+    "lispy": "./bin/taiji"
+  },
+  "homepage": "https://github.com/taijiweb/taijilang",
+  "bugs": "https://github.com/taijiweb/taijilang/issues",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/taijilang/taijilang.git"
+  },
+  "dependencies": {
+    "mkdirp": "~0.3.5"
+  },
+  "devDependencies": {
+    "coffee-script": "1.7.1",
+    "mocha": "~1.17.0",
+    "chai": "~1.8.1",
+    "shelljs": "~0.3.0",
+    "gulp": "^3.6.2",
+    "gulp-util": "^2.2.19",
+    "gulp-coffee": "~1.4.1",
+    "gulp-mocha": "~0.3.0",
+    "gulp-changed": "~0.2.1",
+    "gulp-cached": "0.0.2",
+    "gulp-plumber": "~0.5.6",  
+    "gulp-mocha": "~0.4.1",
+    "gulp-shell": "~0.2.4",
+    "gulp-rename": "~0.2.2",
+    "gulp-clean": "~0.2.4",
+     "run-sequence": "~0.3.6"
+  },
+  "scripts": {
+    "prepublish": ""
+  },
+  "preferGlobal": true
+}

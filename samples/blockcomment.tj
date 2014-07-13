@@ -1,0 +1,10 @@
+taiji language 0.1
+
+1
+/. this is a block comment
+  any line
+    indented
+      is a part of the block comment
+  no end tag is needed for a block comment
+
+print 'something' // this is code line

@@ -1,0 +1,22 @@
+taiji language 0.1
+
+// Some example code snippets
+
+square = (n) -> n*n
+console.log: square 10
+
+square! = (n) -=> ` ( ^n * ^n )
+console.log: square! 10
+x = 1
+square! x
+
+// The code above works fine. Now consider the code below
+// The example below shows the dangers of using a macro
+i = 2
+console.log: square! i++
+// Oops you got 6! An embarrassing square of a no. Thats because the macro
+// expanded to (i++ * i++) which is multiplying 2 and three!
+
+// the version below is safe with parameter which have side effects
+square2! #= (n) -=> ` [let x = ^n then (x * x) ]
+console.log: square2! i++

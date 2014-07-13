@@ -1,0 +1,29 @@
+taiji language 0.1
+
+  A simple chatserver written in taijilang
+  Connect to the server via telnet.
+  $ telnet <host> <port>
+  Any message typed in is broadcast to all other clients connected
+
+net = require "net"
+chatServer = net.createServer()
+port = 3000
+clientList = []
+
+var each
+
+broadcast = (message, client) ->
+  each clientList (currentClient) ->
+    if currentClient<>client then
+      currentClient.write "$client.name says $message"
+
+chatServer.on "connection" (client) ->
+  client.name = "$client.remoteAddress : $client.remotePort"
+  client.write "Hi $client.name \n"
+  clientList.push client
+  client.on "data" (data) -> broadcast data client
+  // We dont want the server to crash while writing to a disconnected client.
+  // The 'end' event listener is called if client disconnects.
+  client.on "end" -> clientList.splice: clientList.indexOf client, 1
+
+chatServer.listen port

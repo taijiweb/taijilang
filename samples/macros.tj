@@ -1,0 +1,33 @@
+taiji language 0.1
+
+closure = (closureVars..., fn) -=> `{(^&closureVars) -> ^fn}(^&closureVars)
+
+extern! x y a
+closure(x, y, {-> x y})
+closure x y ->
+  print x y
+
+\do #= (body..., clause) -=>
+  if clause[0]=='where' then
+    `{let ^&(clause.slice(1)) then ^&body}
+  else if clause[0]=='when' then
+    `{doWhile! ^clause[1] ^&body}
+  else if clause[0]=='until' then
+    `{doWhile! not(^clause[1]) ^&body}
+
+//do 1
+// now the code below becomes valid:
+do
+  print a
+  print b
+where a=1, b=2
+i = 0; do print i++ until i==10
+
+do print a; print b where a=1, b=2
+do print a where a=1, b=2
+do print a where a=1
+
+do a when a==1
+do a until a==1
+
+{-=> ~(1+2)}()

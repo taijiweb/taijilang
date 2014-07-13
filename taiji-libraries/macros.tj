@@ -1,0 +1,198 @@
+taiji language 0.1
+
+  this program is used to demonstrate and test compilation, not a part of bootstrap of taijilang.
+  this program is not tested yet.
+
+/...................... Expressions .............................
+extern! \do
+
+\when = (cond, body...) -=> `{if ^cond  then ^&body}
+unless = (cond, body...) -=> `{if (!.^cond) then ^&body}
+
+/.cond = (clauses...) ->
+  //[[test, body] |- left]  = clauses
+  `[if ^test then ^&body else ^&cond(^&left)]
+
+arrayInit = (len, obj) ->
+  ret = []
+  //for i=0; i<len; i++ then ret.push o
+  ret
+
+arrayInit2d = (m, n, obj) ->
+  ret = []
+  /.for i=0; i<m; i++ then
+    inn = []
+    for j=0;j<n; j++ then inn.push obj;
+    ret.push[inn]
+  ret
+
+////////////////////// Iteration and Looping ////////////////////
+
+each = (arr, rest...) -> arr.forEach(rest)
+reduce = (arr, rest...) -> arr.reduce(rest)
+/.eachKey = (obj, fn, rest...) -> (o, f, s) ->
+    k = Object.keys(o)
+    each k (elem) -> f.call(s, elem[o], elem, o)
+      obj
+      fn
+      rest
+
+each2d  = (arr, fn) ->
+  each arr (elem, i, oa) ->
+      each elem (val, j, ia) ->
+          fn val j i ia oa
+
+map = (arr, rest...) ->  arr.map(rest)
+filter = (rest...) ->  Array::filter.call(rest)
+some = (rest...) -> Array::some.call(rest)
+
+every = (rest...) -> Array::every.call(rest)
+
+/.loop = (args, vals, rest...) ->
+  ->
+    /.var recur, null,
+        result = !undefined
+        nextArgs = null
+        f = (args) -> rest
+    recur = ->
+        nextArgs = arguments
+        if (result == undefined) then
+          undefined
+        else
+            result = undefined
+            while (result===undefined) result = f.apply(this nextArgs)
+            result
+    recur(@vals)
+
+/.for = (rest...) ->
+  doMonad arrayMonad rest
+
+extern! str eachKey
+
+//////////////////// Templates ////////////////////////////
+
+template = (name, args, rest...) ->
+  name = (args) -> str rest
+
+templateRepeat = (arg, rest...)  ->
+  reduce arg (memo, elem, index) ->
+      memo + str(rest) ""
+
+templateRepeatKey = (obj, rest...) ->
+  begin!
+    ret = ""
+    eachKey obj (value, key) ->
+        ret += str(rest)
+      ret
+
+/////////////////// Callback Sequence ////////////////////;
+
+sequence = (name, args, init, rest...) ->
+    (args) ->
+      ->
+        @init
+        curr = 0
+        actions  = new Array rest
+        var next
+        next = ->
+            ne = actions[curr++]
+            if ne then ne
+            else throw "Call to [next] beyond sequence."
+        next()
+
+
+//////////////////; Unit Testing ////////////////////////////;
+
+extern! array Date
+
+assert = (cond, message) -=>
+  if cond then "Passed - $message" else "Failed - $message"
+
+testGroup = (name, rest...) -=>
+  name = -> array(rest)
+
+testRunner = (groupname, desc)-=>
+    start = new Date
+    tests = groupname()
+    passed = 0
+    failed = 0
+    each tests (elem) ->
+        if elem.match(/^Passed/) then ++passed
+        else ++failed
+    str
+      /.str "\n" desc "\n" start "\n\n"
+        template-repeat tests elem "\n"
+        "\nTotal tests ", tests.length
+        "\nPassed ", passed
+        "\nFailed ", failed
+        "\nDuration " ([new Date] - start) "ms\n"    // leading \ cancel generating subsexpression just concatenate to previous result]
+
+
+//////////////// Monads //////////////////////////////////;
+
+identityMonad = ->
+  {. mBind: [(mv, mf) -> mf(mv)]; mResult: [(v) -> v] .}
+
+/*
+maybeMonad = ->
+  { mBind: (mv, mf) -> if (mv==undefined) then null else mf(mv);
+    mResult: (v) -> v;
+    mZero: null;
+  }
+
+
+arrayMonad = ->
+  { mBind: (mv, mf) ->
+              reduce
+                map mv mf
+                (accum, val) -> accum.concat(val)
+                []
+    mResult: (v) -> v()
+    mZero: []
+    mPlus: ->
+      reduce
+        Array::slice.call arguments
+        (accum, val) -> accum.concat(val)
+        []
+  }
+
+stateMonad #= -=>
+  `{ mBind: (mv, f) ->
+             (s) ->
+                l = mv(s)
+                v = l./0
+                ss = l./1
+                f(v)(ss)
+    mResult: (v) -> (s) -> v(s)
+  }
+
+continuationMonad #= -=>
+  { mBind: (mv, mf) -> (c) -> mv((v) -> mf(v)(c))
+    mResult: (v) -> (c) -> c(v)
+  }
+
+m-bind = (bindings, expr)
+  mBind #args-second(bindings)
+    function #args-shift(bindings)
+      #args-if bindings m-bind(bindings, expr) [function [] expr]
+
+#function withMonad [monad rest...]
+  function [___monad]
+    var mBind = ___monad.mBind
+         mResult = ___monad.mResult
+         mZero = ___monad.mZero
+         mPlus = ___monad.mPlus
+    rest...
+  monad
+
+doMonad = (monad, bindings, expr) ->
+  withMonad monad
+    var ____mResult
+      function ___arg
+        if (___arg==undefined&&mZero!=undefined) then:
+          mZero
+        else: mResult ___arg
+    m-bind bindings : ____mResult expr
+
+monad  = (name, obj) -=> ^name = -> ^obj
+*/

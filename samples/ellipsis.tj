@@ -1,0 +1,38 @@
+taiji language 0.1
+
+// ellipsis parameter similar to coffeescript
+
+(x...)->x
+(x, y...)->x
+(x, y, z...)->x
+
+(x, y, z..., a)->x
+
+(x, y, z..., a)->x
+
+(x, y, z..., a, b)->x
+
+(z..., a, b)->z
+
+(x, y, z..., a, b, c, d, e)->z
+
+m = (x..., b) -> print x, print b
+
+m(1, 2, 3)
+
+// macro can have ellipsis parameters too.
+
+m #= (x..., b) -=> ` [begin!: print ^&x, print ^b ]
+
+m(1, 2, 3)
+
+var x, y, z, a, m, n, p, q
+
+[x, y..., z] = [1, 2, 3, 4]
+a = [1, 2, 3, 4]
+[x, y..., z] = a
+a = [1, 2, 3, 4, 5, 6]
+[x, y, z..., m] = a
+[x, y, z..., m, n] = a
+
+(a=1, x..., b=a, c={. .}) -> 1

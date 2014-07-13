@@ -1,0 +1,37 @@
+taiji language 0.1
+
+  this file is not tested
+
+!--  = (rest...) -=> "<!-- $rest -->"
+
+str! = (args...) -=> '""'
+
+extern! isString isObject  templateRepeatKey key  value
+exports.expandTag = expandTag = (name, args...) ->
+  if isString name then
+    var ret = "<" + name
+    if isObject args[0] then
+       attr = args.shift()
+       ret += templateRepeatKey attr " " key "=" "\"" value "\""
+    if args.length>0 || name=="script" then
+      ret = str! ret ">" args.join("") "</" name ">"
+     else ret += "/>"
+    ret
+  else ""
+
+tagNames = '
+  a abbr address area article aside audio b base bdi bdo blockquote body br button canvas
+  caption cite code col colgroup command data datalist dd del details dfn div dl dt em embed fieldset
+  figcaption figure footer form h1 h2 h3 h4 h5 h6 head header hgroup  hr html i iframe img input ins
+  kbd keygen label legend li link map mark menu meta meter nav noscript object ol optgroup option
+  output p param pre progress q rest rt rest rp ruby s samp progress script section select small source span
+  strong style sub summary sup table tbody td textarea tfoot th thead time title tr track u ul video wbr'
+
+/.for tag in tagNames.split ' ' then
+  exports[tag] = (rest...) -> expandTag tag rest
+
+exports['var_'] = (rest...) -> expandTag 'var' rest
+
+x #= -=> 1
+
+export! #x, y = 1

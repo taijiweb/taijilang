@@ -1,0 +1,22 @@
+taiji language 0.1
+
+ this file is not tested.
+
+  Shortcuts for usage in browser
+  Usage:
+    $ "mydiv" same as document.getElementById "mydiv"
+    $listener domObject eventType (expression)
+    Event Object is available to the exoressions as "event"
+
+extern! document
+
+$ #= (id) -=> ` document.getElementById ^id
+
+$ 'sdf'
+
+$listener #= (domObj, eventName, rest...) -=>
+  ` (^domObj).addEventListener ^eventName (event) ->  ^&rest
+
+$listener [var a = document] 'dasf'
+ print 1
+

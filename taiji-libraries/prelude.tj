@@ -1,0 +1,45 @@
+taiji language 0.1
+
+  This is the prelude of all of taiji language programs, it's included by the taijilang compilation process automatically.
+
+// used by ellipsis parameters
+  // __slice = [].slice // this line is added by addPrelude in utils.coffee on demand.
+
+/.some macros for small code piece to check type
+  by use macros, we can reduce function call and optimize the performance of the program.
+
+//macro definition will not generate code in the object code, but macro call will.
+
+  undefined? #= (obj) -=> `((^obj)==undefined)
+  null? #= (obj) -=> `((^obj)===null or (^obj)==undefined)
+  true? #= (obj) -=> ` !!(^obj)
+  false? #= (obj) -=> ` !(^obj)
+  boolean? #= (obj) -=> ` (typeof (^obj) == "boolean")
+  number? #= (obj) -=> `(Object::toString.call(^obj) == "[object Number]")
+  string? #= (obj) -=> ` (Object::toString.call(^obj) == "[object String]")
+  array? #= (obj) -=> ` (Object::toString.call(^obj) == "[object Array]")
+  object? #= (obj) -=> ` (Object::toString.call(^obj) == "[object Object]")
+  function? #= (obj) -=> ` (Object::toString.call(^obj) == "[object Function]")
+
+// some utilities
+  sqr! #= (n) -=> ` [let x = ^n then (x * x) ]
+
+/. control structure
+  forIn
+  forOf
+  cFor
+  try
+  class
+
+// for
+
+/. assign construct
+  [a, b] = x
+  [a..., b] = x
+  [a, b...] = x
+  [a, b..., c] = x
+
+  {a, b, c} = x
+
+/. ellipsis arguments for call
+  fn(a, x..., b, y..., z)
