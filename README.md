@@ -105,6 +105,6 @@ Thanks to the people who make the great things, I learned so much from them:
 
 I need thank many other people and the stuffs made by them, too, although I can not list everyone of them.
  
-at last, I'll thank my family for their support to me. 
+At last, I'll thank to my family. 
 
 **Let it go, let's start the game of throne, to write a song of ice and fire in the taiji language.**
