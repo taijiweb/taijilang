@@ -387,7 +387,7 @@ convertDefinition =  (exp, env, mode) ->
       if not ellipsis? then ellipsis = i; exp0[i] = param[1]
       else error 'mulitple ellipsis parameters is not permitted'
     else if param[0]=='='
-      defaultList.push param
+      defaultList.push ['if', ['==', param[1], ['direct!', undefinedExp]], param]
       exp0[i] = param[1]
       # default parameter should not be ellipsis parameter at the same time
       # and this is the behavior in coffee-script too

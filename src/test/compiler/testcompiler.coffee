@@ -24,6 +24,10 @@ compileNoOptimize = (code) ->
   head = 'taiji language 0.1\n'
   taiji.compileNoOptimize(head+code, taiji.rootModule, taiji.builtins, {})
 
+run = (code) ->
+  code = compile(code)
+  str eval code
+
 describe "compile: ",  ->
   describe "simple: ",  ->
     it 'should compile var a', ->
@@ -222,11 +226,19 @@ describe "compile: ",  ->
     it 'should parse (a=1) -> 1', ->
       expect(str parse('(a=1) -> 1')).to.equal  "[-> [[= a 1]] [1]]"
     it 'should compile (a=1) -> 1,2', ->
-      expect(compile('(a=1) -> 1')).to.equal  "(function (a) {\n  a = 1;\n  return 1;\n})"
-    it 'should compile (a=1, b=a) ->1,2', ->
-      expect(compile('(a=1, b=a, c={. .}) -> 1')).to.equal  "(function (a, b, c) {\n  a = 1;\n  b = a;\n  c = { };\n  return 1;\n})"
-    xit 'should compile (a=1, x..., b=a) ->1,2', ->
-      expect(compile('(a=1, x..., b=a, c={. .}) -> 1')).to.equal  "__slice = [].slice;\n\n(function () {\n  var i2, a = arguments[0], \n      x = arguments.length >= 4? __slice.call(arguments, 1, i2 = arguments.length\n        - 2): (i2 = 1, []), \n      b = arguments[i2++], \n      c = arguments[i2++];\n  a = 1;\n  b = a;\n  c = { };\n  return 1;\n});"
+      expect(compile('(a=1) -> 1')).to.equal  "(function (a) {\n  if (a === void 0)\n    a = 1;\n  return 1;\n})"
+    it 'should compile (a=1, b=a, c={. .}) ->1,2', ->
+      expect(compile('(a=1, b=a, c={. .}) -> 1')).to.equal  "(function (a, b, c) {\n  if (a === void 0)\n    a = 1;\n  \n  if (b === void 0)\n    b = a;\n  \n  if (c === void 0)\n    c = { };\n  return 1;\n})"
+    it 'should run {(a=1, b=a, c={. .}) -> [a,b, c]}(1,2,3)', ->
+      expect(run('{(a=1, b=a, c={. .}) -> [a,b, c]}(1,2,3)')).to.equal  "[1 2 3]"
+    it 'should run {(a=1, b=a, c={. .}) -> [a,b, c]', ->
+      expect(run('{(a=1, b=a, c={. .}) -> [a,b, c]}(1,2)')).to.equal  "[1 2 [object Object]]"
+    it 'should run {(a=1, x..., b=a, c={. .}) -> [a, b] }(1, 2, 3)', ->
+      expect(run('{(a=1, x..., b=a, c={. .}) -> [a, b] }(1, 2, 3)')).to.deep.equal "[1 2]"
+    it 'should run {(a=1, x..., b, c) -> [a, x, b, c] }(1, 2, 3, 4, 5, 6)', ->
+      expect(run('{(a=1, x..., b, c) -> [a, x, b, c] }(1, 2, 3, 4, 5, 6)')).to.deep.equal '[1 [2 3 4] 5 6]'
+    it 'should run {(a=1, x..., b=a, c={. .}) -> [a, x, b, c] }(1, 2, 3, 4, 5, 6)', ->
+      expect(run('{(a=1, x..., b=a, c={. .}) -> [a, x, b, c] }(1, 2, 3, 4, 5, 6)')).to.deep.equal '[1 [2 3 4] 5 6]'
 
   describe "letrec: ",  ->
     it 'should compile letrec! f = (x) -> if! x==1 1 f(x-1)', ->

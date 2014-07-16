@@ -1,5 +1,12 @@
 2014
 2014-7
+7-16
+  refactor meta compilation; no -=>, ==> or macro, macro is just meta compilation
+  fix a bug in default parameter, should assign based on whether the paramerter is undefined
+7-15
+  do some marketing for taijilang, https://github.com/taijiweb/taijilang got 15 starts.
+7-14
+  taijilang 0.1.0 is released
 7-13
   \-=> and,\-> and \=> becomes |-=> and, |-> and |=>
   npm publish taiji 0.1.0

@@ -104,8 +104,14 @@ n = lst3[i3++];
         []), 
       b = arguments[i++], 
       c = arguments[i++];
-  a = 1;
-  b = a;
-  c = { };
+  
+  if (a === void 0)
+    a = 1;
+  
+  if (b === void 0)
+    b = a;
+  
+  if (c === void 0)
+    c = { };
   return 1;
 });
