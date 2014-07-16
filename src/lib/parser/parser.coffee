@@ -440,7 +440,7 @@ exports.Parser = ->
     start = cursor; line1 = lineno
     if text[cursor]!='(' then return else cursor++
     space = bigSpc()
-    if space.undent then error 'unexpected undent'
+    if space.undent then error 'unexpected undent while parsing parenethis "(...)"'
     exp = parser.operatorExpression()
     bigSpc()
     if lineInfo[lineno].indentRow<lineInfo[line1].indentRow
@@ -453,7 +453,7 @@ exports.Parser = ->
     if text[cursor]!='{' or text[cursor+1]=='.' then return else cursor++; spc()
     body = parser.lineBlock()
     bigSpc()
-    if lineInfo[lineno].indentRow<indentRow then error 'unexpected undent'
+    if lineInfo[lineno].indentRow<indentRow then error 'unexpected undent while parsing parenethis "{...}"'
     if text[cursor]!='}' then error 'expect }' else cursor++
     if body.length==0 then {type: CURVE, value:'', start:start, stop: cursor, line1:line1, line:lineno}
     else
@@ -466,7 +466,7 @@ exports.Parser = ->
     if text[cursor]!='[' then return else cursor++
     expList = parser.lineBlock()
     bigSpc()
-    if lineInfo[lineno].indentRow<indentRow then error 'unexpected undent'
+    if lineInfo[lineno].indentRow<indentRow then error 'unexpected undent while parsing parenethis "[...]"'
     if text[cursor]!=']' then error 'expect ]' else cursor++
     if expList then expList.unshift 'list!'
     else expList = []
@@ -481,6 +481,7 @@ exports.Parser = ->
       if lineInfo[lineno].indentRow<indentRow
         error 'expect to indent the same as or more than  the line of [\\'
     spc()
+    if lineInfo[lineno].indentRow<indentRow then error 'unexpected undent while parsing parenethis "[\\ ...\\]"'
     if text[cursor...cursor+2]!='\\]' then error 'expect \\]' else cursor+=2
     result.unshift 'list!'
     extend result, {type: DATA_BRACKET, start:start, stop:cursor, line1:line1, line: lineno}
@@ -527,9 +528,10 @@ exports.Parser = ->
     result.start = start; result.stop = cursor; result
 
   @hash = memo ->
-    start = cursor; line1 = lineno
+    start = cursor; line1 = lineno; indentRow = lineInfo[lineno].indentRow
     if text[cursor...cursor+2]!='{.' then return else cursor += 2
     items = parser.hashBlock()
+    if lineInfo[lineno].indentRow<indentRow then error 'unexpected undent while parsing parenethis "{.  ... .}"'
     if text[cursor...cursor+2]!='.}' then error 'expect .}' else cursor += 2
     extend ['hash!'].concat(items), {start:start, stop:cursor, line1:line1, line:lineno}
 
@@ -774,6 +776,18 @@ exports.Parser = ->
       return {symbol:'call()', type: SYMBOL, priority: 800, start:cursor, stop:cursor, line:lineno}
     return rollback start, line1
 
+  @binaryMacroCallOperator = (mode, x, priority, leftAssoc) ->
+    start = cursor; line1 = lineno
+    space1=spc()
+    if text[cursor]!='#' then return rollback start, line1
+    cursor++; space2 = spc();
+    if !!space2.value != !!space1.value and text[cursor]=='('
+      error 'should have spaces on both or neither sides of symbol around "#"'
+    if not parser.followParenArguments() then return rollback start, line1
+    pri = space1.value? 500 : 800
+    if pri<=priority then rollback start, line1
+    return {symbol:'#()', type: SYMBOL, priority: 800, start:cursor, stop:cursor, line:lineno}
+
   @binaryIndexOperator = (mode, x, priority, leftAssoc) ->
     start = cursor; line1 = lineno
     if (space=bigSpc()) and space.value and follow('bracket')
@@ -818,7 +832,7 @@ exports.Parser = ->
       if followMatch (-> parser.recursiveExpression(cursor)(mode, 800, leftAssoc))
         {symbol:'attribute!', type: SYMBOL, start: cursor, stop:cursor, line: lineno, priority: 800}
 
-  @customBinaryOperators = [@binaryAttributeOperator, @binaryCallOperator, @binaryIndexOperator,
+  @customBinaryOperators = [@binaryAttributeOperator, @binaryCallOperator, @binaryMacroCallOperator, @binaryIndexOperator,
                             @binaryAtThisAttributeIndexOperator, @binaryPrototypeAttributeOperator]
 
   @customBinaryOperator = (mode, x, priority, leftAssoc) ->
@@ -1250,14 +1264,10 @@ exports.Parser = ->
 
     'class': (isHeadStatement) ->
       spc()
-      if parser.conjunction('extends')
-        spc()
-        supers = parser.compactClauseExpression()
-        if supers.type==PAREN then supers = getOperatorExpression supers
-        else supers = [getOperatorExpression supers]
+      if parser.conjunction('extends') then spc(); superClass = parser.identifier(); spc()
       else supers = []
       body = parser.lineBlock()
-      ['class', supers].concat body
+      ['class', superClass].concat body
 
   @statement = memo ->
     start = cursor; line1 = lineno
@@ -1352,8 +1362,8 @@ exports.Parser = ->
         else rollbackToken item
 
   @defaultSymbolOfDefinition = ->
-    if x=parser.symbol()
-      if (xTail=x.value[x.value.length-2...])=='->' or xTail=='=>' then return x
+    if (x=parser.symbol())
+      if (xValue=x.value) and xValue[0]!='\\' and ((xTail=xValue[xValue.length-2...])=='->' or xTail=='=>') then return x
       else rollbackToken(x)
 
   # a = -> x; b = -> y should be [= a [-> x [= b [-> y]]]]

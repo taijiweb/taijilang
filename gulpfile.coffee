@@ -58,7 +58,7 @@ class Pattern
 cleanFolders = for p in 'lib bin test samples-js taiji-libraries-js'.split(' ') then folders_dest+p
 task 'clean', -> src(cleanFolders, {read:false}).pipe(clean())
 
-files_copy = (folders_src+name for name in ['**/*.js', '**/*.json', '**/*.jade', '**/*.html', '**/*.css', '**/*.tjv'])
+files_copy = (folders_src+name for name in ['**/*.js', '**/*.json', '**/*.html', '**/*.css'])
 task 'copy', -> from(files_copy, {cache:'copy'}).to(folders_dest)
 
 files_coffee = [folders_coffee+'**/*.coffee']

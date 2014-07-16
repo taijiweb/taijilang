@@ -5,7 +5,7 @@
 fs = require 'fs'
 {convertIdentifier, entity, begin, error, isArray, error, extend, splitSpace, return_, undefinedExp, addPrelude} = require '../utils'
 {Parser} = require '../parser'
-{convert, convertList, convertEllipsisList, convertExps, compileExp, transformToCode, metaList, metaCode} = require '../compiler'
+{convert, convertList, convertEllipsisList, convertExps, compileExp, transformToCode, metaProcessConvert} = require '../compiler'
 TaijiModule = require '../module'
 
 metaIndex = 0
@@ -28,7 +28,8 @@ declareVar = (fn) -> (exp, env) ->
     e0 = entity(e)
     if typeof e0=='string'
       if e0[0]=='"' then error 'variable name should not be a string'
-      v = env.newVar(e0); env.set(e0, v); fn(v)
+      if env.hasLocal(e) then error 'repeat declaring variable: '+e0
+      v = env.set(e0, e); fn(v)
       if v.const then error 'const need to be initialized to a value'
       result.push(['var', v]); result.push v
     else
@@ -375,7 +376,7 @@ convertParametersWithEllipsis = (exp, ellipsis, env) ->
 
 convertDefinition =  (exp, env, mode) ->
   newEnv = env.extend(scope={}, env.parser, env.module, {})
-  if mode=='=>' or mode=='==>' or mode=='\\=>'
+  if mode=='=>' or mode=='|=>' or mode=='==>' or mode=='|==>'
     _this = newEnv.newVar('_this')
     scope['@'] = _this
   else scope['@'] = 'this'
@@ -390,12 +391,6 @@ convertDefinition =  (exp, env, mode) ->
       exp0[i] = param[1]
       # default parameter should not be ellipsis parameter at the same time
       # and this is the behavior in coffee-script too
-#      if param[1][param[1][0]]=='x...'
-#        if not ellipsis?
-#          ellipsis = i
-#          defaultList.push param
-#          exp0[i] = param[1][...param[1].length-3]
-#        else error 'mulitple ellipsis parameters is not permitted'
   if ellipsis!=undefined
     params = []
     body = convertParametersWithEllipsis(exp0, ellipsis, newEnv)
@@ -405,17 +400,15 @@ convertDefinition =  (exp, env, mode) ->
     params = for param, i in exp0 then param = entity(param); scope[param] = param
     body = defaultList
     body.push.apply body, exp1
-  if mode[0]=='\\' then body =  convert(begin(body), newEnv)
+  if mode[0]=='|' then body =  convert(begin(body), newEnv)
   else body =  return_(convert(begin(body), newEnv))
-  if mode=='=>' or mode=='\\=>' then result = ['begin!', ['=', _this, 'this'], ['function', params, body]]
+  if mode=='=>' or mode=='|=>' then result = ['begin!', ['=', _this, 'this'], ['function', params, body]]
   else result = ['function', params, body]
   result.env = newEnv
   result
 
-exports['->'] = (exp, env) -> convertDefinition(exp, env, '->')
-exports['\\->'] = (exp, env) -> convertDefinition(exp, env, '\\->')
-exports['=>'] = (exp, env) -> convertDefinition(exp, env, '=>')
-exports['\\=>'] = (exp, env) -> convertDefinition(exp, env, '\\=>')
+for sym in '-> |-> => |=>'.split(' ') then do (sym=sym) ->
+    exports[sym] = (exp, env) -> convertDefinition(exp, env,sym)
 
 convertMacro = (exp, env, mode) ->
   resultExp = convertDefinition(exp, env, mode)
@@ -425,9 +418,8 @@ convertMacro = (exp, env, mode) ->
   #console.log fnCode
   (exp, env) -> expanded = macroFn(exp...); convert(expanded, env)
 
-exports['-=>'] = (exp, env) -> convertMacro(exp, env, '-=>')
-exports['\\-=>'] = (exp, env) -> convertMacro(exp, env, '\\-=>')
-
+for sym in ' -=> |-=> ==> |==>'.split(' ') then do (sym=sym) ->
+  exports[sym] = (exp, env) -> convertMacro(exp, env,sym)
 
 exports['unquote!'] = (exp, env) -> error('unexpected unquote!', exp)
 exports['unquote-splice'] = (exp, env) -> error('unexpected unquote-splice', exp)
@@ -470,20 +462,9 @@ exports['eval!'] = (exp, env) ->
     else ['call!', 'eval', exp0]
   else ['call!', 'eval', [compileExp(exp0, env)]]
 
-compileMetaListCode = (exp, env) ->
-  meta = env.meta
-  meta.code.push compileExp ['=',['index!', ['jsvar!', 'metaList'], [meta.index]], exp], meta.env
-  ['meta!', meta.index++]
-
-exports['##'] = (exp, env) -> compileMetaListCode exp[0], env
-
-exports['#'] = (exp, env) ->
-  exp0 = exp[0]
-  if exp0[0]=='if'
-    exp0[2] = ['quote!', exp0[2]]
-    exp0[3] = ['quote!', exp0[3]]
-  # todo add more construct here ...
-  compileMetaListCode exp0, env
+exports['##'] = (exp, env) -> metaProcessConvert ['##', exp[0]], env
+exports['#'] = (exp, env) -> metaProcessConvert ['#', exp[0]], env
+exports['#.'] = (exp, env) -> metaProcessConvert ['#.', exp[0]], env
 
 # dynamic syntax, extend the parser on the fly
 # the head of exp[0] will be convert to attribute of __$taiji_$_$parser__

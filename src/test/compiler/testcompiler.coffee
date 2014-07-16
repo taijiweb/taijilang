@@ -108,8 +108,8 @@ describe "compile: ",  ->
     it "should parse x #= -=> a=1", ->
       expect(str parse('x #= -=> a=1')).to.equal "[#= x [-=> [] [[= a 1]]]]"
 
-    it "should comile x #= -=> a=1", ->
-      expect(compile('x #= -=> a=1')).to.equal ""
+    it "should comile {x #= -> a=1}; 1", ->
+      expect(compile('{x #= -> a=1}; 1')).to.equal "1"
 
 
   describe "attribute and index: ",  ->
@@ -203,23 +203,29 @@ describe "compile: ",  ->
       expect(compile('->')).to.equal "(function () {})"
     it 'should compile ->1,2', ->
       expect(compile('->1,2')).to.equal  "(function () {\n  return 2;\n})"
-    it 'should compile \\->1,2', ->
-      expect(compile('\\->1,2')).to.equal  "(function () {\n  2;\n})"
+    it 'should compile |->1,2', ->
+      expect(compile('|->1,2')).to.equal  "(function () {\n  2;\n})"
+    xit 'should compile \\|-> [] {1, 2}', ->
+      expect(compile('\\|-> [] {1, 2}')).to.equal "(function () {\n  2;\n})"
+    xit 'should parse \\|-> [] {1, 2}', ->
+      expect(str parse('\\|-> [] {1, 2}')).to.equal "(function () {\n  2;\n})"
     it 'should parse => @a', ->
       expect(str parse('=> @a')).to.equal  "[=> [] [[attribute! @ a]]]"
     it 'should compile => @a; @, @x([]+@)', ->
       expect(compile('=> @a; @, @x([]+@)')).to.equal  "_this = this;\n\n(function () {\n  _this.a;\n  return _this.x([] + _this);\n});"
-    it 'should compile \\=> @a; @, @x([]+@)', ->
-      expect(compile('\\=> @a; @, @x([]+@)')).to.equal  "_this = this;\n\n(function () {\n  _this.a;\n  _this.x([] + _this);\n});"
+    it 'should parse |=> @a; @, @x([]+@)', ->
+      expect(str parse('|=> @a; @, @x([]+@)')).to.equal  "[|=> [] [[attribute! @ a] @ [call! [attribute! @ x] [[+ [] @]]]]]"
+    it 'should compile |=> @a; @, @x([]+@)', ->
+      expect(compile('|=> @a; @, @x([]+@)')).to.equal  "_this = this;\n\n(function () {\n  _this.a;\n  _this.x([] + _this);\n});"
     it 'should compile => @a; @, @x([]+@), -> @a; @, @x([]+@)', ->
       expect(compile('=> @a; @, @x([]+@), -> @a; @, @x([]+@)')).to.equal  "_this = this;\n\n(function () {\n  _this.a;\n  _this.x([] + _this);\n  return function () {\n    this.a;\n    return this.x([] + this);\n  };\n});"
-    it 'should parse (a=1) ->1', ->
+    it 'should parse (a=1) -> 1', ->
       expect(str parse('(a=1) -> 1')).to.equal  "[-> [[= a 1]] [1]]"
-    it 'should compile (a=1) ->1,2', ->
+    it 'should compile (a=1) -> 1,2', ->
       expect(compile('(a=1) -> 1')).to.equal  "(function (a) {\n  a = 1;\n  return 1;\n})"
     it 'should compile (a=1, b=a) ->1,2', ->
       expect(compile('(a=1, b=a, c={. .}) -> 1')).to.equal  "(function (a, b, c) {\n  a = 1;\n  b = a;\n  c = { };\n  return 1;\n})"
-    it 'should compile (a=1, x..., b=a) ->1,2', ->
+    xit 'should compile (a=1, x..., b=a) ->1,2', ->
       expect(compile('(a=1, x..., b=a, c={. .}) -> 1')).to.equal  "__slice = [].slice;\n\n(function () {\n  var i2, a = arguments[0], \n      x = arguments.length >= 4? __slice.call(arguments, 1, i2 = arguments.length\n        - 2): (i2 = 1, []), \n      b = arguments[i2++], \n      c = arguments[i2++];\n  a = 1;\n  b = a;\n  c = { };\n  return 1;\n});"
 
   describe "letrec: ",  ->
@@ -262,16 +268,36 @@ describe "compile: ",  ->
       expect(compile('`[ ^1 [ ^2 ^&[3, 4]]]')).to.equal "[\"list!\", [1, [\"list!\", [2].concat([3, 4])]]]"
 
   describe "macro: ",  ->
-    it 'should compile -=> 1', ->
-      expect(compile('{-=> 1}()')).to.equal "1"
-    it 'should compile {-=> ~(1+2)}()', ->
-      expect(compile('{-=> ~(1+2)}()')).to.equal "3"
-    it 'should compile {-=> ~(1+2)}()', ->
-      expect(compileNoOptimize('{-=> ~(1+2)}()')).to.equal "1 + 2"
-    it 'should compile {(a,b) -=> `( ^a + ^b)}(1,2)', ->
-      expect(compileNoOptimize('{(a,b) -=> `( ^a + ^b)}(1,2)')).to.equal "1 + 2"
-    it 'should compile m #= {(a,b) -=> `( ^a + ^b)}; m(1,2)', ->
-      expect(compileNoOptimize('m #= {(a,b) -=> `( ^a + ^b)}; m(1,2)')).to.equal "1 + 2"
+    it 'should compile ##{->} 1', ->
+      expect(compile('##{-> 1}()')).to.equal "1"
+    it 'should compile ##{-> ~(1+2)}()', ->
+      expect(compile('##{-> ~(1+2)}()')).to.equal "3"
+    it 'should compileNoOptimize ##{-> ~(1+2)}()', ->
+      expect(compileNoOptimize('##{-> ~(1+2)}()')).to.equal "1 + 2"
+    it 'should compileNoOptimize ##{(a,b) -> `( ^a + ^b)}(1,2)', ->
+      expect(compileNoOptimize('##{(a,b) -> `( ^a + ^b)}(1,2)')).to.equal "1 + 2"
+    it 'should compileNoOptimize m #= {(a,b) -> `( ^a + ^b)}; ##m(1,2)', ->
+      expect(compileNoOptimize('m #= {(a,b) -> `( ^a + ^b)}; ##m(1,2)')).to.equal "1 + 2"
+    it 'should compileNoOptimize m #= {(a,b) -> `( ^a + ^b)}; ##m(1+2, 3+4)', ->
+      expect(compileNoOptimize('m #= {(a,b) -> `( ^a + ^b)}; ##m(1+2,3+4)')).to.equal "3 + 7"
+    it 'should compileNoOptimize m #= {(a,b) -> `( ^a + ^b)}; #m(1+2, 3+4)', ->
+      expect(compileNoOptimize('m #= {(a,b) -> `( ^a + ^b)}; #m(1+2,3+4)')).to.equal "[+, [[+, 1, 2], [+, 3, 4]], ]"
+    it 'should compileNoOptimize m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; #m(x+y,y+z)', ->
+      expect(compileNoOptimize('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; #m(x+y,y+z)')).to.equal "var x, y, z;\n[+, [[+, x, y], [+, y, z]], ];"
+    it 'should compileNoOptimize m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; ##m(x+y,y+z)', ->
+      expect(-> compileNoOptimize('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; ##m(x+y,y+z)')).to.throw /fail to look up symbol from environment:x/
+    it 'should parse m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; m#(x+y,y+z)', ->
+      expect(str parse('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; m#(x+y,y+z)')).to.equal "[begin! [#= m [-> [a b] [[quasiquote! [+ [unquote! a] [unquote! b]]]]]] [var x y z] [#call! m [[+ x y] [+ y z]]]]"
+    it 'should compileNoOptimize m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; m#(x+y,y+z)', ->
+      expect(compileNoOptimize('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; m#(x+y,y+z)')).to.equal 'var x, y, z;\nx + y + y + z;'
+    it 'should compileNoOptimize m #= {(a,b) -> `( ^a * ^b)}; var x, y, z; m#(x+y,y*z)', ->
+      expect(compileNoOptimize('m #= {(a,b) -> `( ^a * ^b)}; var x, y, z; m#(x+y,y*z)')).to.equal "var x, y, z;\n(x + y) * y * z;"
+    it 'should compileNoOptimize m #= {(a,b) -> `( ^a * ^b)}; var x, y, z; m#(x+y,y+z)', ->
+      expect(compileNoOptimize('m #= {(a,b) -> `( ^a * ^b)}; var x, y, z; m#(x+y,y+z)')).to.equal "var x, y, z;\n(x + y) * (y + z);"
+    it 'should parse m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)', ->
+      expect(str parse('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)')).to.equal "[begin! [#= m [-> [a b] [[quasiquote! [+ [unquote! a] [unquote! b]]]]]] [var x y z] [call! [# m] [[+ x y] [+ y z]]]]"
+    it 'should compileNoOptimize m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)', ->
+      expect(compileNoOptimize('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)')).to.equal "var x, y, z;\n[+, [[+, x, y], [+, y, z]], ];"
 
   describe "meta: ",  ->
     it 'should compile #(1+1)', ->
@@ -284,10 +310,18 @@ describe "compile: ",  ->
       expect(compile('3+.#(1+1)')).to.equal '5'
     it 'should compile # ~ 1+1', ->
       expect(compile('# ~ 1+1')).to.equal '2'
-    it 'should compile #a=1', ->
-      expect(compile('#a=1')).to.equal '1'
-    it '''should compile '#a=1;# ` ^a''', ->
-      expect(compile('#a=1;# ` ^a')).to.equal "1"
+    it 'should compile ##a=1', ->
+      expect(compile('##a=1')).to.equal '1'
+    it 'should compile a#=1', ->
+      expect(compile('a#=1')).to.equal '1'
+    it 'should compile #(a=1)', ->
+      expect(compile('#(a=1)')).to.equal '1'
+    it '''should compile 'a#=1;# ` ^a''', ->
+      expect(compile('a#=1;# ` ^a')).to.equal "1"
+    it '''should compile '#(a=1);# ` ^a''', ->
+      expect(compile('#(a=1);# ` ^a')).to.equal "1"
+    it '''should compile '##a=1;# ` ^a''', ->
+      expect(compile('##a=1;# ` ^a')).to.equal "1"
     it '''should compile '#a=1;a''', ->
       expect(-> compile('#a=1;a')).to.throw Error
     it 'should compile if 1 then 1+2 else 3+4', ->
@@ -297,17 +331,28 @@ describe "compile: ",  ->
     it 'should compile if 1 then #1+2 else #3+4', ->
       expect(compile('if 1 then #1+2 else #3+4')).to.equal "3"
     it 'should compileNoOptimize if 1 then #1+2 else #3+4', ->
-      expect(compileNoOptimize('if 1 then #1+2 else #3+4')).to.equal "if (1)\n  3;\nelse 7;"
+      expect(compileNoOptimize('if 1 then ##1+2 else ##3+4')).to.equal "if (1)\n  3;\nelse 7;"
     it 'should compileNoOptimize 1+2', ->
       expect(compileNoOptimize('1+2')).to.equal "1 + 2"
     it 'should compile # if 1 then 1+2 else 3+4', ->
       expect(compile('# if 1 then 1+2 else 3+4')).to.equal '3'
+    it 'should compile var a, b; # if 1 then a else b', ->
+      expect(compile('var a, b; # if 1 then a else b')).to.equal "var a, b;\na;"
+    it 'should compile var a, b; ## if 1 then a else b', ->
+      expect(-> compile('var a, b; ## if 1 then a else b')).to.throw /fail to look up symbol from environment:a/
     it 'should compile # if 0 then 1+2 else 3+4', ->
       expect(compile('# if 0 then 1+2 else 3+4')).to.equal '7'
     it 'should compile ## if 1 then 1+2 else 3+4', ->
       expect(compile('## if 1 then 1+2 else 3+4')).to.equal '3'
     it 'should compile ## if 0 then 1+2 else 3+4', ->
       expect(compile('## if 0 then 1+2 else 3+4')).to.equal '7'
+
+  describe "class : ",  ->
+    xit 'should parse A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)', ->
+      expect(str parse('A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)')).to.equal "[= A [class B [[call! :: [a [attribute! @ b]]] [-> [] [super]]] [[call! [attribute! :: f] [x]] [-> [] [[call! super [x]]]]]]]"
+    xit 'should compile A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)', ->
+      expect(compile('A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)')).to.equal '7'
+
 
   describe "snipets from samples: ",  ->
     it 'should compile extern! node outfile\nnode.spawn outfile() {.stdio: "inherit".}', ->

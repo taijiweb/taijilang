@@ -1,28 +1,33 @@
-todo: ":" at the end of line can replace 'then'
-
-todo: assign optimization
-  expect(compile('var a = [[1, 2]]; [[x, y]] = a')).to.equal "var a = [[1, 2]], \n    lst = a, \n    lst2 = lst[0], \n    x = lst2[0], \n    y = lst2[1];\ny;"
-
-todo: macro for "for", do, try, etc
-  # macro for for/c-style, do(as begin!) do/where, do/When and do/until is not necessary any more.
-  # forIn!! and forOf!! is necessary stil.
-
+todo: class similar to coffee-script
+  # things like super, construcotr(too long name, maybe I'll use init: (...)->)
+  
 todo: range: x = a...b, x = a..b
 todo: ellipsis subscript: x = a[1..3]; x = b[1...4]; x = a[...], x = a[..], x = a[..5]; x = a[...5]
-
-  [x, y, z] @= value # all= at --> all?
-
 todo: hash assign
   {a, b, c} = x # {} of the left side of = is treated as hash
 
+todo: \ lead symbol to escape it, e.g. \=, \+=, \>>, \/, etc, useful to write macros.
+
+todo: ":" at the end of line can replace 'then'
+
+todo: assign optimization
+  # ssaVar, const var, dummy var, etc
+
+todo: macro for "for", do, try, etc
+  # macro for for/c-style, do(as begin!) do/where, do/When and do/until is not necessary any more.
+  # forIn!! and forOf!! is necessary still.
+
+todo: may be [x y z] should directly produce [x, y, z], no list! is unshift to its front, and item in {} or other blocks should produces ['call!', x, [y, z]]
+
+todo: (x, @y...) =>
+
+todo: [x, y, z] @= value # all= at --> all?
+
 todo: dummy var: can be assigned, but can not be readed
-  # useful for expressness and optimization
+  # useful for expressiveness and optimization
   # while optimization, assigned to dummy var will be removed.
   # e.g. dummy! _; [x..., _] = lst; [_, y...] = lst
   # f = (x, y, _) -> ... # parameter _ is treated as dummy var automatically
-
-todo: class similar to coffee-script
-  # things like super, construcotr(too long name, maybe I'll use init: (...)->)
 
 todo: pattern match, e.g.
   f = pattern (1) -> 1; (n) -> n+f(n-1)
@@ -30,17 +35,20 @@ todo: pattern match, e.g.
     (1) -> 1
     (n) -> n+f(n-1)
 
-todo: \. lead symbol to escape it, e.g. \.=, \.+=, \.>>, \./, etc, useful to write macros.
-
 todo: implement {assign! left right} and {augmentAssign! left op right} so that programmer can define macros more easily.
-  # hack on parser and =, += is error-prone.
+  # hack for =, += in the parser is error-prone.
+  # after implementing escape symbol with \, this todo may be unnessary.
 
 todo: source map
+  # a complicateful, hard and task with too much work to do
+  # coffee-script is my friend.
 
 todo: document
   todo: tutorial：interactive samples
 
 ------------------------------------------------------------
+done: refactor meta compilation; no -=>, ==> or macro, macro is just meta compilation 
+done: \-=> and,\-> and \=> becomes |-=> and, |-> and |=> 
 done: \-> and \=> prevent wrap return around function body
 done: distinct -> and =>, in => this become _this, similar to coffee-script
 done: default parameter: fn = (x=1, y=2) ->

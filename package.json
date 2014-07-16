@@ -3,7 +3,7 @@
   "description": "taiji language",
   "keywords": ["javascript", "language", "taijilang", "compiler", "taiji"],
   "author": "曹星明(Caoxingming, or Taiji Zhenren, simeon.chaos@gmail.com)",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "licenses": [{
     "type": "MIT",
     "url": "https://raw.github.com/taijilang/taijilang/master/LICENSE"

@@ -107,33 +107,93 @@ exports.convertEllipsisList = convertEllipsisList = (exp, env) ->
           if ee1=='arguments' or (ee1) and ee1[1]=='arguments' then e1 = ['call!', ['attribute!', [], 'slice'], [e1]]
           result = ['call!', ['attribute!', result, 'concat'], [e1]]; concating = true; concated = true
       else
-        e =convert e, env
+        e = convert e, env
         if concating then result = ['call!', ['attribute!', result, 'concat'], (piece=[['list!', e]])]; concating = false
         else piece.push  e
     result.concated = concated
     result
 
-exports.dismeta = dismeta = (exp, metaList) ->
-  if isArray(exp)
-    if not exp.length then exp
-    else if exp[0]=='meta!' then wrapInfo1 metaList[exp[1]], exp
+$metaResultList = ['jsvar!', '__$taijiMetaResultList$__']
+$atMetaResultList = (index) -> ['index!', $metaResultList, index]
+$metaExpList = ['jsvar!', '__$taijiMetaExpList$__']
+$atMetaExpList = (index) -> ['index!', $metaExpList, index]
+
+compileMetaListCode = (exp, code, metaExpList, env) ->
+  code.text += ';\n'+nonMetaCompileExp ['=', ['index!', $metaResultList, env.metaIndex], exp], env
+  ['meta!', env.metaIndex++]
+
+preprocessMetaConvertFnMap =
+  'if': (exp, code, metaExpList, env) ->
+    testIndex = env.metaIndex
+    metaConvert(['##', exp[1]], code, metaExpList, env)
+    metaExpList[index=env.metaIndex] = [metaConvert(exp[2], code, metaExpList, env), metaConvert(exp[3], code, metaExpList, env)]
+    metaConvert(['##', ['if', $atMetaResultList(testIndex), ['index!', $atMetaExpList(index), 0], ['index!', $atMetaExpList(index), 1]]], code, metaExpList, env)
+  'while': (exp, code, metaExpList, env) ->
+    ['metaWhile!', metaConvert(exp[1], code, env), metaConvert(exp[2], code, env)]
+  #'let': (exp, code, env) ->
+  #'letrec': (exp, code, env) ->
+  #'letloop': (exp, code, env) ->
+  # todo add more construct here ...
+
+metaConvertFnMap =
+  '##': (exp, code, metaExpList, env) ->
+    compileMetaListCode(exp[1], code, metaExpList, env)
+
+  '#': (exp, code, metaExpList, env) ->
+    exp1 = exp[1]
+    if Object.prototype.toString.call(exp) != '[object Array]' then return compileMetaListCode(exp1, code, metaExpList, env)
+    if exp1.length==0 then return compileMetaListCode(exp1, code, metaExpList, env)
+    exp10 = exp1[0]
+    if fn = preprocessMetaConvertFnMap[exp10] then return fn(exp1, code, metaExpList, env)
+    else return compileMetaListCode exp1, code, metaExpList, env
+
+  '#=': (exp, code, metaExpList, env) -> metaConvert(['##', ['=', exp[1], exp[2]]], code, metaExpList, env)
+
+  # macro call
+  '#call!': (exp, code, metaExpList, env) ->
+    callerMetaIndex = env.metaIndex
+    compileMetaListCode(exp[1], code, metaExpList, env)
+    args = for e in exp[2] then ['quote!', e]
+    code.text += ';\n'+nonMetaCompileExp ['=', ['index!', $metaResultList, env.metaIndex], ['call!', $atMetaResultList(callerMetaIndex), args]], env
+    #console.log code.text
+    ['meta!', env.metaIndex++]
+
+  '#.': (exp, code, metaExpList, env) ->
+
+exports.metaConvert = metaConvert = (exp, code, metaExpList, env) ->
+  if Object.prototype.toString.call(exp) == '[object Array]'
+    if exp.length==0 then return exp
+    exp0 = entity exp[0]
+    if fn=metaConvertFnMap[exp0] then fn(exp, code, metaExpList, env)
     else
-      for e, i in exp then if (x=dismeta(e, metaList))!=e then exp[i] = x
+      for e, i in exp then exp[i] = metaConvert(e, code, metaExpList, env)
       exp
   else exp
 
-exports.metaConvert = metaConvert = (exp, env) ->
-  meta= {list: [], code: [], index:0, env:env.extend({})}
-  env.meta = meta
-  exp = convert(exp, env)
-  code = meta.code.join(';')
-  metaList = meta.list
-  new Function(['metaList'], code)(metaList)
-  for e, i in metaList then metaList[i] = convert(e, env)
-  tjExports = env.module.exports
-  for name, value of env.module.exports
-    if value[0] == 'meta!' then tjExports[name] = metaList[value[1]]
-  dismeta exp, meta.list
+exports.dismeta = dismeta = (exp,  metaExpList, metaResultList, env) ->
+  if isArray(exp)
+    if not exp.length then exp
+    else if exp[0]=='meta!' then wrapInfo1 metaResultList[exp[1]], exp
+    else
+      for e, i in exp then exp[i] = dismeta(e,  metaExpList, metaResultList, env)
+      exp
+  else exp
+
+postMetaConvert = (exp, code, metaExpList, env) ->
+  #console.log code.text
+  new Function(['__$taijiMetaExpList$__', '__$taijiMetaResultList$__', '__$taijiMetaEnv$__'], code.text)(metaExpList, metaResultList=[], env)
+  dismeta exp, metaExpList, metaResultList, env
+
+metaProcess = (exp, env) ->
+  env = env.extend({})
+  env.metaIndex = 0
+  exp = metaConvert exp, code={text:''}, metaExpList=[], env
+  exp = postMetaConvert exp, code, metaExpList, env
+
+exports.transformExp = transformExp = (exp, env) ->
+  exp = metaConvert exp, env
+  exp = transform exp, env
+  exp
 
 exports.transformToCode = (exp, env) ->
   exp = transform exp, env
@@ -142,28 +202,37 @@ exports.transformToCode = (exp, env) ->
   exp = tocode exp
   exp
 
-exports.compileExp = compileExp = (exp, env) ->
-  exp = metaConvert exp, env
-  exp = transform exp, env
-  exp = analyze exp, env
-  exp = optimize exp, env
-  exp = tocode exp
-  exp
-
-exports.compileExpNoOptimize = compileExpNoOptimize = (exp, env) ->
-  exp = metaConvert exp, env
-  exp = transform exp, env
-  exp = tocode exp
-  exp
-
-exports.transformExp = transformExp = (exp, env) ->
-  exp = metaConvert exp, env
-  exp = transform exp, env
-  exp
-
 exports.optimizeExp = optimizeExp = (exp, env) ->
   exp = metaConvert exp, env
   exp = transform exp, env
   exp = analyze exp, env
   exp = optimize exp, env
   exp
+
+exports.metaProcessConvert = (exp, env) ->
+  exp = metaProcess(exp, env)
+  exp = convert exp, env
+
+exports.nonMetaCompileExp = nonMetaCompileExp = (exp, env) ->
+  exp = convert exp, env
+  exp = transform exp, env
+  exp = analyze exp, env
+  exp = optimize exp, env
+  exp = tocode exp
+  exp
+
+exports.compileExp = compileExp = (exp, env) ->
+  exp = metaProcess(exp, env)
+  exp = nonMetaCompileExp exp, env
+
+exports.nonMetaCompileExpNoOptimize = nonMetaCompileExpNoOptimize = (exp, env) ->
+  exp = convert exp, env
+  exp = transform exp, env
+  exp = tocode exp
+  exp
+
+exports.compileExpNoOptimize = compileExpNoOptimize = (exp, env) ->
+  exp = metaProcess exp, env
+  exp = nonMetaCompileExpNoOptimize exp, env
+  exp
+

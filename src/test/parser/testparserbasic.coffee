@@ -247,8 +247,9 @@ describe "parser basic: ",  ->
         expect(-> parse('!ds')).to.throw /Cannot read property 'value' of undefined/
       it "parse a!", ->
         expect(parse('a!')).to.equal 'a!'
+      # "x #= y" is defined as "## [= x y]', so '#' should not be used as identifier char
       it "parse a!#", ->
-        expect(parse('a!#')).to.equal 'a!#'
+        expect(parse('a!#')).to.equal 'a!'
       it "parse $a", ->
         expect(parse('$a')).to.equal '$a'
       it "parse $a_", ->

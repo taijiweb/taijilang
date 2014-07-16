@@ -1,0 +1,24 @@
+taiji language 0.1
+
+  this file is not tested
+
+convertClassItem #= (item, name) -=>
+  if not array?.item then return item
+  if item[0]=='class' then \class item[1] item[2] item[3]
+  if item[0]=='='
+    if item[1]=='::' then return ['=' name item[2]]
+    else if array? item[1] then
+      if item[1][0]=='attribute!' and item[1][1]=='::' then
+        return ['=', ['attribute!', ['attribute' name '::'], item[1][2]]]
+  if (x=item[0].slice(item.length-2))=='->' or x=='=>' then
+    return item
+
+\class #= (name, super, body) -=>
+   result = []
+   if not name then name = ssaVar '_class'; result.push `[const ^name]
+   if super then result.push `[__extends ^name ^super]
+   resultBody = []
+   for item in body then
+     resultBody.push convertClassItem(item, name)
+   result.push resultBody
+   result

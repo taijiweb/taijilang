@@ -100,3 +100,26 @@ exports["hash!"] = convertHash = (exp, env) ->
   for e in pyHashItems then result.push ['=', ['index!', v, e[0]], e[1]]
   result.push v
   result
+
+convertForInOf = (head) -> (exp, env) ->
+  [item, range, body] = exp
+  if not env.hasFnLocal(item.value) then env.set(item.value, item); item = ['var', item]
+  else item = convert(item, env)
+  [head, item, convert(range, env), convert(body, env)]
+
+exports['forIn!'] = convertForInOf('forIn!')
+exports['forOf!'] = convertForInOf('forOf!')
+
+exports['forIn!!'] = (exp, env) ->
+  [item, index, range, body] = exp
+  if not index
+    convert ['forIn!', item, range, body], env
+  else
+    result = []
+    result.push ['var', index]
+    t = env.ssaVar('t')
+    result.push ['=', index, 0]
+    result.push ['forIn!', item, range, ['begin!', ['=', t, body], ['x++', index], t]]
+    begin(result)
+
+

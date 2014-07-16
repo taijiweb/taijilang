@@ -19,7 +19,7 @@ exports.letterDigits = letterDigits = letters+digits
 exports.letterDigitSet = charset letterDigits
 exports.firstIdentifierChars = firstIdentifierChars = '$_'+letters
 exports.identifierChars = identifierChars = firstIdentifierChars+digits
-exports.taijiIdentifierChars = taijiIdentifierChars = '!?#'+identifierChars
+exports.taijiIdentifierChars = taijiIdentifierChars = '!?'+identifierChars
 exports.digitCharSet = digitCharSet = charset(exports.digits)
 exports.letterCharSet = letterCharSet = charset(exports.letters)
 exports.firstIdentifierCharSet = charset('$_'+letters)

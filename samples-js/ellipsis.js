@@ -19,65 +19,64 @@ __slice = [].slice;
 });
 
 (function () {
-  var i2, x = arguments[0], 
+  var i, x = arguments[0], 
       y = arguments[1], 
-      z = arguments.length >= 4? __slice.call(arguments, 2, i2 = arguments.length
-        - 1): (i2 = 2, []), 
-      a = arguments[i2++];
+      z = arguments.length >= 4? __slice.call(arguments, 2, i = arguments.length - 1): (i = 2,
+        []), 
+      a = arguments[i++];
   return x;
 });
 
 (function () {
-  var i2, x = arguments[0], 
+  var i, x = arguments[0], 
       y = arguments[1], 
-      z = arguments.length >= 4? __slice.call(arguments, 2, i2 = arguments.length
-        - 1): (i2 = 2, []), 
-      a = arguments[i2++];
+      z = arguments.length >= 4? __slice.call(arguments, 2, i = arguments.length - 1): (i = 2,
+        []), 
+      a = arguments[i++];
   return x;
 });
 
 (function () {
-  var i2, x = arguments[0], 
+  var i, x = arguments[0], 
       y = arguments[1], 
-      z = arguments.length >= 5? __slice.call(arguments, 2, i2 = arguments.length
-        - 2): (i2 = 2, []), 
-      a = arguments[i2++], 
-      b = arguments[i2++];
+      z = arguments.length >= 5? __slice.call(arguments, 2, i = arguments.length - 2): (i = 2,
+        []), 
+      a = arguments[i++], 
+      b = arguments[i++];
   return x;
 });
 
 (function () {
-  var i2, z = arguments.length >= 3? __slice.call(arguments, 0, i2 = arguments.length
-        - 2): (i2 = 0, []), 
-      a = arguments[i2++], 
-      b = arguments[i2++];
+  var i, z = arguments.length >= 3? __slice.call(arguments, 0, i = arguments.length
+        - 2): (i = 0, []), 
+      a = arguments[i++], 
+      b = arguments[i++];
   return z;
 });
 
 (function () {
-  var i2, x = arguments[0], 
+  var i, x = arguments[0], 
       y = arguments[1], 
-      z = arguments.length >= 8? __slice.call(arguments, 2, i2 = arguments.length
-        - 5): (i2 = 2, []), 
-      a = arguments[i2++], 
-      b = arguments[i2++], 
-      c = arguments[i2++], 
-      d = arguments[i2++], 
-      e = arguments[i2++];
+      z = arguments.length >= 8? __slice.call(arguments, 2, i = arguments.length - 5): (i = 2,
+        []), 
+      a = arguments[i++], 
+      b = arguments[i++], 
+      c = arguments[i++], 
+      d = arguments[i++], 
+      e = arguments[i++];
   return z;
 });
 
-var m = function () {
-  var i2, x = arguments.length >= 2? __slice.call(arguments, 0, i2 = arguments.length
-        - 1): (i2 = 0, []), 
-      b = arguments[i2++];
+var m2 = function () {
+  var i, x = arguments.length >= 2? __slice.call(arguments, 0, i = arguments.length
+        - 1): (i = 0, []), 
+      b = arguments[i++];
   console.log(x);
   return console.log(b);
 };
-m(1, 2, 3);
-console.log(1, 2);
-[console.log(3)];
-var x, y, z, a, m2, n, p, q;
+m2(1, 2, 3);
+m2(1, 2, 3);
+var x, y, z, a, m, n, p, q;
 x = 1;
 y = [2, 3];
 z = 4;
@@ -100,11 +99,11 @@ m = lst3[i3++];
 n = lst3[i3++];
 
 (function () {
-  var i2, a = arguments[0], 
-      x = arguments.length >= 4? __slice.call(arguments, 1, i2 = arguments.length
-        - 2): (i2 = 1, []), 
-      b = arguments[i2++], 
-      c = arguments[i2++];
+  var i, a = arguments[0], 
+      x = arguments.length >= 4? __slice.call(arguments, 1, i = arguments.length - 2): (i = 1,
+        []), 
+      b = arguments[i++], 
+      c = arguments[i++];
   a = 1;
   b = a;
   c = { };

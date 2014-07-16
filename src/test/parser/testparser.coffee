@@ -132,7 +132,7 @@ describe "parse: ",  ->
       it 'should parse # ( #(1+2) + #(3+4))', ->
         expect(str parse('# ( #(1+2) + #(3+4))')).to.equal "[# [+ [# [+ 1 2]] [# [+ 3 4]]]]"
 
-    describe 'class: ', ->
+    xdescribe 'class: ', ->
       it 'should parse class', ->
         x = parse('class')
         expect(str x).to.equal '[class [] undefined]'
@@ -503,7 +503,10 @@ describe "parse: ",  ->
       expect(str parse('/ try 1 \n  2 \nelse 3')).to.equal "[[codeBlockComment! [[try [1 2] [list!] 3 undefined]]]]"
 
     it '''should parse '#a=1;a''', ->
-      expect(str parse('#a=1;a')).to.equal "[[# [= a 1]] a]"
+      expect(str parse('#a=1;a')).to.equal "[[= [# a] 1] a]"
+
+    it '''should parse '##a=1;a''', ->
+      expect(str parse('##a=1;a')).to.equal "[[## [= a 1]] a]"
 
     # \ is escape, will lost in string
     it '''should parse let a=[\ 1 \] then a[1]''', ->
@@ -542,12 +545,14 @@ describe "parse: ",  ->
       expect(str parse('a')).to.equal 'a'
     it 'should parse  print 2', ->
       expect(str parse('print 2 ')).to.equal '[print 2]'
-    it '''should parse '#a=1; # ` ^ a''', ->
-      expect(str parse('#a=1; # ` ^ a')).to.equal "[begin! [# [= a 1]] [# [quasiquote! [unquote! a]]]]"
+    it '''should parse '##a=1; # ` ^ a''', ->
+      expect(str parse('##a=1; # ` ^ a')).to.equal "[begin! [## [= a 1]] [# [quasiquote! [unquote! a]]]]"
+    it '''should parse 'a#=1; # ` ^ a''', ->
+      expect(str parse('a#=1; # ` ^ a')).to.equal "[begin! [#= a 1] [# [quasiquote! [unquote! a]]]]"
     it '''should parse ^.a''', ->
       expect(str parse('^.a')).to.equal "[unquote! a]"
-    it '''should parse '#a=1; #.`.^a''', ->
-      expect(str parse('#a=1; #.`.^a')).to.equal "[begin! [# [= a 1]] [# [quasiquote! [unquote! a]]]]"
+    it '''should parse '##a=1; #.`.^a''', ->
+      expect(str parse('##a=1; #.`.^a')).to.equal "[begin! [## [= a 1]] [# [quasiquote! [unquote! a]]]]"
     it 'should print \n 2 ', ->
       expect(str parse('print \n 2 ')).to.equal '[print 2]'
     it 'should  print \n 2 \n 3', ->

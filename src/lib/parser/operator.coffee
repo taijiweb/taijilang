@@ -7,7 +7,7 @@ NON_INTERPOLATE_STRING, INTERPOLATE_STRING, DATA_BRACKET
 INDENT, UNDENT, HALF_DENT, CURVE} = constant
 
 exports.prefixOperatorDict = prefixOperatorDict =
-  '#':  {priority: 5}, # preprocess, conditional meta compilation operator
+  '#':  {priority: 200}, # preprocess, conditional meta compilation operator
   '##':  {priority: 5}, # meta compilation operator
   '#.':  {priority: 5}, # compile in both meta and object level
   '~':  {priority: 5, symbol:'quote!'}
@@ -138,6 +138,10 @@ exports.getOperatorExpression = getExpression = (exp) ->
       if not y then return wrapInfo1 ['call!', x, []], exp
       if y[0]==',' then wrapInfo1 ['call!', x, y[1...]], exp
       else wrapInfo1 ['call!', x, [y]], exp
+    else if head=='#()'
+      if not y then return wrapInfo1 ['#call!', x, []], exp
+      if y[0]==',' then wrapInfo1 ['#call!', x, y[1...]], exp
+      else wrapInfo1 ['#call!', x, [y]], exp
     else if head=='index[]'
       if not y? then error 'error when parsing subscript index.', exp
       else if y.isBracket and y[0]=='list!'

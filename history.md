@@ -1,6 +1,9 @@
 2014
 2014-7
-7-13 
+7-13
+  \-=> and,\-> and \=> becomes |-=> and, |-> and |=>
+  npm publish taiji 0.1.0
+  recreate git repository, commit and push to github\taijiweb\taijilang
   prepare to release 0.1.0
 7-12
   distinct -> and =>, in => this become self, similar to coffee-script

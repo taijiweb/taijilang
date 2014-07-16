@@ -199,7 +199,7 @@ describe("parse: ", function() {
         return expect(str(parse('# ( #(1+2) + #(3+4))'))).to.equal("[# [+ [# [+ 1 2]] [# [+ 3 4]]]]");
       });
     });
-    describe('class: ', function() {
+    xdescribe('class: ', function() {
       it('should parse class', function() {
         var x;
         x = parse('class');
@@ -759,7 +759,10 @@ describe("parse: ", function() {
       return expect(str(parse('/ try 1 \n  2 \nelse 3'))).to.equal("[[codeBlockComment! [[try [1 2] [list!] 3 undefined]]]]");
     });
     it('should parse \'#a=1;a', function() {
-      return expect(str(parse('#a=1;a'))).to.equal("[[# [= a 1]] a]");
+      return expect(str(parse('#a=1;a'))).to.equal("[[= [# a] 1] a]");
+    });
+    it('should parse \'##a=1;a', function() {
+      return expect(str(parse('##a=1;a'))).to.equal("[[## [= a 1]] a]");
     });
     return it('should parse let a=[\ 1 \] then a[1]', function() {
       var x;
@@ -817,14 +820,17 @@ describe("parse: ", function() {
     it('should parse  print 2', function() {
       return expect(str(parse('print 2 '))).to.equal('[print 2]');
     });
-    it('should parse \'#a=1; # ` ^ a', function() {
-      return expect(str(parse('#a=1; # ` ^ a'))).to.equal("[begin! [# [= a 1]] [# [quasiquote! [unquote! a]]]]");
+    it('should parse \'##a=1; # ` ^ a', function() {
+      return expect(str(parse('##a=1; # ` ^ a'))).to.equal("[begin! [## [= a 1]] [# [quasiquote! [unquote! a]]]]");
+    });
+    it('should parse \'a#=1; # ` ^ a', function() {
+      return expect(str(parse('a#=1; # ` ^ a'))).to.equal("[begin! [#= a 1] [# [quasiquote! [unquote! a]]]]");
     });
     it('should parse ^.a', function() {
       return expect(str(parse('^.a'))).to.equal("[unquote! a]");
     });
-    it('should parse \'#a=1; #.`.^a', function() {
-      return expect(str(parse('#a=1; #.`.^a'))).to.equal("[begin! [# [= a 1]] [# [quasiquote! [unquote! a]]]]");
+    it('should parse \'##a=1; #.`.^a', function() {
+      return expect(str(parse('##a=1; #.`.^a'))).to.equal("[begin! [## [= a 1]] [# [quasiquote! [unquote! a]]]]");
     });
     it('should print \n 2 ', function() {
       return expect(str(parse('print \n 2 '))).to.equal('[print 2]');

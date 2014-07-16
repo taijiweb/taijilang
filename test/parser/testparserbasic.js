@@ -317,7 +317,7 @@ describe("parser basic: ", function() {
         return expect(parse('a!')).to.equal('a!');
       });
       it("parse a!#", function() {
-        return expect(parse('a!#')).to.equal('a!#');
+        return expect(parse('a!#')).to.equal('a!');
       });
       it("parse $a", function() {
         return expect(parse('$a')).to.equal('$a');
