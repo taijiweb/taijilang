@@ -36,7 +36,7 @@ exports.Environment = class Environment
         if not hasOwnProperty.call(functionInfo, symbolIndex) then break
       functionInfo[symbolIndex] = 1
       {symbol: symbolIndex}
-
+  constVar: (symbol) -> v = @newVar(symbol); v.const = true; v
   ssaVar: (symbol) -> v = @newVar(symbol); v.ssa = true; v
 
   hasLocal: (symbol) ->  hasOwnProperty.call(@scope, symbol)

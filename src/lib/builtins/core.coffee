@@ -141,14 +141,14 @@ convertAssign = (left, right, env) ->
 exports['='] = (exp, env) -> convertAssign(exp[0], exp[1], env)
 
 # meta assign, macro assign
-exports['#='] = (exp, env) ->
-  left = entity exp[0]; right = exp[1]
-  if typeof left== 'string'
-    if left[0]=='"' then error 'left side of assign should not be string'
-    else
-      env.set(left, left); value = convert(right, env)
-      env.set(left, value); ''
-  else error 'should not assign macro or meta value to non variable'
+exports['#='] = (exp, env) -> ['##', convert(['=', exp[0], exp[1]], env)]
+#  left = entity exp[0]; right = exp[1]
+#  if typeof left== 'string'
+#    if left[0]=='"' then error 'left side of assign should not be string'
+#    else
+#      env.set(left, left); value = convert(right, env)
+#      env.set(left, value); ''
+#  else error 'should not assign macro or meta value to non variable'
 
 exports['@@'] = (exp, env) ->
   name = entity(exp[0]); outerEnv = env.outerVarScopeEnv()
@@ -462,9 +462,11 @@ exports['eval!'] = (exp, env) ->
     else ['call!', 'eval', exp0]
   else ['call!', 'eval', [compileExp(exp0, env)]]
 
-exports['##'] = (exp, env) -> metaProcessConvert ['##', exp[0]], env
-exports['#'] = (exp, env) -> metaProcessConvert ['#', exp[0]], env
-exports['#.'] = (exp, env) -> metaProcessConvert ['#.', exp[0]], env
+convertMetaExp = (head) -> (exp, env) -> [head, convert(exp[0], env)]
+exports['##'] = convertMetaExp('##')
+exports['#'] = convertMetaExp('#')
+exports['#.'] = convertMetaExp('#.')
+exports['#call!'] = (exp, env) -> ['#call', convert(exp[0], env), convert(exp[1], env)]
 
 # dynamic syntax, extend the parser on the fly
 # the head of exp[0] will be convert to attribute of __$taiji_$_$parser__

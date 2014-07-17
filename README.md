@@ -27,7 +27,7 @@ Based on back quoted list, Taijilang have macro simliar to lisp. Combined with a
     // below is a macro definition
     // line comment can lead a indented code block
       // do is a predefined keyword, we add \ before it to escape the meaning
-      \do #= (body..., clause) -=>
+      \do #= (body..., clause) ->
         if clause[0]=='where' then
           `{let ^&(clause.slice(1)) then ^&body}
         else if clause[0]=='when' then

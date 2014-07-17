@@ -35,7 +35,7 @@ describe 'test command:', ->
   describe "parse and compile: ",  ->
     describe "samples: ",  ->
       it 'parse temp.tj', -> expect(parse 'samples-js/parse', 'samples/temp.tj').to.deep.equal [undefined]
-      it 'transform temp.tj', -> expect(transform 'samples-js/transform', 'samples/temp.tj').to.deep.equal [undefined]
+      #it 'transform temp.tj', -> expect(transform 'samples-js/transform', 'samples/temp.tj').to.deep.equal [undefined]
       xit 'compile temp.tj', -> expect(compile 'samples-js', 'samples/temp.tj').to.deep.equal [undefined]
       it 'parse hello.tj', -> expect(parse 'samples-js/parse', 'samples/hello.tj').to.deep.equal [undefined]
       it 'compile hello.tj', -> expect(compile 'samples-js', 'samples/hello.tj').to.deep.equal [undefined]
@@ -45,13 +45,13 @@ describe 'test command:', ->
       it 'parse indent-then-else.tj', -> expect(parse 'samples-js/parse', 'samples/indent-then-else.tj').to.deep.equal [undefined]
       it 'compile indent-then-else.tj', -> expect(compile 'samples-js', 'samples/indent-then-else.tj').to.deep.equal [undefined]
       it 'parse macros.tj', -> expect(parse 'samples-js/parse', 'samples/macros.tj').to.deep.equal [undefined]
-      xit 'compile macros.tj', -> expect(compile 'samples-js', 'samples/macros.tj').to.deep.equal [undefined]
+      iit 'compile macros.tj', -> expect(compile 'samples-js', 'samples/macros.tj').to.deep.equal [undefined]
       xit 'compile square-macro.tj', -> expect(compile 'samples-js', 'samples/square-macro.tj').to.deep.equal [undefined]
       it 'compile let.tj', -> expect(compile 'samples-js', 'samples/let.tj').to.deep.equal [undefined]
       it 'compile loop.tj', -> expect(compile 'samples-js', 'samples/loop.tj').to.deep.equal [undefined]
       it 'compile nodeserver.tj', -> expect(compile 'samples-js', 'samples/nodeserver.tj').to.deep.equal [undefined]
       xit 'compile snippets.tj', -> expect(compile 'samples-js', 'samples/snippets.tj').to.deep.equal [undefined]
-      it 'compile ellipsis.tj', -> expect(compile 'samples-js', 'samples/ellipsis.tj').to.deep.equal [undefined]
+      xit 'compile ellipsis.tj', -> expect(compile 'samples-js', 'samples/ellipsis.tj').to.deep.equal [undefined]
       it 'compile include.tj', -> expect(compile 'samples-js', 'samples/include.tj').to.deep.equal [undefined]
       it 'compile use.tj', -> expect(compile 'samples-js', 'samples/use.tj').to.deep.equal [undefined]
 
@@ -78,4 +78,4 @@ describe 'test command:', ->
 
   describe "command run: ",  ->
     it 'hello.tj', -> expect(run 'samples/hello.tj').to.deep.equal [undefined]
-    it 'ellipsis.tj', -> expect(run 'samples/ellipsis.tj').to.deep.equal [undefined]
+    xit 'ellipsis.tj', -> expect(run 'samples/ellipsis.tj').to.deep.equal [undefined]

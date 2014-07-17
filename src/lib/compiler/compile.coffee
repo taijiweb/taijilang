@@ -1,4 +1,4 @@
-{evaljs, isArray, extend, str, wrapInfo1, entity} = require '../utils'
+{evaljs, isArray, extend, str, wrapInfo1, entity, pushExp, undefinedExp} = require '../utils'
 
 {constant} = require '../parser/base'
 {NUMBER, STRING, IDENTIFIER, SYMBOL, REGEXP, HEAD_SPACES, CONCAT_LINE, PUNCT, FUNCTION,
@@ -113,89 +113,107 @@ exports.convertEllipsisList = convertEllipsisList = (exp, env) ->
     result.concated = concated
     result
 
-$metaResultList = ['jsvar!', '__$taijiMetaResultList$__']
-$atMetaResultList = (index) -> ['index!', $metaResultList, index]
-$metaExpList = ['jsvar!', '__$taijiMetaExpList$__']
-$atMetaExpList = (index) -> ['index!', $metaExpList, index]
-
-compileMetaListCode = (exp, code, metaExpList, env) ->
-  code.text += ';\n'+nonMetaCompileExp ['=', ['index!', $metaResultList, env.metaIndex], exp], env
-  ['meta!', env.metaIndex++]
+$atMetaExpList = (index) -> ['index!', ['jsvar!', '__tjExp'], index]
 
 preprocessMetaConvertFnMap =
-  'if': (exp, code, metaExpList, env) ->
-    testIndex = env.metaIndex
-    metaConvert(['##', exp[1]], code, metaExpList, env)
-    metaExpList[index=env.metaIndex] = [metaConvert(exp[2], code, metaExpList, env), metaConvert(exp[3], code, metaExpList, env)]
-    metaConvert(['##', ['if', $atMetaResultList(testIndex), ['index!', $atMetaExpList(index), 0], ['index!', $atMetaExpList(index), 1]]], code, metaExpList, env)
-  'while': (exp, code, metaExpList, env) ->
-    ['metaWhile!', metaConvert(exp[1], code, env), metaConvert(exp[2], code, env)]
-  #'let': (exp, code, env) ->
-  #'letrec': (exp, code, env) ->
-  #'letloop': (exp, code, env) ->
+  'if': (exp, metaExpList, env) ->
+    test = metaTransform(exp[1], metaExpList, env)
+    metaExpList.push metaTransform(exp[2], metaExpList, env)
+    thenIndex = env.metaIndex++
+    metaExpList.push  metaTransform(exp[3], metaExpList, env)
+    elseIndex = env.metaIndex++
+    ['if', test, $atMetaExpList(thenIndex), $atMetaExpList(elseIndex)]
+  'while': (exp, metaExpList, env) ->
+    metaExpList.push metaConvert(exp[2], metaExpList, env)
+    whileIndex = env.metaIndex++
+    resultExpList = env.constVar('result')
+    ['begin!',
+      ['var', resultExpList], ['=', resultExpList, []],
+       ['while', metaConvert(exp[1], metaExpList, env),
+          ['direct!', pushExp(resultExpList, [$atMetaExpList(whileIndex)])]],
+       resultExpList]
+  #'let': (exp, metaExpList, env) ->
+  #'letrec': (exp, metaExpList, env) ->
+  #'letloop': (exp, metaExpList, env) ->
   # todo add more construct here ...
 
 metaConvertFnMap =
-  '##': (exp, code, metaExpList, env) ->
-    compileMetaListCode(exp[1], code, metaExpList, env)
+  '##': (exp, metaExpList, env) -> metaTransform exp[1], metaExpList, env
 
-  '#': (exp, code, metaExpList, env) ->
+  '#': (exp, metaExpList, env) ->
     exp1 = exp[1]
-    if Object.prototype.toString.call(exp) != '[object Array]' then return compileMetaListCode(exp1, code, metaExpList, env)
-    if exp1.length==0 then return compileMetaListCode(exp1, code, metaExpList, env)
-    exp10 = exp1[0]
-    if fn = preprocessMetaConvertFnMap[exp10] then return fn(exp1, code, metaExpList, env)
-    else return compileMetaListCode exp1, code, metaExpList, env
+    if Object.prototype.toString.call(exp1) == '[object Array]'
+      if not exp1.length then return exp[1]
+      else if fn = preprocessMetaConvertFnMap[exp1[0]]
+        return fn(exp1, metaExpList, env)
+      else return metaTransform exp1, metaExpList, env
+    else metaTransform exp1, metaExpList, env
 
-  '#=': (exp, code, metaExpList, env) -> metaConvert(['##', ['=', exp[1], exp[2]]], code, metaExpList, env)
+  '#=': (exp, metaExpList, env) -> ['=', metaTransform(exp[1], metaExpList, env), metaTransform(exp[2], metaExpList, env)]
 
   # macro call
-  '#call!': (exp, code, metaExpList, env) ->
-    callerMetaIndex = env.metaIndex
-    compileMetaListCode(exp[1], code, metaExpList, env)
-    args = for e in exp[2] then ['quote!', e]
-    code.text += ';\n'+nonMetaCompileExp ['=', ['index!', $metaResultList, env.metaIndex], ['call!', $atMetaResultList(callerMetaIndex), args]], env
+  '#call!': (exp, metaExpList, env) ->
+    args = []
+    for e in exp[2] then metaExpList.push metaTransform(e, env); args.push $atMetaExpList(env.metaIndex++)
     #console.log code.text
-    ['meta!', env.metaIndex++]
+    ['call!', metaTransform(exp[1], metaExpList, env), args]
 
-  '#.': (exp, code, metaExpList, env) ->
+  '#.': (exp, metaExpList, env) ->
 
-exports.metaConvert = metaConvert = (exp, code, metaExpList, env) ->
+metaTransform = (exp, metaExpList, env) ->
   if Object.prototype.toString.call(exp) == '[object Array]'
     if exp.length==0 then return exp
+    else if (head=entity(exp[0])) and head[0]=='#' then metaConvert(exp, metaExpList, env)
+    else for e in exp then metaTransform(e, metaExpList, env)
+  else return exp
+
+hasMeta = (exp) ->
+  if not exp then return false
+  if exp.hasMeta then return true
+  if Object.prototype.toString.call(exp) != '[object Array]'
+    exp.hasMeta = false; return false
+  for e in exp
+    if  Object.prototype.toString.call(e) == '[object Array]'
+      if (eLength=e.length)<=1 then continue
+      else
+        if (e0=entity(e[0])) and typeof e0 == 'string'
+          if e0[0]=='#' then exp.hasMeta = true; return true
+        if hasMeta(e) then exp.hasMeta = true; return true
+  exp.hasMeta = false
+  return false
+
+exports.metaConvert = metaConvert = (exp, metaExpList, env) ->
+  if Object.prototype.toString.call(exp) == '[object Array]'
+    if exp.length==0 then return []
     exp0 = entity exp[0]
-    if fn=metaConvertFnMap[exp0] then fn(exp, code, metaExpList, env)
+    if fn=metaConvertFnMap[exp0] then return fn(exp, metaExpList, env)
     else
-      for e, i in exp then exp[i] = metaConvert(e, code, metaExpList, env)
-      exp
-  else exp
-
-exports.dismeta = dismeta = (exp,  metaExpList, metaResultList, env) ->
-  if isArray(exp)
-    if not exp.length then exp
-    else if exp[0]=='meta!' then wrapInfo1 metaResultList[exp[1]], exp
-    else
-      for e, i in exp then exp[i] = dismeta(e,  metaExpList, metaResultList, env)
-      exp
-  else exp
-
-postMetaConvert = (exp, code, metaExpList, env) ->
-  #console.log code.text
-  new Function(['__$taijiMetaExpList$__', '__$taijiMetaResultList$__', '__$taijiMetaEnv$__'], code.text)(metaExpList, metaResultList=[], env)
-  dismeta exp, metaExpList, metaResultList, env
+      if hasMeta(exp)
+        result = ['list!']
+        for e, i in exp then result.push metaConvert(e, metaExpList, env)
+        return result
+      else metaExpList.push exp; return $atMetaExpList(env.metaIndex++)
+  else
+#    e = entity exp
+#    if typeof e == 'string' and e[0]=='"' then return exp
+#    else return exp
+    metaExpList.push exp; return $atMetaExpList(env.metaIndex++)
 
 metaProcess = (exp, env) ->
   env = env.extend({})
   env.metaIndex = 0
-  exp = metaConvert exp, code={text:''}, metaExpList=[], env
-  exp = postMetaConvert exp, code, metaExpList, env
+  exp = metaConvert exp, metaExpList=[], env
+  code = nonMetaCompileExp(['return', exp], env)
+  #console.log code
+  new Function(['__tjExp'], code)(metaExpList)
 
 exports.transformExp = transformExp = (exp, env) ->
-  exp = metaConvert exp, env
+  exp = metaProcess exp, env
+  exp = convert exp, env
   exp = transform exp, env
   exp
 
-exports.transformToCode = (exp, env) ->
+exports.transformToCode = transformToCode = (exp, env) ->
   exp = transform exp, env
   exp = analyze exp, env
   exp = optimize exp, env
@@ -203,15 +221,12 @@ exports.transformToCode = (exp, env) ->
   exp
 
 exports.optimizeExp = optimizeExp = (exp, env) ->
-  exp = metaConvert exp, env
+  exp = metaProcess exp, env
+  exp = convert exp, env
   exp = transform exp, env
   exp = analyze exp, env
   exp = optimize exp, env
   exp
-
-exports.metaProcessConvert = (exp, env) ->
-  exp = metaProcess(exp, env)
-  exp = convert exp, env
 
 exports.nonMetaCompileExp = nonMetaCompileExp = (exp, env) ->
   exp = convert exp, env

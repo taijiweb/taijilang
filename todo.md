@@ -1,3 +1,5 @@
+todo: convert javascript keyword to legal idenentifier (var name)
+
 todo: class similar to coffee-script
   # things like super, construcotr(too long name, maybe I'll use init: (...)->)
   
@@ -19,7 +21,7 @@ todo: macro for "for", do, try, etc
 
 todo: may be [x y z] should directly produce [x, y, z], no list! is unshift to its front, and item in {} or other blocks should produces ['call!', x, [y, z]]
 
-todo: (x, @y...) =>
+todo: (x, @y...) ->, (x, @y...) =>
 
 todo: [x, y, z] @= value # all= at --> all?
 

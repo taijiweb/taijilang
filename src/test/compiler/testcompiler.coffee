@@ -279,11 +279,77 @@ describe "compile: ",  ->
     it 'should compile `[ ^1 [ ^2 ^&[3, 4]]]', ->
       expect(compile('`[ ^1 [ ^2 ^&[3, 4]]]')).to.equal "[\"list!\", [1, [\"list!\", [2].concat([3, 4])]]]"
 
+  describe "meta: ",  ->
+    it 'should compile var a, b; a+b', ->
+      expect(compile('var a, b; a+b')).to.equal "var a, b;\na + b;"
+    it 'should compile #(1+1)', ->
+      expect(compile('#(1+1)')).to.equal '2'
+    it 'should compile # (#(1+2) + #(3+4))', ->
+      expect(compile('# ( #(1+2) + #(3+4))')).to.equal '10'
+    it 'should compile #(1+2) + #(3+4)', ->
+      expect(compile('#(1+2) + #(3+4)')).to.equal '10'
+    it 'should compile 3+.#(1+1)', ->
+      expect(compile('3+.#(1+1)')).to.equal '5'
+    it 'should compile ~ 1+1', ->
+      expect(compile('~ 1+1')).to.equal "[\"+\",1,1]"
+    it 'should compile # ~ 1+1', ->
+      expect(compile('# ~ 1+1')).to.equal "2"
+    it 'should compile ##a=1', ->
+      expect(compile('##a=1')).to.equal '1'
+    it 'should compile a#=1', ->
+      expect(compile('a#=1')).to.equal '1'
+    it 'should compile #(a=1)', ->
+      expect(compile('#(a=1)')).to.equal '1'
+    it '''should compile 'a#=1;# ` ^a''', ->
+      expect(compile('a#=1;# ` ^a')).to.equal "1"
+    it '''should compile '#(a=1);# ` ^a''', ->
+      expect(compile('#(a=1);# ` ^a')).to.equal "1"
+    it '''should compile '##a=1;# ` ^a''', ->
+      expect(compile('##a=1;# ` ^a')).to.equal "1"
+    it '''should compile '#a=1;a''', ->
+      expect(-> compile('#a=1;a')).to.throw Error
+
+    it 'should compile if 1 then 1+2 else 3+4', ->
+      expect(compile('if 1 then 1+2 else 3+4')).to.equal "3"
+
+    it 'should compile ## if 1 then 1 else 2', ->
+      expect(compile('## if 1 then 1 else 2')).to.equal "1"
+
+    it 'should compile if 1 then #1+2 else #3+4', ->
+      expect(compile('if 1 then #1+2 else #3+4')).to.equal "3"
+
+    it 'should compile var a; if 1 then #1+2 else #3+4', ->
+      expect(compile('var a; if 1 then #1+2 else #3+4')).to.equal "var a;\n3;"
+
+    it 'should compile if 1 then ##1+2 else ##3+4', ->
+      expect(compile('if 1 then #1+2 else #3+4')).to.equal "3"
+
+    it 'should compileNoOptimize if 1 then ##1+2 else ##3+4', ->
+      expect(compileNoOptimize('if 1 then ##1+2 else ##3+4')).to.equal "if (1)\n  3;\nelse 7;"
+    it 'should compileNoOptimize 1+2', ->
+      expect(compileNoOptimize('1+2')).to.equal "1 + 2"
+    it 'should compile # if 1 then 1+2 else 3+4', ->
+      expect(compile('# if 1 then 1+2 else 3+4')).to.equal '3'
+    it 'should compile var a, b; # if 1 then a else b', ->
+      expect(compile('var a, b; # if 1 then a else b')).to.equal "var a, b;\na;"
+    it 'should compile ## if 1 then a else b', ->
+      expect(-> compile('## if 1 then a else b')).to.throw /fail to look up symbol from environment:a/
+    it 'should compile ## var a, b; ## if 1 then a else b', ->
+      expect(compile('## var a, b; ## if 1 then a else b')).to.equal ''
+    it 'should compile # if 0 then 1+2 else 3+4', ->
+      expect(compile('# if 0 then 1+2 else 3+4')).to.equal '7'
+    it 'should compile ## if 1 then 1+2 else 3+4', ->
+      expect(compile('## if 1 then 1+2 else 3+4')).to.equal '3'
+    it 'should compile ## if 0 then 1+2 else 3+4', ->
+      expect(compile('## if 0 then 1+2 else 3+4')).to.equal '7'
+
   describe "macro: ",  ->
     it 'should compile ##{->} 1', ->
       expect(compile('##{-> 1}()')).to.equal "1"
     it 'should compile ##{-> ~(1+2)}()', ->
       expect(compile('##{-> ~(1+2)}()')).to.equal "3"
+    it 'should compile {-> ~(1+2)}#()', ->
+      expect(compile('{-> ~(1+2)}#()')).to.equal "3"
     it 'should compileNoOptimize ##{-> ~(1+2)}()', ->
       expect(compileNoOptimize('##{-> ~(1+2)}()')).to.equal "1 + 2"
     it 'should compileNoOptimize ##{(a,b) -> `( ^a + ^b)}(1,2)', ->
@@ -310,54 +376,6 @@ describe "compile: ",  ->
       expect(str parse('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)')).to.equal "[begin! [#= m [-> [a b] [[quasiquote! [+ [unquote! a] [unquote! b]]]]]] [var x y z] [call! [# m] [[+ x y] [+ y z]]]]"
     it 'should compileNoOptimize m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)', ->
       expect(compileNoOptimize('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)')).to.equal "var x, y, z;\n[+, [[+, x, y], [+, y, z]], ];"
-
-  describe "meta: ",  ->
-    it 'should compile #(1+1)', ->
-      expect(compile('#(1+1)')).to.equal '2'
-    it 'should compile # (#(1+2) + #(3+4))', ->
-      expect(compile('# ( #(1+2) + #(3+4))')).to.equal '10'
-    it 'should compile #(1+2) + #(3+4)', ->
-      expect(compile('#(1+2) + #(3+4)')).to.equal '10'
-    it 'should compile 3+.#(1+1)', ->
-      expect(compile('3+.#(1+1)')).to.equal '5'
-    it 'should compile # ~ 1+1', ->
-      expect(compile('# ~ 1+1')).to.equal '2'
-    it 'should compile ##a=1', ->
-      expect(compile('##a=1')).to.equal '1'
-    it 'should compile a#=1', ->
-      expect(compile('a#=1')).to.equal '1'
-    it 'should compile #(a=1)', ->
-      expect(compile('#(a=1)')).to.equal '1'
-    it '''should compile 'a#=1;# ` ^a''', ->
-      expect(compile('a#=1;# ` ^a')).to.equal "1"
-    it '''should compile '#(a=1);# ` ^a''', ->
-      expect(compile('#(a=1);# ` ^a')).to.equal "1"
-    it '''should compile '##a=1;# ` ^a''', ->
-      expect(compile('##a=1;# ` ^a')).to.equal "1"
-    it '''should compile '#a=1;a''', ->
-      expect(-> compile('#a=1;a')).to.throw Error
-    it 'should compile if 1 then 1+2 else 3+4', ->
-      expect(compile('if 1 then 1+2 else 3+4')).to.equal "3"
-    it 'should compile if 1 then #1+2 else #3+4', ->
-      expect(compile('if 1 then #1+2 else #3+4')).to.equal "3"
-    it 'should compile if 1 then #1+2 else #3+4', ->
-      expect(compile('if 1 then #1+2 else #3+4')).to.equal "3"
-    it 'should compileNoOptimize if 1 then #1+2 else #3+4', ->
-      expect(compileNoOptimize('if 1 then ##1+2 else ##3+4')).to.equal "if (1)\n  3;\nelse 7;"
-    it 'should compileNoOptimize 1+2', ->
-      expect(compileNoOptimize('1+2')).to.equal "1 + 2"
-    it 'should compile # if 1 then 1+2 else 3+4', ->
-      expect(compile('# if 1 then 1+2 else 3+4')).to.equal '3'
-    it 'should compile var a, b; # if 1 then a else b', ->
-      expect(compile('var a, b; # if 1 then a else b')).to.equal "var a, b;\na;"
-    it 'should compile var a, b; ## if 1 then a else b', ->
-      expect(-> compile('var a, b; ## if 1 then a else b')).to.throw /fail to look up symbol from environment:a/
-    it 'should compile # if 0 then 1+2 else 3+4', ->
-      expect(compile('# if 0 then 1+2 else 3+4')).to.equal '7'
-    it 'should compile ## if 1 then 1+2 else 3+4', ->
-      expect(compile('## if 1 then 1+2 else 3+4')).to.equal '3'
-    it 'should compile ## if 0 then 1+2 else 3+4', ->
-      expect(compile('## if 0 then 1+2 else 3+4')).to.equal '7'
 
   describe "class : ",  ->
     xit 'should parse A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)', ->

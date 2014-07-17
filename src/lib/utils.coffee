@@ -163,11 +163,12 @@ exports.notExp = (exp) -> ['prefix!', '!', exp]
 exports.undefinedExp = undefinedExp = ['prefix!', 'void', 0]
 
 exports.addPrelude = (parser, body) ->
-  result = []
-  if parser.meetEllipsis then result.push ['=', '__slice', ['attribute!', [], 'slice']]
-  result.push ['include!', '"prelude.tj"']
-  result.push body
-  begin(result)
+  return body
+#  result = []
+#  if parser.meetEllipsis then result.push ['=', '__slice', ['attribute!', [], 'slice']]
+#  result.push ['include!', '"prelude.tj"']
+#  result.push body
+#  begin(result)
 
 exports.wrapInfo1 = (exp, info) ->
   if typeof exp != 'object' then exp = {value: exp}
