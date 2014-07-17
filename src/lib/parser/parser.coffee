@@ -1340,6 +1340,17 @@ exports.Parser = ->
     head.push.apply head, blk
     extend head, {stop:cursor, line:lineno}
 
+  @macroCallClause = memo ->
+    start = cursor; line1 = lineno
+    if (head=parser.compactClauseExpression())
+       if (space1=spc()) and not space1.value then return rollback(start, line1)
+       if text[cursor]=='#' and cursor++ and ((space=spc()) and space.value or text[cursor]=='\n' or text[cursor]=='\r')
+          if blk = parser.block()
+            return extend ['#call!', head, blk], {cursor:start, line1:lineno, stop:cursor, line:lineno}
+          else if args = parser.clauses()
+            return extend ['#call!', head, args], {cursor:start, line1:lineno, stop:cursor, line:lineno}
+    rollback(start, line1)
+
   @unaryExpressionClause = memo ->
     start = cursor; line1 = lineno
     if (head=parser.compactClauseExpression()) and spc() and (x=parser.spaceClauseExpression()) and parser.clauseEnd()
@@ -1404,7 +1415,7 @@ exports.Parser = ->
     extend clause, {start:start, stop:cursor, line1:line1, line:lineno}
 
   @customClauseList = ['statement','labelStatement',
-    'leadWordClause', 'assignClause', 'colonClause', 'indentClause',
+    'leadWordClause', 'assignClause', 'colonClause', 'macroCallClause', 'indentClause',
     'expressionClause', 'unaryExpressionClause']
 
   @clause = memo ->

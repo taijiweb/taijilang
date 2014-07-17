@@ -50,6 +50,8 @@ describe "compile: ",  ->
       expect(compile('1+1')).to.equal '2'
 
   describe "assign: ",  ->
+    it "should compile \do=1", ->
+      expect(compile('\\do=1')).to.equal "var do1 = 1;\ndo1;"
     it "should compile a=1", ->
       expect(compile('a=1')).to.equal "var a = 1;\na;"
     it "should compile var a; not a", ->

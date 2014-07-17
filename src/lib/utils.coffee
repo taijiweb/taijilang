@@ -341,3 +341,12 @@ exports.repeat = repeat = (str, n) ->
     n >>>= 1
     str += str
   res
+
+
+javascriptKeywordText = ("break export return case for switch comment function this continue if typeof default import" +
+" var delete in void do label while else new with catch enum throw class extends try const finally debugger super")
+exports.javascriptKeywordSet = javascriptKeywordSet = {}
+do ->
+  for w in javascriptKeywordText.split(' ')
+    javascriptKeywordSet[w] = 1
+

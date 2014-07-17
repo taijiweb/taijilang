@@ -18,5 +18,6 @@ console.log: square! i++
 // expanded to (i++ * i++) which is multiplying 2 and three!
 
 // the version below is safe with parameter which have side effects
-square2! #= (n) -=> ` [let x = ^n then (x * x) ]
-console.log: square2! i++
+square2! #= (n) -> ` { let x = ^n then (x * x) }
+console.log: square2! # (i++)
+console.log: square2!#(i++)

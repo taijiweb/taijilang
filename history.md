@@ -1,5 +1,7 @@
 2014
 2014-7
+7-17
+  refactor meta compilation once again, no metaResultList and assign when metaConvert
 7-16
   refactor meta compilation; no -=>, ==> or macro, macro is just meta compilation
   fix a bug in default parameter, should assign based on whether the paramerter is undefined

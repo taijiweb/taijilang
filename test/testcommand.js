@@ -92,10 +92,10 @@ describe('test command:', function() {
       it('parse macros.tj', function() {
         return expect(parse('samples-js/parse', 'samples/macros.tj')).to.deep.equal([void 0]);
       });
-      iit('compile macros.tj', function() {
+      it('compile macros.tj', function() {
         return expect(compile('samples-js', 'samples/macros.tj')).to.deep.equal([void 0]);
       });
-      xit('compile square-macro.tj', function() {
+      it('compile square-macro.tj', function() {
         return expect(compile('samples-js', 'samples/square-macro.tj')).to.deep.equal([void 0]);
       });
       it('compile let.tj', function() {
@@ -107,10 +107,13 @@ describe('test command:', function() {
       it('compile nodeserver.tj', function() {
         return expect(compile('samples-js', 'samples/nodeserver.tj')).to.deep.equal([void 0]);
       });
-      xit('compile snippets.tj', function() {
+      it('parse snippets.tj', function() {
+        return expect(parse('samples-js', 'samples/snippets.tj')).to.deep.equal([void 0]);
+      });
+      iit('compile snippets.tj', function() {
         return expect(compile('samples-js', 'samples/snippets.tj')).to.deep.equal([void 0]);
       });
-      xit('compile ellipsis.tj', function() {
+      it('compile ellipsis.tj', function() {
         return expect(compile('samples-js', 'samples/ellipsis.tj')).to.deep.equal([void 0]);
       });
       it('compile include.tj', function() {

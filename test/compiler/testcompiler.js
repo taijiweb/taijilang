@@ -75,6 +75,9 @@ describe("compile: ", function() {
     });
   });
   describe("assign: ", function() {
+    it("should compile \do=1", function() {
+      return expect(compile('\\do=1')).to.equal("var do1 = 1;\ndo1;");
+    });
     it("should compile a=1", function() {
       return expect(compile('a=1')).to.equal("var a = 1;\na;");
     });
