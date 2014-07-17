@@ -7,7 +7,7 @@ taiji language 0.1
   this file is not tested
 
 // use! has been implemented in core.coffee
-/.use! #= (filePath, names) -=>
+/.use! #= (filePath, names) ->
   `{
      exp = parseFile! ^filePath
      $taijiModule = new TaijiModule($taijiModule)

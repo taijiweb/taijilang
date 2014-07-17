@@ -157,8 +157,8 @@ metaConvertFnMap =
     for e in exp[2] then metaExpList.push metaTransform(e, env); args.push $atMetaExpList(env.metaIndex++)
     #console.log code.text
     ['call!', metaTransform(exp[1], metaExpList, env), args]
-
-  '#.': (exp, metaExpList, env) ->
+  # both meta level and object level
+  '#/': (exp, metaExpList, env) ->
 
 metaTransform = (exp, metaExpList, env) ->
   if Object.prototype.toString.call(exp) == '[object Array]'

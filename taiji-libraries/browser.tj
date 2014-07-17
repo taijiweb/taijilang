@@ -10,13 +10,13 @@ taiji language 0.1
 
 extern! document
 
-$ #= (id) -=> ` document.getElementById ^id
+$ #= (id) -> ` document.getElementById ^id
 
-$ 'sdf'
+$ # 'sdf'
 
-$listener #= (domObj, eventName, rest...) -=>
+$listener #= (domObj, eventName, rest...) ->
   ` (^domObj).addEventListener ^eventName (event) ->  ^&rest
 
-$listener [var a = document] 'dasf'
- print 1
+$listener # {var a = document}, 'dasf', print 1
+
 

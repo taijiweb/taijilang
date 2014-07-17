@@ -26,7 +26,7 @@ parse = function(text) {
   var parser, x;
   parser = new Parser();
   x = parser.parse(head + text, parser.module, 0);
-  return x.body;
+  return str(x.body);
 };
 
 compile = function(code) {
@@ -56,13 +56,13 @@ describe("compile: ", function() {
       return expect(compile('begin! 1 2')).to.equal('2');
     });
     it('should parse [1, 2]', function() {
-      return expect(str(parse('[1, 2]'))).to.equal("[list! 1 2]");
+      return expect(parse('[1, 2]')).to.equal("[list! 1 2]");
     });
     it('should compile [1, 2]', function() {
       return expect(compile('[1, 2]')).to.equal("[1, 2]");
     });
     it('should parse [1 2]', function() {
-      return expect(str(parse('[1 2]'))).to.equal("[list! [1 2]]");
+      return expect(parse('[1 2]')).to.equal("[list! [1 2]]");
     });
     it('should compile [1 2]', function() {
       return expect(compile('[1 2]')).to.equal("[1, 2]");
@@ -107,7 +107,7 @@ describe("compile: ", function() {
       }).to["throw"](/local variable, can not access outer/);
     });
     it("should parse [x, y] = [1, 2]", function() {
-      return expect(str(parse('[x, y] = [1, 2]'))).to.equal("[= [list! x y] [list! 1 2]]");
+      return expect(parse('[x, y] = [1, 2]')).to.equal("[= [list! x y] [list! 1 2]]");
     });
     it("should comile [x, y] = [1, 2]", function() {
       return expect(compile('[x, y] = [1, 2]')).to.equal("var x = 1, \n    y = 2;\ny;");
@@ -122,7 +122,7 @@ describe("compile: ", function() {
       return expect(compile('[x, [y, z]] = [1, [2, 3]]')).to.equal("var x = 1, \n    y = 2, \n    z = 3;\nz;");
     });
     it("should parse [x..., y] = [1, 2]", function() {
-      return expect(str(parse('[x..., y] = [1, 2]'))).to.equal("[= [list! [x... x] y] [list! 1 2]]");
+      return expect(parse('[x..., y] = [1, 2]')).to.equal("[= [list! [x... x] y] [list! 1 2]]");
     });
     it("should compile [x..., y] = [1, 2]", function() {
       return expect(compile('[x..., y] = [1, 2]')).to.equal("var x = [1], \n    y = 2;\ny;");
@@ -143,7 +143,7 @@ describe("compile: ", function() {
       return expect(compile('a = [1, 2, 3, 4]; [x, y..., z] = a')).to.equal("var i, a = [1, 2, 3, 4], \n    lst = a, \n    x = lst[0];\ny = lst.length >= 3? __slice.call(lst, 2, i = lst.length - 1): (i = 1, []);\nz = lst[i++];");
     });
     it("should parse var x, y, z; a = [x, y..., z]", function() {
-      return expect(str(parse('var x, y, z; a = [x, y..., z]'))).to.equal("[begin! [var x y z] [= a [list! x [x... y] z]]]");
+      return expect(parse('var x, y, z; a = [x, y..., z]')).to.equal("[begin! [var x y z] [= a [list! x [x... y] z]]]");
     });
     it("should compile var x, y, z; a = [x, y..., z]", function() {
       return expect(compile('var x, y, z; a = [x, y..., z]')).to.equal("var x, y, z, a = [x].concat(y).concat([z]);\na;");
@@ -155,7 +155,7 @@ describe("compile: ", function() {
       return expect(compile('var x, y, z; a = [x, [1,2]..., z]')).to.equal("var x, y, z, a = [x, 1, 2, z];\na;");
     });
     it("should parse x #= -=> a=1", function() {
-      return expect(str(parse('x #= -=> a=1'))).to.equal("[#= x [-=> [] [[= a 1]]]]");
+      return expect(parse('x #= -=> a=1')).to.equal("[#= x [-=> [] [[= a 1]]]]");
     });
     return it("should comile {x #= -> a=1}; 1", function() {
       return expect(compile('{x #= -> a=1}; 1')).to.equal("1");
@@ -241,13 +241,13 @@ describe("compile: ", function() {
   });
   describe("switch!: ", function() {
     it('should parse switch! 1 [{[2] 3}] 4', function() {
-      return expect(str(parse("switch! 1 [ {[2] 3} ] 4"))).to.equal("[switch! 1 [list! [[list! 2] 3]] 4]");
+      return expect(parse("switch! 1 [ {[2] 3} ] 4")).to.equal("[switch! 1 [list! [[list! 2] 3]] 4]");
     });
     it('should compile switch! 1 [{[2] 3}] 4', function() {
       return expect(compile("switch! 1 [ {[2] 3} ]4")).to.equal("switch (1){\n  case 2: t = 3;\n  break ; ;\n  default: t = 4;\n};\nt;");
     });
     it('should parse switch! 1 [{[2, 5] 3}, {[7, 8+9] 10}] 4', function() {
-      return expect(str(parse("switch! 1 [{[2, 5] 3}, {[7, 8+9] 10}] 4"))).to.equal("[switch! 1 [list! [[list! 2 5] 3] [[list! 7 [+ 8 9]] 10]] 4]");
+      return expect(parse("switch! 1 [{[2, 5] 3}, {[7, 8+9] 10}] 4")).to.equal("[switch! 1 [list! [[list! 2 5] 3] [[list! 7 [+ 8 9]] 10]] 4]");
     });
     return it('should compile switch! 1 [{[2, 5] 3}, {[7, 8+9] 10}] 4', function() {
       return expect(compile("switch! 1 [{[2, 5] 3}, {[7, 8+9] 10}] 4")).to.equal("switch (1){\n  case 2: case 5: t = 3;\n  break ; ; case 7: case 17: t = 10;\n  break ; ;\n  default: t = 4;\n};\nt;");
@@ -291,16 +291,16 @@ describe("compile: ", function() {
       return expect(compile('\\|-> [] {1, 2}')).to.equal("(function () {\n  2;\n})");
     });
     xit('should parse \\|-> [] {1, 2}', function() {
-      return expect(str(parse('\\|-> [] {1, 2}'))).to.equal("(function () {\n  2;\n})");
+      return expect(parse('\\|-> [] {1, 2}')).to.equal("(function () {\n  2;\n})");
     });
     it('should parse => @a', function() {
-      return expect(str(parse('=> @a'))).to.equal("[=> [] [[attribute! @ a]]]");
+      return expect(parse('=> @a')).to.equal("[=> [] [[attribute! @ a]]]");
     });
     it('should compile => @a; @, @x([]+@)', function() {
       return expect(compile('=> @a; @, @x([]+@)')).to.equal("_this = this;\n\n(function () {\n  _this.a;\n  return _this.x([] + _this);\n});");
     });
     it('should parse |=> @a; @, @x([]+@)', function() {
-      return expect(str(parse('|=> @a; @, @x([]+@)'))).to.equal("[|=> [] [[attribute! @ a] @ [call! [attribute! @ x] [[+ [] @]]]]]");
+      return expect(parse('|=> @a; @, @x([]+@)')).to.equal("[|=> [] [[attribute! @ a] @ [call! [attribute! @ x] [[+ [] @]]]]]");
     });
     it('should compile |=> @a; @, @x([]+@)', function() {
       return expect(compile('|=> @a; @, @x([]+@)')).to.equal("_this = this;\n\n(function () {\n  _this.a;\n  _this.x([] + _this);\n});");
@@ -308,8 +308,26 @@ describe("compile: ", function() {
     it('should compile => @a; @, @x([]+@), -> @a; @, @x([]+@)', function() {
       return expect(compile('=> @a; @, @x([]+@), -> @a; @, @x([]+@)')).to.equal("_this = this;\n\n(function () {\n  _this.a;\n  _this.x([] + _this);\n  return function () {\n    this.a;\n    return this.x([] + this);\n  };\n});");
     });
+    it('should parse (@a) -> 1', function() {
+      return expect(parse('(@a) -> 1')).to.equal("[-> [[attribute! @ a]] [1]]");
+    });
+    it('should compile (@a) -> 1', function() {
+      return expect(compile('(@a) -> 1')).to.equal("(function (a) {\n  this.a = a;\n  return 1;\n})");
+    });
+    it('should parse (@a=1) -> 1', function() {
+      return expect(parse('(@a=1) -> 1')).to.equal("[-> [[= [attribute! @ a] 1]] [1]]");
+    });
+    it('should compile (@a=1) -> 1', function() {
+      return expect(compile('(@a=1) -> 1')).to.equal("(function (a) {\n  if (a === void 0)\n    a = 1;\n  this.a = a;\n  return 1;\n})");
+    });
+    it('should parse (@a...) -> 1', function() {
+      return expect(parse('(@a...) -> 1')).to.equal("[-> [[x... [attribute! @ a]]] [1]]");
+    });
+    it('should compile (@a...) -> 1', function() {
+      return expect(compile('(@a...) -> 1')).to.equal("(function () {\n  var a = arguments.length >= 1? __slice.call(arguments, 0): [];\n  this.a = a;\n  return 1;\n})");
+    });
     it('should parse (a=1) -> 1', function() {
-      return expect(str(parse('(a=1) -> 1'))).to.equal("[-> [[= a 1]] [1]]");
+      return expect(parse('(a=1) -> 1')).to.equal("[-> [[= a 1]] [1]]");
     });
     it('should compile (a=1) -> 1,2', function() {
       return expect(compile('(a=1) -> 1')).to.equal("(function (a) {\n  if (a === void 0)\n    a = 1;\n  return 1;\n})");
@@ -380,7 +398,7 @@ describe("compile: ", function() {
       return expect(compile('`{^1 ^2 ^&{3 4}}')).to.equal("[1, 2].concat([3, 4])");
     });
     it('should parse `[^1 ^2 ^&[3, 4]]', function() {
-      return expect(str(parse('`[ ^1 ^2 ^&[3, 4]]'))).to.equal("[quasiquote! [list! [[unquote! 1] [unquote! 2] [unquote-splice [list! 3 4]]]]]");
+      return expect(parse('`[ ^1 ^2 ^&[3, 4]]')).to.equal("[quasiquote! [list! [[unquote! 1] [unquote! 2] [unquote-splice [list! 3 4]]]]]");
     });
     it('should compile `[^1 ^2 ^&[3, 4]]', function() {
       return expect(compile('`[ ^1 ^2 ^&[3, 4]]')).to.equal("[\"list!\", [1, 2].concat([3, 4])]");
@@ -516,7 +534,7 @@ describe("compile: ", function() {
       }).to["throw"](/fail to look up symbol from environment:x/);
     });
     it('should parse m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; m#(x+y,y+z)', function() {
-      return expect(str(parse('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; m#(x+y,y+z)'))).to.equal("[begin! [#= m [-> [a b] [[quasiquote! [+ [unquote! a] [unquote! b]]]]]] [var x y z] [#call! m [[+ x y] [+ y z]]]]");
+      return expect(parse('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; m#(x+y,y+z)')).to.equal("[begin! [#= m [-> [a b] [[quasiquote! [+ [unquote! a] [unquote! b]]]]]] [var x y z] [#call! m [[+ x y] [+ y z]]]]");
     });
     it('should compileNoOptimize m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; m#(x+y,y+z)', function() {
       return expect(compileNoOptimize('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; m#(x+y,y+z)')).to.equal('var x, y, z;\nx + y + y + z;');
@@ -528,7 +546,7 @@ describe("compile: ", function() {
       return expect(compileNoOptimize('m #= {(a,b) -> `( ^a * ^b)}; var x, y, z; m#(x+y,y+z)')).to.equal("var x, y, z;\n(x + y) * (y + z);");
     });
     it('should parse m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)', function() {
-      return expect(str(parse('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)'))).to.equal("[begin! [#= m [-> [a b] [[quasiquote! [+ [unquote! a] [unquote! b]]]]]] [var x y z] [call! [# m] [[+ x y] [+ y z]]]]");
+      return expect(parse('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)')).to.equal("[begin! [#= m [-> [a b] [[quasiquote! [+ [unquote! a] [unquote! b]]]]]] [var x y z] [call! [# m] [[+ x y] [+ y z]]]]");
     });
     return it('should compileNoOptimize m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)', function() {
       return expect(compileNoOptimize('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)')).to.equal("var x, y, z;\n[+, [[+, x, y], [+, y, z]], ];");
@@ -536,7 +554,7 @@ describe("compile: ", function() {
   });
   describe("class : ", function() {
     xit('should parse A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)', function() {
-      return expect(str(parse('A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)'))).to.equal("[= A [class B [[call! :: [a [attribute! @ b]]] [-> [] [super]]] [[call! [attribute! :: f] [x]] [-> [] [[call! super [x]]]]]]]");
+      return expect(parse('A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)')).to.equal("[= A [class B [[call! :: [a [attribute! @ b]]] [-> [] [super]]] [[call! [attribute! :: f] [x]] [-> [] [[call! super [x]]]]]]]");
     });
     return xit('should compile A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)', function() {
       return expect(compile('A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)')).to.equal('7');

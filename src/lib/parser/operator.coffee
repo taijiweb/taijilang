@@ -43,7 +43,7 @@ exports.suffixOperatorDict = suffixOperatorDict =
   '++': {symbol: 'x++', priority: 180}
   '--': {symbol: 'x--', priority: 180}
   # implemented as custom parameterEllipsisSuffix originally, but now I want it more general
-  '...': {symbol: 'x...', priority: 180}
+  #'...': {symbol: 'x...', priority: 180}
 
 do -> for op, result of exports.suffixOperatorDict
   result.value = op

@@ -1,0 +1,10 @@
+["begin!",
+  ["lineComment!","\"// for extern variable, no var declaration is generated in the javascript.\r\n\""],
+  ["extern!","add","a","b"],
+  ["lineComment!","\"// the two code blocks below will generate the same javascript code\r\n\""],
+  ["if",["and",1,["add",2,3]],["print","a"],["print","b"]],
+  ["if",["and",1,["add",2,3]],["print","a"],["print","b"]],
+  ["if",[">","a",1],["print","a"],["print","b"]],
+  ["lineComment!","\"// one key comment\r\n\""],
+  ["lineComment!","\"// a statement can become a comment block by one key \"/\"\r\n\""],
+  ["codeBlockComment!",[["if",[">","a",1],["print","a"],["print","b"]]]]]

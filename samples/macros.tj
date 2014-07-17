@@ -1,13 +1,13 @@
 taiji language 0.1
 
-closure = (closureVars..., fn) -=> `{(^&closureVars) -> ^fn}(^&closureVars)
+closure #= (closureVars..., fn) -> `{(^&closureVars) -> ^fn}(^&closureVars)
 
 extern! x y a
-closure(x, y, {-> x y})
-closure x y ->
+closure#(x, y, {-> x y})
+closure # x, y ->
   print x y
 
-\do #= (body..., clause) -=>
+\do #= (body..., clause) =>
   if clause[0]=='where' then
     `{let ^&(clause.slice(1)) then ^&body}
   else if clause[0]=='when' then
@@ -30,4 +30,4 @@ do print a where a=1
 do a when a==1
 do a until a==1
 
-{-=> ~(1+2)}()
+{-> ~(1+2)}()

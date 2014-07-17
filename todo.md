@@ -1,5 +1,3 @@
-todo: convert javascript keyword to legal idenentifier (var name)
-
 todo: class similar to coffee-script
   # things like super, construcotr(too long name, maybe I'll use init: (...)->)
   
@@ -12,6 +10,9 @@ todo: \ lead symbol to escape it, e.g. \=, \+=, \>>, \/, etc, useful to write ma
 
 todo: ":" at the end of line can replace 'then'
 
+todo: add more cases for preprocess operator
+  # let, letrec!, letloop!, doWhere!, while, doWhile!, doUntil!, cFor!, forIn!, forOf!, forIn!!, forOf!!
+
 todo: assign optimization
   # ssaVar, const var, dummy var, etc
 
@@ -20,8 +21,6 @@ todo: macro for "for", do, try, etc
   # forIn!! and forOf!! is necessary still.
 
 todo: may be [x y z] should directly produce [x, y, z], no list! is unshift to its front, and item in {} or other blocks should produces ['call!', x, [y, z]]
-
-todo: (x, @y...) ->, (x, @y...) =>
 
 todo: [x, y, z] @= value # all= at --> all?
 
@@ -49,7 +48,11 @@ todo: document
   todo: tutorial：interactive samples
 
 ------------------------------------------------------------
+done: (x, @y...) ->, (x, @y...) =>
+done: convert javascript keyword to legal idenentifier (var name)
 done: refactor meta compilation; no -=>, ==> or macro, macro is just meta compilation 
+--------------------------------------------------------------------------
+done: release 0.1.0
 done: \-=> and,\-> and \=> becomes |-=> and, |-> and |=> 
 done: \-> and \=> prevent wrap return around function body
 done: distinct -> and =>, in => this become _this, similar to coffee-script

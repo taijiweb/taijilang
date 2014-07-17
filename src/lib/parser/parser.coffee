@@ -627,20 +627,19 @@ exports.Parser = ->
       priInc = 600
     extend {}, op, {priority: op.priority+priInc}
 
-# ellipsis becomes more general
-#  @parameterEllipsisSuffix = (mode, x, priority) ->
-#    if mode!='opExp' then return
-#    start = cursor
-#    if not (x=parser.symbol()) or (x.value!='...')  then cursor = start; return
-#    if (c=text[cursor])==',' or c==')'
-#      return {priority: 780, symbol:'x...'}
-#    else
-#      spc()
-#      if (c=text[cursor])==','
-#        rollback start, line1
-#        return extend {}, tkn0, {priority: 780, symbol:'x...'}
-#      else if c==')'
-#        return extend {}, tkn0, {priority: 780, symbol:'x...'}
+  # ellipsis becomes more general
+  @parameterEllipsisSuffix = (mode, x, priority) ->
+    start = cursor
+    if not (x=parser.symbol()) or (x.value!='...')  then cursor = start; return
+    if (c=text[cursor])==',' or c==')'
+      return {priority: 780, symbol:'x...'}
+    else
+      spc()
+      if (c=text[cursor])==','
+        rollback start, line1
+        return extend {}, tkn0, {priority: 780, symbol:'x...'}
+      else if c==')'
+        return extend {}, tkn0, {priority: 780, symbol:'x...'}
 
   @customSuffixOperators = []   #@parameterEllipsisSuffix
   @customSuffixOperator = (mode, x, priority) ->
@@ -887,15 +886,17 @@ exports.Parser = ->
   @itemToParameter = itemToParameter = (item) ->
     if item.type==IDENTIFIER then return item
     else if item0=item[0]
-      if item0.symbol=='x...'
+      if item0=='attribute!' and item[1].value=='@' then return item
+      else if item0.symbol=='x...'
         parser.meetEllipsis = item[1].ellipsis = true
         return item
       else if entity(item0)=='=' # default parameter
         # default parameter should not be ellipsis parameter at the same time
         # and this is the behavior in coffee-script too
         # and (item01[0].symbol!='x...' or not isIdentifier(item01[1]).type==IDENTIFIER)
-        if item[1].type!=IDENTIFIER then return
-        else return item
+        if (item1=item[1]) and item1.type==IDENTIFIER then return item
+        else if ((item10=item1[0]) and item10=='attribute!' and item1[1].value=='@') then return item
+        else return
       # for dynamic parser and writing macro
       else if item0.symbol=='unquote!' or item0.symbol=='unquote-splice'
         return item

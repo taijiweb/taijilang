@@ -6,10 +6,10 @@ taiji language 0.1
 /...................... Expressions .............................
 extern! \do
 
-\when = (cond, body...) -=> `{if ^cond  then ^&body}
-unless = (cond, body...) -=> `{if (!.^cond) then ^&body}
+\when #= (cond, body...) -> `{if ^cond  then ^&body}
+unless #= (cond, body...) -> `{if (!.^cond) then ^&body}
 
-/.cond = (clauses...) ->
+/.cond #= (clauses...) ->
   //[[test, body] |- left]  = clauses
   `[if ^test then ^&body else ^&cond(^&left)]
 
@@ -28,8 +28,8 @@ arrayInit2d = (m, n, obj) ->
 
 ////////////////////// Iteration and Looping ////////////////////
 
-each = (arr, rest...) -> arr.forEach(rest)
-reduce = (arr, rest...) -> arr.reduce(rest)
+each #= (arr, rest...) -> arr.forEach(rest)
+reduce #= (arr, rest...) -> arr.reduce(rest)
 /.eachKey = (obj, fn, rest...) -> (o, f, s) ->
     k = Object.keys(o)
     each k (elem) -> f.call(s, elem[o], elem, o)
@@ -37,7 +37,7 @@ reduce = (arr, rest...) -> arr.reduce(rest)
       fn
       rest
 
-each2d  = (arr, fn) ->
+each2d  #= (arr, fn) ->
   each arr (elem, i, oa) ->
       each elem (val, j, ia) ->
           fn val j i ia oa
@@ -67,18 +67,18 @@ every = (rest...) -> Array::every.call(rest)
 /.for = (rest...) ->
   doMonad arrayMonad rest
 
-extern! str eachKey
+# extern! str eachKey
 
 //////////////////// Templates ////////////////////////////
 
-template = (name, args, rest...) ->
+template #= (name, args, rest...) ->
   name = (args) -> str rest
 
-templateRepeat = (arg, rest...)  ->
+templateRepeat #= (arg, rest...)  ->
   reduce arg (memo, elem, index) ->
       memo + str(rest) ""
 
-templateRepeatKey = (obj, rest...) ->
+templateRepeatKey #= (obj, rest...) ->
   begin!
     ret = ""
     eachKey obj (value, key) ->
@@ -87,7 +87,7 @@ templateRepeatKey = (obj, rest...) ->
 
 /////////////////// Callback Sequence ////////////////////;
 
-sequence = (name, args, init, rest...) ->
+sequence #= (name, args, init, rest...) ->
     (args) ->
       ->
         @init
@@ -103,15 +103,15 @@ sequence = (name, args, init, rest...) ->
 
 //////////////////; Unit Testing ////////////////////////////;
 
-extern! array Date
+# extern! array Date
 
-assert = (cond, message) -=>
+assert #= (cond, message) ->
   if cond then "Passed - $message" else "Failed - $message"
 
-testGroup = (name, rest...) -=>
+testGroup #= (name, rest...) ->
   name = -> array(rest)
 
-testRunner = (groupname, desc)-=>
+testRunner #= (groupname, desc)->
     start = new Date
     tests = groupname()
     passed = 0
@@ -130,18 +130,18 @@ testRunner = (groupname, desc)-=>
 
 //////////////// Monads //////////////////////////////////;
 
-identityMonad = ->
+identityMonad #= ->
   {. mBind: [(mv, mf) -> mf(mv)]; mResult: [(v) -> v] .}
 
 /*
-maybeMonad = ->
+maybeMonad #= ->
   { mBind: (mv, mf) -> if (mv==undefined) then null else mf(mv);
     mResult: (v) -> v;
     mZero: null;
   }
 
 
-arrayMonad = ->
+arrayMonad #= ->
   { mBind: (mv, mf) ->
               reduce
                 map mv mf
@@ -156,7 +156,7 @@ arrayMonad = ->
         []
   }
 
-stateMonad #= -=>
+stateMonad #= ->
   `{ mBind: (mv, f) ->
              (s) ->
                 l = mv(s)
@@ -166,7 +166,7 @@ stateMonad #= -=>
     mResult: (v) -> (s) -> v(s)
   }
 
-continuationMonad #= -=>
+continuationMonad #= ->
   { mBind: (mv, mf) -> (c) -> mv((v) -> mf(v)(c))
     mResult: (v) -> (c) -> c(v)
   }
@@ -185,7 +185,7 @@ m-bind = (bindings, expr)
     rest...
   monad
 
-doMonad = (monad, bindings, expr) ->
+doMonad #= (monad, bindings, expr) ->
   withMonad monad
     var ____mResult
       function ___arg
@@ -194,5 +194,5 @@ doMonad = (monad, bindings, expr) ->
         else: mResult ___arg
     m-bind bindings : ____mResult expr
 
-monad  = (name, obj) -=> ^name = -> ^obj
+monad  #= (name, obj) -> ^name = -> ^obj
 */

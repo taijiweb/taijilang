@@ -35,8 +35,8 @@ describe 'test command:', ->
   describe "parse and compile: ",  ->
     describe "samples: ",  ->
       it 'parse temp.tj', -> expect(parse 'samples-js/parse', 'samples/temp.tj').to.deep.equal [undefined]
-      #it 'transform temp.tj', -> expect(transform 'samples-js/transform', 'samples/temp.tj').to.deep.equal [undefined]
-      xit 'compile temp.tj', -> expect(compile 'samples-js', 'samples/temp.tj').to.deep.equal [undefined]
+      it 'transform temp.tj', -> expect(transform 'samples-js/transform', 'samples/temp.tj').to.deep.equal [undefined]
+      it 'compile temp.tj', -> expect(compile 'samples-js', 'samples/temp.tj').to.deep.equal [undefined]
       it 'parse hello.tj', -> expect(parse 'samples-js/parse', 'samples/hello.tj').to.deep.equal [undefined]
       it 'compile hello.tj', -> expect(compile 'samples-js', 'samples/hello.tj').to.deep.equal [undefined]
       it 'sample.tj', -> expect(parse 'samples-js/parse', 'samples/sample.tj').to.deep.equal [undefined]
@@ -51,7 +51,7 @@ describe 'test command:', ->
       it 'compile loop.tj', -> expect(compile 'samples-js', 'samples/loop.tj').to.deep.equal [undefined]
       it 'compile nodeserver.tj', -> expect(compile 'samples-js', 'samples/nodeserver.tj').to.deep.equal [undefined]
       it 'parse snippets.tj', -> expect(parse 'samples-js', 'samples/snippets.tj').to.deep.equal [undefined]
-      iit 'compile snippets.tj', -> expect(compile 'samples-js', 'samples/snippets.tj').to.deep.equal [undefined]
+      it 'compile snippets.tj', -> expect(compile 'samples-js', 'samples/snippets.tj').to.deep.equal [undefined]
       it 'compile ellipsis.tj', -> expect(compile 'samples-js', 'samples/ellipsis.tj').to.deep.equal [undefined]
       it 'compile include.tj', -> expect(compile 'samples-js', 'samples/include.tj').to.deep.equal [undefined]
       it 'compile use.tj', -> expect(compile 'samples-js', 'samples/use.tj').to.deep.equal [undefined]
@@ -69,8 +69,8 @@ describe 'test command:', ->
       xit 'parse class.tj', -> expect(parse 'taiji-libraries-js/parse', 'taiji-libraries/class.tj').to.deep.equal [undefined]
       xit 'compile class.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/class.tj').to.deep.equal [undefined]
       it 'parse module.tj', -> expect(parse 'taiji-libraries-js/parse', 'taiji-libraries/module.tj').to.deep.equal [undefined]
-      it 'compile module.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/module.tj').to.deep.equal [undefined]
-      xit 'compile browser.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/browser.tj').to.deep.equal [undefined]
+      xit 'compile module.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/module.tj').to.deep.equal [undefined]
+      it 'compile browser.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/browser.tj').to.deep.equal [undefined]
       it 'compile html.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/html.tj').to.deep.equal [undefined]
 
   run = (filePath) ->
@@ -79,4 +79,4 @@ describe 'test command:', ->
 
   describe "command run: ",  ->
     it 'hello.tj', -> expect(run 'samples/hello.tj').to.deep.equal [undefined]
-    xit 'ellipsis.tj', -> expect(run 'samples/ellipsis.tj').to.deep.equal [undefined]
+    it 'ellipsis.tj', -> expect(run 'samples/ellipsis.tj').to.deep.equal [undefined]

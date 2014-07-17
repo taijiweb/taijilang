@@ -2,9 +2,11 @@ taiji language 0.1
 
   this file is not tested
 
-!--  = (rest...) -=> "<!-- $rest -->"
+!--  #= (rest...) -> "<!-- $rest -->"
 
-str! = (args...) -=> '""'
+//str! #/= (args...) -> '""'
+str! #= (args...) -> '""'
+// str! = (args...) -> '""'
 
 extern! isString isObject  templateRepeatKey key  value
 exports.expandTag = expandTag = (name, args...) ->
@@ -14,7 +16,7 @@ exports.expandTag = expandTag = (name, args...) ->
        attr = args.shift()
        ret += templateRepeatKey attr " " key "=" "\"" value "\""
     if args.length>0 || name=="script" then
-      ret = str! ret ">" args.join("") "</" name ">"
+      //ret = str! # ret, ">", args.join(""), "</", name, ">"
      else ret += "/>"
     ret
   else ""
@@ -32,6 +34,6 @@ tagNames = '
 
 exports['var_'] = (rest...) -> expandTag 'var' rest
 
-x #= -=> 1
+x #= -> 1
 
 export! #x, y = 1

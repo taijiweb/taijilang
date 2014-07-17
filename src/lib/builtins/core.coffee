@@ -142,6 +142,7 @@ exports['='] = (exp, env) -> convertAssign(exp[0], exp[1], env)
 
 # meta assign, macro assign
 exports['#='] = (exp, env) -> ['##', convert(['=', exp[0], exp[1]], env)]
+exports['#/'] = (exp, env) -> ['#/', convert(['=', exp[0], exp[1]], env)]
 #  left = entity exp[0]; right = exp[1]
 #  if typeof left== 'string'
 #    if left[0]=='"' then error 'left side of assign should not be string'
@@ -380,25 +381,38 @@ convertDefinition =  (exp, env, mode) ->
     _this = newEnv.newVar('_this')
     scope['@'] = _this
   else scope['@'] = 'this'
-  exp0 = exp[0]; exp1 = exp[1]; defaultList = []
+  exp0 = exp[0]; exp1 = exp[1]; defaultList = []; thisParams = []
   for param, i in exp0
     param = entity(param)
     if param[0]=='x...'
-      if not ellipsis? then ellipsis = i; exp0[i] = param[1]
+      if not ellipsis?
+        ellipsis = i
+        param1 = param[1]
+        if param1[0]=='attribute!' then exp0[i] = param1[2]; thisParams.push ['=', param1, param1[2]]
+        else exp0[i] = param1
       else error 'mulitple ellipsis parameters is not permitted'
     else if param[0]=='='
-      defaultList.push ['if', ['==', param[1], ['direct!', undefinedExp]], param]
-      exp0[i] = param[1]
+      param1 = param[1]
+      if param1[0]=='attribute!'
+        exp0[i] = param1[2]; thisParams.push ['=', param1, param1[2]]
+        param1 = param1[2]
+        param = ['=', param1, param[2]]
+      defaultList.push ['if', ['==', param1, ['direct!', undefinedExp]], param]
+      exp0[i] = param1
       # default parameter should not be ellipsis parameter at the same time
       # and this is the behavior in coffee-script too
+    else if param[0]=='attribute!'
+      exp0[i] = param[2]; thisParams.push ['=', param, param[2]]
   if ellipsis!=undefined
     params = []
     body = convertParametersWithEllipsis(exp0, ellipsis, newEnv)
     body.push.apply body, defaultList
+    body.push.apply body, thisParams
     body.push.apply body, exp1
   else
     params = for param, i in exp0 then param = entity(param); scope[param] = param
     body = defaultList
+    body.push.apply body, thisParams
     body.push.apply body, exp1
   if mode[0]=='|' then body =  convert(begin(body), newEnv)
   else body =  return_(convert(begin(body), newEnv))
@@ -410,6 +424,7 @@ convertDefinition =  (exp, env, mode) ->
 for sym in '-> |-> => |=>'.split(' ') then do (sym=sym) ->
     exports[sym] = (exp, env) -> convertDefinition(exp, env,sym)
 
+# macro truly have become a special case of meta compilation
 convertMacro = (exp, env, mode) ->
   resultExp = convertDefinition(exp, env, mode)
   fnCode = transformToCode(resultExp, resultExp.newEnv)
@@ -418,8 +433,9 @@ convertMacro = (exp, env, mode) ->
   #console.log fnCode
   (exp, env) -> expanded = macroFn(exp...); convert(expanded, env)
 
-for sym in ' -=> |-=> ==> |==>'.split(' ') then do (sym=sym) ->
-  exports[sym] = (exp, env) -> convertMacro(exp, env,sym)
+# -=>, ==>, |-=> and |==> is removed
+#for sym in '-=> ==> |-=> |==>'.split(' ') then do (sym=sym) ->
+#  exports[sym] = (exp, env) -> convertMacro(exp, env,sym)
 
 exports['unquote!'] = (exp, env) -> error('unexpected unquote!', exp)
 exports['unquote-splice'] = (exp, env) -> error('unexpected unquote-splice', exp)

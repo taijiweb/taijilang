@@ -260,6 +260,11 @@ describe("parse operator expression: ", function() {
       return expect(str(parse('a(1 , 2 , 3)'))).to.deep.equal('[call! a [1 2 3]]');
     });
   });
+  describe("ellipsis: ", function() {
+    return it("parse 1...5", function() {
+      return expect(str(parse('1...5'))).to.deep.equal('[call! a [1]]');
+    });
+  });
   describe("unquote: ", function() {
     it("parse ^a", function() {
       return expect(str(parse('^a'))).to.deep.equal('[unquote! a]');

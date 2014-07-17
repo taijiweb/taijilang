@@ -14,7 +14,7 @@ head = 'taiji language 0.1\n'
 parse = (text) ->
   parser = new Parser()
   x = parser.parse(head+text, parser.module, 0)
-  x.body
+  str x.body
 
 compile = (code) ->
   head = 'taiji language 0.1\n'
@@ -37,11 +37,11 @@ describe "compile: ",  ->
     it 'should compile begin! 1 2', ->
       expect(compile('begin! 1 2')).to.equal '2'
     it 'should parse [1, 2]', ->
-      expect(str parse('[1, 2]')).to.equal "[list! 1 2]"
+      expect(parse('[1, 2]')).to.equal "[list! 1 2]"
     it 'should compile [1, 2]', ->
       expect(compile('[1, 2]')).to.equal "[1, 2]"
     it 'should parse [1 2]', ->
-      expect(str parse('[1 2]')).to.equal "[list! [1 2]]"
+      expect(parse('[1 2]')).to.equal "[list! [1 2]]"
     it 'should compile [1 2]', ->
       expect(compile('[1 2]')).to.equal "[1, 2]"
     it 'should compile print', ->
@@ -72,7 +72,7 @@ describe "compile: ",  ->
       expect(-> compile('a=1; -> a = @@a')).to.throw /local variable, can not access outer/
 
     it "should parse [x, y] = [1, 2]", ->
-      expect(str parse('[x, y] = [1, 2]')).to.equal "[= [list! x y] [list! 1 2]]"
+      expect(parse('[x, y] = [1, 2]')).to.equal "[= [list! x y] [list! 1 2]]"
     it "should comile [x, y] = [1, 2]", ->
       expect(compile('[x, y] = [1, 2]')).to.equal "var x = 1, \n    y = 2;\ny;"
 
@@ -87,7 +87,7 @@ describe "compile: ",  ->
       expect(compile('[x, [y, z]] = [1, [2, 3]]')).to.equal "var x = 1, \n    y = 2, \n    z = 3;\nz;"
 
     it "should parse [x..., y] = [1, 2]", ->
-      expect(str parse('[x..., y] = [1, 2]')).to.equal "[= [list! [x... x] y] [list! 1 2]]"
+      expect(parse('[x..., y] = [1, 2]')).to.equal "[= [list! [x... x] y] [list! 1 2]]"
     it "should compile [x..., y] = [1, 2]", ->
       expect(compile('[x..., y] = [1, 2]')).to.equal "var x = [1], \n    y = 2;\ny;"
     it "should compile [x..., y] = [1, 2]", ->
@@ -102,7 +102,7 @@ describe "compile: ",  ->
       expect(compile('a = [1, 2, 3, 4]; [x, y..., z] = a')).to.equal "var i, a = [1, 2, 3, 4], \n    lst = a, \n    x = lst[0];\ny = lst.length >= 3? __slice.call(lst, 2, i = lst.length - 1): (i = 1, []);\nz = lst[i++];"
 
     it "should parse var x, y, z; a = [x, y..., z]", ->
-      expect(str parse('var x, y, z; a = [x, y..., z]')).to.equal "[begin! [var x y z] [= a [list! x [x... y] z]]]"
+      expect(parse('var x, y, z; a = [x, y..., z]')).to.equal "[begin! [var x y z] [= a [list! x [x... y] z]]]"
     it "should compile var x, y, z; a = [x, y..., z]", ->
       expect(compile('var x, y, z; a = [x, y..., z]')).to.equal "var x, y, z, a = [x].concat(y).concat([z]);\na;"
     it "should compile var x, y, z, a = [x, y..., z..., 1]", ->
@@ -112,7 +112,7 @@ describe "compile: ",  ->
       expect(compile('var x, y, z; a = [x, [1,2]..., z]')).to.equal "var x, y, z, a = [x, 1, 2, z];\na;"
 
     it "should parse x #= -=> a=1", ->
-      expect(str parse('x #= -=> a=1')).to.equal "[#= x [-=> [] [[= a 1]]]]"
+      expect(parse('x #= -=> a=1')).to.equal "[#= x [-=> [] [[= a 1]]]]"
 
     it "should comile {x #= -> a=1}; 1", ->
       expect(compile('{x #= -> a=1}; 1')).to.equal "1"
@@ -178,11 +178,11 @@ describe "compile: ",  ->
   describe "switch!: ",  ->
     it 'should parse switch! 1 [{[2] 3}] 4', ->
       # instead of use {{[2] 3}},  must use [ {[2] 3} ] to generate [list! {[2] 3}]
-      expect(str parse("switch! 1 [ {[2] 3} ] 4")).to.equal "[switch! 1 [list! [[list! 2] 3]] 4]"
+      expect(parse("switch! 1 [ {[2] 3} ] 4")).to.equal "[switch! 1 [list! [[list! 2] 3]] 4]"
     it 'should compile switch! 1 [{[2] 3}] 4', ->
       expect(compile("switch! 1 [ {[2] 3} ]4")).to.equal "switch (1){\n  case 2: t = 3;\n  break ; ;\n  default: t = 4;\n};\nt;"
     it 'should parse switch! 1 [{[2, 5] 3}, {[7, 8+9] 10}] 4', ->
-      expect(str parse("switch! 1 [{[2, 5] 3}, {[7, 8+9] 10}] 4")).to.equal "[switch! 1 [list! [[list! 2 5] 3] [[list! 7 [+ 8 9]] 10]] 4]"
+      expect(parse("switch! 1 [{[2, 5] 3}, {[7, 8+9] 10}] 4")).to.equal "[switch! 1 [list! [[list! 2 5] 3] [[list! 7 [+ 8 9]] 10]] 4]"
     it 'should compile switch! 1 [{[2, 5] 3}, {[7, 8+9] 10}] 4', ->
       expect(compile("switch! 1 [{[2, 5] 3}, {[7, 8+9] 10}] 4")).to.equal "switch (1){\n  case 2: case 5: t = 3;\n  break ; ; case 7: case 17: t = 10;\n  break ; ;\n  default: t = 4;\n};\nt;"
 
@@ -214,19 +214,31 @@ describe "compile: ",  ->
     xit 'should compile \\|-> [] {1, 2}', ->
       expect(compile('\\|-> [] {1, 2}')).to.equal "(function () {\n  2;\n})"
     xit 'should parse \\|-> [] {1, 2}', ->
-      expect(str parse('\\|-> [] {1, 2}')).to.equal "(function () {\n  2;\n})"
+      expect(parse('\\|-> [] {1, 2}')).to.equal "(function () {\n  2;\n})"
     it 'should parse => @a', ->
-      expect(str parse('=> @a')).to.equal  "[=> [] [[attribute! @ a]]]"
+      expect(parse('=> @a')).to.equal  "[=> [] [[attribute! @ a]]]"
     it 'should compile => @a; @, @x([]+@)', ->
       expect(compile('=> @a; @, @x([]+@)')).to.equal  "_this = this;\n\n(function () {\n  _this.a;\n  return _this.x([] + _this);\n});"
     it 'should parse |=> @a; @, @x([]+@)', ->
-      expect(str parse('|=> @a; @, @x([]+@)')).to.equal  "[|=> [] [[attribute! @ a] @ [call! [attribute! @ x] [[+ [] @]]]]]"
+      expect(parse('|=> @a; @, @x([]+@)')).to.equal  "[|=> [] [[attribute! @ a] @ [call! [attribute! @ x] [[+ [] @]]]]]"
     it 'should compile |=> @a; @, @x([]+@)', ->
       expect(compile('|=> @a; @, @x([]+@)')).to.equal  "_this = this;\n\n(function () {\n  _this.a;\n  _this.x([] + _this);\n});"
     it 'should compile => @a; @, @x([]+@), -> @a; @, @x([]+@)', ->
       expect(compile('=> @a; @, @x([]+@), -> @a; @, @x([]+@)')).to.equal  "_this = this;\n\n(function () {\n  _this.a;\n  _this.x([] + _this);\n  return function () {\n    this.a;\n    return this.x([] + this);\n  };\n});"
+    it 'should parse (@a) -> 1', ->
+      expect(parse('(@a) -> 1')).to.equal  "[-> [[attribute! @ a]] [1]]"
+    it 'should compile (@a) -> 1', ->
+      expect(compile('(@a) -> 1')).to.equal  "(function (a) {\n  this.a = a;\n  return 1;\n})"
+    it 'should parse (@a=1) -> 1', ->
+      expect(parse('(@a=1) -> 1')).to.equal  "[-> [[= [attribute! @ a] 1]] [1]]"
+    it 'should compile (@a=1) -> 1', ->
+      expect(compile('(@a=1) -> 1')).to.equal  "(function (a) {\n  if (a === void 0)\n    a = 1;\n  this.a = a;\n  return 1;\n})"
+    it 'should parse (@a...) -> 1', ->
+      expect(parse('(@a...) -> 1')).to.equal  "[-> [[x... [attribute! @ a]]] [1]]"
+    it 'should compile (@a...) -> 1', ->
+      expect(compile('(@a...) -> 1')).to.equal  "(function () {\n  var a = arguments.length >= 1? __slice.call(arguments, 0): [];\n  this.a = a;\n  return 1;\n})"
     it 'should parse (a=1) -> 1', ->
-      expect(str parse('(a=1) -> 1')).to.equal  "[-> [[= a 1]] [1]]"
+      expect(parse('(a=1) -> 1')).to.equal  "[-> [[= a 1]] [1]]"
     it 'should compile (a=1) -> 1,2', ->
       expect(compile('(a=1) -> 1')).to.equal  "(function (a) {\n  if (a === void 0)\n    a = 1;\n  return 1;\n})"
     it 'should compile (a=1, b=a, c={. .}) ->1,2', ->
@@ -273,7 +285,7 @@ describe "compile: ",  ->
     it 'should compile `{^1 ^2 ^&{3 4}}', ->
       expect(compile('`{^1 ^2 ^&{3 4}}')).to.equal "[1, 2].concat([3, 4])"
     it 'should parse `[^1 ^2 ^&[3, 4]]', ->
-      expect(str parse('`[ ^1 ^2 ^&[3, 4]]')).to.equal "[quasiquote! [list! [[unquote! 1] [unquote! 2] [unquote-splice [list! 3 4]]]]]"
+      expect(parse('`[ ^1 ^2 ^&[3, 4]]')).to.equal "[quasiquote! [list! [[unquote! 1] [unquote! 2] [unquote-splice [list! 3 4]]]]]"
     it 'should compile `[^1 ^2 ^&[3, 4]]', ->
       expect(compile('`[ ^1 ^2 ^&[3, 4]]')).to.equal "[\"list!\", [1, 2].concat([3, 4])]"
     it 'should compile `{ ^1 { ^2 ^&{3 4}}}', ->
@@ -367,7 +379,7 @@ describe "compile: ",  ->
     it 'should compileNoOptimize m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; ##m(x+y,y+z)', ->
       expect(-> compileNoOptimize('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; ##m(x+y,y+z)')).to.throw /fail to look up symbol from environment:x/
     it 'should parse m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; m#(x+y,y+z)', ->
-      expect(str parse('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; m#(x+y,y+z)')).to.equal "[begin! [#= m [-> [a b] [[quasiquote! [+ [unquote! a] [unquote! b]]]]]] [var x y z] [#call! m [[+ x y] [+ y z]]]]"
+      expect(parse('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; m#(x+y,y+z)')).to.equal "[begin! [#= m [-> [a b] [[quasiquote! [+ [unquote! a] [unquote! b]]]]]] [var x y z] [#call! m [[+ x y] [+ y z]]]]"
     it 'should compileNoOptimize m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; m#(x+y,y+z)', ->
       expect(compileNoOptimize('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; m#(x+y,y+z)')).to.equal 'var x, y, z;\nx + y + y + z;'
     it 'should compileNoOptimize m #= {(a,b) -> `( ^a * ^b)}; var x, y, z; m#(x+y,y*z)', ->
@@ -375,13 +387,13 @@ describe "compile: ",  ->
     it 'should compileNoOptimize m #= {(a,b) -> `( ^a * ^b)}; var x, y, z; m#(x+y,y+z)', ->
       expect(compileNoOptimize('m #= {(a,b) -> `( ^a * ^b)}; var x, y, z; m#(x+y,y+z)')).to.equal "var x, y, z;\n(x + y) * (y + z);"
     it 'should parse m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)', ->
-      expect(str parse('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)')).to.equal "[begin! [#= m [-> [a b] [[quasiquote! [+ [unquote! a] [unquote! b]]]]]] [var x y z] [call! [# m] [[+ x y] [+ y z]]]]"
+      expect(parse('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)')).to.equal "[begin! [#= m [-> [a b] [[quasiquote! [+ [unquote! a] [unquote! b]]]]]] [var x y z] [call! [# m] [[+ x y] [+ y z]]]]"
     it 'should compileNoOptimize m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)', ->
       expect(compileNoOptimize('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)')).to.equal "var x, y, z;\n[+, [[+, x, y], [+, y, z]], ];"
 
   describe "class : ",  ->
     xit 'should parse A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)', ->
-      expect(str parse('A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)')).to.equal "[= A [class B [[call! :: [a [attribute! @ b]]] [-> [] [super]]] [[call! [attribute! :: f] [x]] [-> [] [[call! super [x]]]]]]]"
+      expect(parse('A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)')).to.equal "[= A [class B [[call! :: [a [attribute! @ b]]] [-> [] [super]]] [[call! [attribute! :: f] [x]] [-> [] [[call! super [x]]]]]]]"
     xit 'should compile A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)', ->
       expect(compile('A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)')).to.equal '7'
 

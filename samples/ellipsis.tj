@@ -22,9 +22,9 @@ m(1, 2, 3)
 
 // macro can have ellipsis parameters too.
 
-m #= (x..., b) -=> ` [begin!: print ^&x, print ^b ]
+m #= (x..., b) -> ` [begin!: print ^&x, print ^b ]
 
-m(1, 2, 3)
+m#(1, 2, 3)
 
 var x, y, z, a, m, n, p, q
 

@@ -65,7 +65,10 @@ describe('test command:', function() {
       it('parse temp.tj', function() {
         return expect(parse('samples-js/parse', 'samples/temp.tj')).to.deep.equal([void 0]);
       });
-      xit('compile temp.tj', function() {
+      it('transform temp.tj', function() {
+        return expect(transform('samples-js/transform', 'samples/temp.tj')).to.deep.equal([void 0]);
+      });
+      it('compile temp.tj', function() {
         return expect(compile('samples-js', 'samples/temp.tj')).to.deep.equal([void 0]);
       });
       it('parse hello.tj', function() {
@@ -110,7 +113,7 @@ describe('test command:', function() {
       it('parse snippets.tj', function() {
         return expect(parse('samples-js', 'samples/snippets.tj')).to.deep.equal([void 0]);
       });
-      iit('compile snippets.tj', function() {
+      it('compile snippets.tj', function() {
         return expect(compile('samples-js', 'samples/snippets.tj')).to.deep.equal([void 0]);
       });
       it('compile ellipsis.tj', function() {
@@ -156,10 +159,10 @@ describe('test command:', function() {
       it('parse module.tj', function() {
         return expect(parse('taiji-libraries-js/parse', 'taiji-libraries/module.tj')).to.deep.equal([void 0]);
       });
-      it('compile module.tj', function() {
+      xit('compile module.tj', function() {
         return expect(compile('taiji-libraries-js', 'taiji-libraries/module.tj')).to.deep.equal([void 0]);
       });
-      xit('compile browser.tj', function() {
+      it('compile browser.tj', function() {
         return expect(compile('taiji-libraries-js', 'taiji-libraries/browser.tj')).to.deep.equal([void 0]);
       });
       return it('compile html.tj', function() {
@@ -178,7 +181,7 @@ describe('test command:', function() {
     it('hello.tj', function() {
       return expect(run('samples/hello.tj')).to.deep.equal([void 0]);
     });
-    return xit('ellipsis.tj', function() {
+    return it('ellipsis.tj', function() {
       return expect(run('samples/ellipsis.tj')).to.deep.equal([void 0]);
     });
   });
