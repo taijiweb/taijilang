@@ -235,16 +235,16 @@ describe "parser basic: ",  ->
         parser = new Parser()
         x = parser.parse(text, parser.taijiIdentifier, 0)
         #      console.log JSON.stringify x
-        x.value
+        x and x.value
 
       it "parse a", ->
         expect(parse('a')).to.equal 'a'
       it "parse ?", ->
-        expect(-> parse('?')).to.throw /Cannot read property 'value' of undefined/
+        expect(parse('?')).to.equal undefined
       it "parse #", ->
-        expect(-> parse('#')).to.throw /Cannot read property 'value' of undefined/
+        expect(parse('#')).to.equal undefined
       it "parse !ds", ->
-        expect(-> parse('!ds')).to.throw /Cannot read property 'value' of undefined/
+        expect(parse('!ds')).to.equal undefined
       it "parse a!", ->
         expect(parse('a!')).to.equal 'a!'
       # "x #= y" is defined as "## [= x y]', so '#' should not be used as identifier char

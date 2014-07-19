@@ -97,7 +97,7 @@ Thanks to the people who make the great things, I learned so much from them:
 
 [Ryan Dahl](http://www.youtube.com/watch?v=ztspvPYybIY), he created [node.js](http://nodejs.org/), Taijilang runs on node.js.
 
-[Santosh Rajan](http://santoshrajan.com/), he created [lispyscript](github.com/santoshrajan/lispyscript), from which I got the original inspiration on how to design Taijilang.
+[Santosh Rajan](http://santoshrajan.com/), he created [lispyscript](github.com/santoshrajan/lispyscript), from which I got the instant spark to creating Taijilang.
 
 [TJ Holowaychuk](http://tjholowaychuk.com/), he shines the two letter "TJ" because of [so many great stuffs he have made](https://github.com/visionmedia), and I am honored to use .tj as the extension name of taijilang code file.
 

@@ -199,20 +199,25 @@ exports.formatTaijiJson = formatTaijiJson = (exp, level, start, newline, indent,
       result += ', '+formatTaijiJson(exp[1], level, result.length, false, indent, lineLength)
       result += ',\n'+formatTaijiJson(exp[2], level+1, 0, true, indent, lineLength)
       if exp[3] then result += ',\n'+formatTaijiJson(exp[3], level+1, 0, true, indent, lineLength)
-    else if exp0[exp0.length-1]=='='
-      result += ', '+formatTaijiJson(exp[1], level+1, result.length, false, indent, lineLength)
-      result += ',\n'+formatTaijiJson(exp[2], level+1, 0, true, indent, lineLength)
-    else if (x=exp0[exp0.length-2...])=='->' or x=='=>'
-      result += ', '+formatTaijiJson(exp[1], level, result.length, false, indent, lineLength)
-      result += ',\n'+formatTaijiJson(exp[2], level+1, 0, true, indent, lineLength)
+    else if exp0
+      if exp0[exp0.length-1]=='='
+        result += ', '+formatTaijiJson(exp[1], level+1, result.length, false, indent, lineLength)
+        result += ',\n'+formatTaijiJson(exp[2], level+1, 0, true, indent, lineLength)
+      else if exp0.slice and ((x=exp0[exp0.length-2...])=='->' or x=='=>')
+        result += ', '+formatTaijiJson(exp[1], level, result.length, false, indent, lineLength)
+        result += ',\n'+formatTaijiJson(exp[2], level+1, 0, true, indent, lineLength)
+      else
+        for x in exp[1...]
+          if result.length>40
+            result += '\n'+formatTaijiJson(x, level+1, 0, true, indent, lineLength)
+          else result += ','+formatTaijiJson(x, level, result.length, false, indent, lineLength)
     else
-      for x, i in exp[1...]
+      for x in exp[1...]
         if result.length>40
           result += '\n'+formatTaijiJson(x, level+1, 0, true, indent, lineLength)
         else result += ','+formatTaijiJson(x, level, result.length, false, indent, lineLength)
     return result+']'
   else JSON.stringify(exp)
-
 
 # transform.coffee: merge list of variable list
 exports.mergeList = (lists...) ->

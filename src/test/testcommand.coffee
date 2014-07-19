@@ -53,7 +53,7 @@ describe 'test command:', ->
       it 'parse snippets.tj', -> expect(parse 'samples-js', 'samples/snippets.tj').to.deep.equal [undefined]
       it 'compile snippets.tj', -> expect(compile 'samples-js', 'samples/snippets.tj').to.deep.equal [undefined]
       it 'compile ellipsis.tj', -> expect(compile 'samples-js', 'samples/ellipsis.tj').to.deep.equal [undefined]
-      it 'compile include.tj', -> expect(compile 'samples-js', 'samples/include.tj').to.deep.equal [undefined]
+      iit 'compile include.tj', -> expect(compile 'samples-js', 'samples/include.tj').to.deep.equal [undefined]
       it 'compile use.tj', -> expect(compile 'samples-js', 'samples/use.tj').to.deep.equal [undefined]
 
     describe "parse and compile samples/bootstrap: ",  ->
@@ -66,12 +66,14 @@ describe 'test command:', ->
     describe "parse and compile taiji-libraries: ",  ->
       it 'parse macros.tj', -> expect(parse 'taiji-libraries-js/parse', 'taiji-libraries/macros.tj').to.deep.equal [undefined]
       it 'compile macros.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/macros.tj').to.deep.equal [undefined]
-      xit 'parse class.tj', -> expect(parse 'taiji-libraries-js/parse', 'taiji-libraries/class.tj').to.deep.equal [undefined]
+      it 'parse class.tj', -> expect(parse 'taiji-libraries-js/parse', 'taiji-libraries/class.tj').to.deep.equal [undefined]
       xit 'compile class.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/class.tj').to.deep.equal [undefined]
       it 'parse module.tj', -> expect(parse 'taiji-libraries-js/parse', 'taiji-libraries/module.tj').to.deep.equal [undefined]
       xit 'compile module.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/module.tj').to.deep.equal [undefined]
       it 'compile browser.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/browser.tj').to.deep.equal [undefined]
       it 'compile html.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/html.tj').to.deep.equal [undefined]
+      it 'parse prelude.tj', -> expect(parse 'taiji-libraries-js', 'taiji-libraries/prelude.tj').to.deep.equal [undefined]
+      it 'compile prelude.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/prelude.tj').to.deep.equal [undefined]
 
   run = (filePath) ->
     command.opts = {run:true, arguments:[filePath]}

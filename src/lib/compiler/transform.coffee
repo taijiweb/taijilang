@@ -1,5 +1,7 @@
 {str, isArray, extend, error, mergeList, begin, pushExp, notExp, undefinedExp, entity, wrapInfo1} = require '../utils'
 
+# todo: keep the env of the function definition expression
+
 exports.idFn = idFn = (exp, env) -> exp
 
 hasOwnProperty = Object::hasOwnProperty
@@ -13,6 +15,7 @@ addStatementEffectFnMap =
   'prefix!': (info, exp) -> info.addEffectOf(exp[2])
   'suffix!': (info, exp) -> info.addEffectOf(exp[2])
   'binary!': (info, exp) -> addStatementEffectList(info, exp[2..3])
+  'metaConvertVar!': (info, exp) -> return
   'break': (info, exp) -> return
   'quote!': (info, exp) -> return
   'regexp!': (info, exp) -> return
@@ -225,6 +228,11 @@ transformExpressionFnMap =
     if shiftStmtInfo.maybeAffect(entity(exp[1]))
       [begin([['var', t=env.ssaVar('t')], ['=', t, exp[1]]]), t]
     else [undefined, exp]
+  'metaConvertVar!':(exp, env, shiftStmtInfo) ->
+    variable = exp[1]+(env.getSymbolIndex(exp[1]) or '')
+    if shiftStmtInfo.maybeAffect(entity(exp[1]))
+      [begin([['var', t=env.ssaVar('t')], ['=', t, variable]]), t]
+    else [undefined, variable]
 
   'new': (exp, env, shiftStmtInfo) ->
     if exp[1] and exp[1][0]=='call!'

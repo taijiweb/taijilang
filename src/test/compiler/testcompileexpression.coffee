@@ -6,11 +6,14 @@ nit = ndescribe = ->
 
 lib = '../../lib/'
 {Environment, textizerOptions, builtins, initEnv, rootModule} = require lib+'taiji'
-{compileExp, compileExpNoOptimize} = require lib+'compiler'
+{compileExp, compileExpNoOptimize} = compiler = require lib+'compiler'
 {extend} =  require lib+'utils'
 
 compile = (exp) -> compileExp(exp, initEnv(builtins, rootModule, {}))
 compileNoOptimize = (code) -> compileExpNoOptimize(exp, initEnv(builtins, rootModule, {}))
+
+transform = (exp) ->
+  compiler.transform(exp,  initEnv(builtins, rootModule, {}))
 
 describe "compile expression: ",  ->
   describe "simple: ",  ->

@@ -5,8 +5,7 @@
 fs = require 'fs'
 {convertIdentifier, entity, begin, error, isArray, error, extend, splitSpace, return_, undefinedExp, addPrelude} = require '../utils'
 {Parser} = require '../parser'
-{convert, convertList, convertEllipsisList, convertExps, compileExp, transformToCode, metaProcessConvert} = require '../compiler'
-TaijiModule = require '../module'
+{convert, convertList, convertEllipsisList, convertExps, compileExp, transformToCode, metaProcessConvert, metaProcess} = require '../compiler'
 
 metaIndex = 0
 
@@ -18,6 +17,10 @@ exports['extern!'] = (exp, env) ->
     env.set(v, v)
     if isConst then e.const = true
   ''
+
+# todo: while transform(exp, env), [metaConvertVar name] should be transformed a proper variable name
+# avoid to conflict with other names
+exports['metaConvertVar!'] = (exp, env) -> ['metaConvertVar!', exp[0]]
 
 # always generate a new var a const
 # so continuous "var a; var a;" will generate two different variable.
@@ -32,10 +35,10 @@ declareVar = (fn) -> (exp, env) ->
       v = env.set(e0, e); fn(v)
       if v.const then error 'const need to be initialized to a value'
       result.push(['var', v]); result.push v
+    else if Object.prototype.toString.call(e)=='[object Array]' and e[0]=='metaConvertVar!' then result.push e
     else
       e0 = entity(e[0])
-      if typeof e0!='string' or e0[0]=='"'
-        error 'illegal variable name in variable initialization'
+      if typeof e0!='string' or e0[0]!='"' then error 'illegal variable name in variable initialization'
       v = env.newVar(e0); fn(v); result.push(['var', v])
       if (e2=entity(e[2])) and e2[1]=='=' and typeof e2[0]=='string' and e2[0][0]!='"'
         result.push(['=', v, convert([exp[0], e[2]], env)])
@@ -261,94 +264,6 @@ do -> for word in splitSpace 'break continue' then exports[word] = idConvert(wor
 exports['lineComment!'] = (exp, env) -> ''
 exports['codeBlockComment!'] = (exp, env) -> ''
 
-tjModule = require '../module'
-
-parser = new Parser
-
-# include! with parseMethod filePath
-exports['include!'] = (exp, env) ->
-  filePath = entity(exp[0])
-  filePath = filePath.slice(1, filePath.length-1)
-  #console.log 'include!: parent module:'+JSON.stringify env.module
-  #console.log env.module instanceof TaijiModule
-  taijiModule = new TaijiModule(filePath, env.module)
-  newEnv = env.extend(null, env.parser, taijiModule)
-  raw = fs.readFileSync taijiModule.filePath, 'utf8'
-  code = if raw.charCodeAt(0) is 0xFEFF then raw.substring 1 else raw
-  parseMethod = exp[1]
-  if parseMethod then parseMethod = parser[entity(parseMethod)]
-  else parseMethod = parser.module
-  exp = parser.parse(code, parseMethod, 0, newEnv)
-  exp = convert(exp.body, newEnv)
-
-# use! with parseMethod #name [as alias], ..., from module as alias
-# use! name [as alias], ... from module as alias
-# use! module as alias
-exports['use!'] = (exp, env) ->
-  filePath = entity(exp[0])
-  filePath = filePath.slice(1, filePath.length-1)
-  taijiModule = new TaijiModule(filePath, env.module)
-  alias = exp[1]; parseMethod = exp[2]; names = exp[3]
-  if parseMethod then parseMethod = parser[entity(parseMethod)]
-  else parseMethod = parser.module
-  newEnv = env.extend(null, env.parser, taijiModule)
-  raw = fs.readFileSync taijiModule.filePath, 'utf8'
-  code = if raw.charCodeAt(0) is 0xFEFF then raw.substring 1 else raw
-  exp = parser.parse(code, parseMethod, 0, newEnv)
-  moduleFn =  ['->', ['$$taijiModule'], begin([exp.body, '$$taijiModule'])]
-  useExp = ['call!', moduleFn, [['hash!']]]
-  if not alias
-    alias = env.ssaVar('module')
-    env.set(alias.value, alias)
-    useExp.push ['direct!', ['var', alias]]
-  else
-    useExp.push ['var', alias]
-  useExp = ['=', alias, useExp]
-  useExp = [useExp]
-  metaNames = []
-  for item in names
-    [name, asName, inMeta] = item
-    if inMeta then metaNames.push [name, asName]; continue
-    asName = asName or name
-    useExp.push ['var', asName]
-    useExp.push ['=', asName, ['attribute!', alias, name]]
-  resultExp = convert(begin(useExp), newEnv)
-  tjExports = newEnv.module.exports
-  for item in metaNames
-    [name, asName] = item
-    asName = entity(asName); name = entity(name)
-    asName = asName or name
-    if hasOwnProperty.call(tjExports, name)
-      envValue = tjExports[name]
-      env.set(asName, envValue)
-    else error 'can not look up '+ name + ' from variable environment'
-  resultExp
-
-exports['export!'] = (exp, env) ->
-  meta = env.meta
-  isUsed = env.get('$$taijiModule')
-  result = []
-  for item in exp
-    [name, value, inMeta] = item
-    eName = entity(name)
-    if inMeta
-      if value
-        if isUsed
-          # meta.env ensure value can be compileExp and eval.
-          env.module.exports[eName] = compileMetaListCode(value, env)
-        else env.set(eName, eval(compileExp(value, meta.env)))
-      else
-        if isUsed then env.module.exports[eName] = env.get(eName)
-        #else #nothing need to do, nam is just in the env
-    else
-      if value
-        if isUsed then result.push ['=', ['attribute!', '$$taijiModule', name], value]
-        else result.push ['=', ['attribute!', 'exports', name], value]
-      else
-        if isUsed then result.push ['=', ['attribute!', '$$taijiModule', name], name]
-        else result.push ['=', ['attribute!', 'exports', name], name]
-  convert begin(result), env
-
 exports['direct!'] = (exp, env) -> exp[0]
 exports['quote!'] = (exp, env) -> ['quote!', entity(exp[0])]
 
@@ -481,7 +396,7 @@ exports['eval!'] = (exp, env) ->
 convertMetaExp = (head) -> (exp, env) -> [head, convert(exp[0], env)]
 exports['##'] = convertMetaExp('##')
 exports['#'] = convertMetaExp('#')
-exports['#.'] = convertMetaExp('#.')
+exports['#/'] = convertMetaExp('#/')
 exports['#call!'] = (exp, env) -> ['#call', convert(exp[0], env), convert(exp[1], env)]
 
 # dynamic syntax, extend the parser on the fly

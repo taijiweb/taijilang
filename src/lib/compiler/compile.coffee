@@ -1,4 +1,5 @@
-{evaljs, isArray, extend, str, wrapInfo1, entity, pushExp, undefinedExp} = require '../utils'
+fs = require 'fs'
+{evaljs, isArray, extend, str, formatTaijiJson, wrapInfo1, entity, pushExp, undefinedExp, begin} = require '../utils'
 
 {constant} = require '../parser/base'
 {NUMBER, STRING, IDENTIFIER, SYMBOL, REGEXP, HEAD_SPACES, CONCAT_LINE, PUNCT, FUNCTION,
@@ -12,9 +13,11 @@ INDENT, UNDENT, HALF_DENT
 {Environment} = require './env'
 exports.Environment = Environment
 {transform} = require './transform'
+exports.transform = transform
 {analyze} = require './analyze'
 {optimize} = require './optimize'
 {tocode} = require './textize'
+{Parser} = require '../parser'
 
 getStackTrace = ->
   obj = {}
@@ -70,7 +73,7 @@ exports.convert = convert = (exp, env) ->
     if exp==result then result
     else wrapInfo1 result, exp
 
-exports.convertExps = convertExps = (exp, env) -> ['begin!'].concat(for e in exp then convert e, env)
+exports.convertExps = convertExps = (exp, env) -> begin(for e in exp then convert e, env)
 exports.convertList = (exp, env) -> for e in exp then convert(e, env)
 exports.convertEllipsisList = convertEllipsisList = (exp, env) ->
   if exp.length==0 then return []
@@ -115,14 +118,18 @@ exports.convertEllipsisList = convertEllipsisList = (exp, env) ->
 
 $atMetaExpList = (index) -> ['index!', ['jsvar!', '__tjExp'], index]
 
+TaijiModule = require '../module'
+parser = new Parser
+
 preprocessMetaConvertFnMap =
   'if': (exp, metaExpList, env) ->
     test = metaTransform(exp[1], metaExpList, env)
-    metaExpList.push metaTransform(exp[2], metaExpList, env)
+    metaExpList.push metaConvert(exp[2], metaExpList, env)
     thenIndex = env.metaIndex++
-    metaExpList.push  metaTransform(exp[3], metaExpList, env)
+    metaExpList.push  metaConvert(exp[3], metaExpList, env)
     elseIndex = env.metaIndex++
     ['if', test, $atMetaExpList(thenIndex), $atMetaExpList(elseIndex)]
+  # #while is not tested still
   'while': (exp, metaExpList, env) ->
     metaExpList.push metaConvert(exp[2], metaExpList, env)
     whileIndex = env.metaIndex++
@@ -137,8 +144,114 @@ preprocessMetaConvertFnMap =
   #'letloop': (exp, metaExpList, env) ->
   # todo add more construct here ...
 
+taijiExports = ['jsvar!', 'exports']
+# use index! so taiji identifier like undefined? will not be illegal in javascript
+# if use 'attribute!' then "exports.undefined?" will be illegel javascript code
+exportsAttr = (attr) -> ['index!',taijiExports , attr]
+
+parseModule = (modulePath, env, parseMethod) ->
+  filePath = modulePath.slice(1, modulePath.length-1)
+  taijiModule = new TaijiModule(filePath, env.module)
+  newEnv = env.extend(null, env.parser, taijiModule)
+  raw = fs.readFileSync taijiModule.filePath, 'utf8'
+  code = if raw.charCodeAt(0) is 0xFEFF then raw.substring 1 else raw
+  if parseMethod then parseMethod = parser[entity(parseMethod)]
+  else parseMethod = parser.module
+  exp = parser.parse(code, parseMethod, 0, newEnv)
+  [exp.body, newEnv]
+
+wrapModuleFunctionCall = (exp, moduleVar) ->
+  ['=', moduleVar, ['call!', ['|->', [], begin([['=', taijiExports, ['hash!']], exp, ['return', taijiExports]])], []]]
+
+wrapMetaObjectFunctionCall = (exp, metaExpList, env, metaModuleAlias, objectModuleAlias) ->
+  # the object function wrapper should be metaConverted,
+  # which generate ['list!', '|->'(index form), ..., some meta pieces, ...]
+  #metaModuleVar = metaModuleAlias or (v=env.newTaijiVar('__taiji$Module__'))
+  if objectModuleAlias
+    objectModuleVar = objectModuleAlias
+    objectModuleInMetaLevel = metaConvert(wrapModuleFunctionCall(exp, objectModuleVar), metaExpList, env)
+  else
+    objectModuleVar = ['metaConvertVar!', 'module']
+    objectModuleInMetaLevel = metaConvert(['begin!', ['var', objectModuleVar], wrapModuleFunctionCall(exp, objectModuleVar)], metaExpList, env)
+  # all of part of the generated expression by below action is prepared meta level expression as they are.
+  # so metaTransform need not be called
+  if metaModuleAlias
+    metaModuleVar = metaModuleAlias
+    wrapModuleFunctionCall(exp, metaModuleVar)
+  else
+    metaModuleVar = ['metaConvertVar!', 'module']
+    ['begin!', ['var', metaModuleVar], wrapModuleFunctionCall(objectModuleInMetaLevel, metaModuleVar)]
+
+metaConvertExport = (exp, metaExpList, env) ->
+  result = []
+  for item in exp
+    [name, value, inMeta, inObject] = item
+    # !!! should not env.get or do other transformation to the name
+    # because the name would be the attribute of the exports object
+    # not in the variable scope
+    if value is undefined then value = name
+    if inMeta then fn = metaTransform
+    else fn = metaConvert
+    fn(['=', exportsAttr(name), value], metaExpList, env)
+  convert begin(result), env
+
+# todo: when convert non javascript symbol or name, how to ensure exported name can get the same name?
+# method 1:
+# 1.1 when exporting, the name should not be changed to add to __taijiModule.
+# 1.2 when including, use the same name, do not use env.newVar('x') and the like?
+# method 2:
+# based on 1.1, use env.newVar for the exported
+# please notice that we are in the metaConvert phases, not the convert phases, so name should not be converted.
+AssignIncludeVars = (moduleVar, env) ->
+  #exportVar = env.newTaijiVar('__taijiForLoopVar__')
+  exportVar = ['metaConvertVar!', 'name']
+  ['begin!', ['var', exportVar], ['forOf!', exportVar, moduleVar,
+     ['if', ['call!', ['attribute!', '__hasProp', 'call'], [exportVar]],
+        ['=', exportVar, ['index!', moduleVar, exportVar]]]]]
+
+# include! with parseMethod filePath
+metaConvertInclude = (exp, metaExpList, env) ->
+  [exp, newEnv] = parseModule entity(exp[1]), env, exp[2]
+  #moduleVar = newEnv.newTaijiVar('__taiji$Module__')
+  moduleVar = ['metaConvertVar!', 'module']
+  assignList = AssignIncludeVars(moduleVar, env)
+  exp = begin([wrapMetaObjectFunctionCall(exp, metaExpList, env, undefined, undefined),
+           # object level assign included exported vars to including same name vars
+           assignList,
+           metaConvert(assignList, metaExpList, env)])
+
+# import! with parseMethod #name [as alias], ..., from module as alias
+# import! name [as alias], ... from module as alias
+# import! module as alias
+metaConvertImport = (exp, metaExpList, env) ->
+  [filePath, metaModuleAlias, objectModuleAlias, importItems, parseMethod] = exp
+  [body, newEnv] = parseModule entity(filePath), env, parseMethod
+  result = []
+  moduleCall = wrapMetaObjectFunctionCall(body, metaExpList, env, metaModuleAlias, objectModuleAlias)
+  result.push moduleCall
+  for item in importItems
+    [name, asName, inMeta] = item
+    if inMeta then result.push ['=', asName, ['index!', metaModuleVar, name]]
+    else metaExpList.push ['=', asName, ['index!', metaModuleVar, name]]; result.push $atMetaExpList(env.metaIndex++)
+  begin(result)
+
+# process code which is hybrid of object and meta level
+# exp(like [#..., ], [include!, x], ...) is hybrid code
+# x is known at meta level
 metaConvertFnMap =
+  # directly evaluate in meta leval
   '##': (exp, metaExpList, env) -> metaTransform exp[1], metaExpList, env
+
+   # evaluate in both meta and object level
+  '#/': (exp, metaExpList, env) ->
+    result = metaTransform exp[1], metaExpList, env
+    metaExpList.push result; ['begin!', result, $atMetaExpList(env.metaIndex++)]
+
+  # assign in meta level, same as
+  '#=': (exp, metaExpList, env) -> metaTransform ['=', exp[1], exp[2]], metaExpList, env
+  '#/=': (exp, metaExpList, env) ->
+    result = metaTransform ['=', exp[1], exp[2]], metaExpList, env
+    metaExpList.push result; begin([result, $atMetaExpList(env.metaIndex++)])
 
   '#': (exp, metaExpList, env) ->
     exp1 = exp[1]
@@ -149,7 +262,21 @@ metaConvertFnMap =
       else return metaTransform exp1, metaExpList, env
     else metaTransform exp1, metaExpList, env
 
-  '#=': (exp, metaExpList, env) -> ['=', metaTransform(exp[1], metaExpList, env), metaTransform(exp[2], metaExpList, env)]
+  # exit meta level while parsing meta
+  '#-': (exp, metaExpList, env) ->
+    error 'unexpected meta operator #-'
+
+  # #& metaConvert exp and get the current expression(not metaConverted raw program)
+  '#&': (exp, metaExpList, env) ->
+    exp2 = metaTransform(exp, metaExpList, env)
+    metaExpList.push exp
+    begin([exp2, $atMetaExpList(env.metaIndex++)])
+
+  # #&= assign the object level program to meta variable( not metaConverted raw program)
+  '#&=': (exp, metaExpList, env) ->
+    exp2 = metaTransform(exp[2], metaExpList, env)
+    metaExpList.push exp[2]
+    begin([exp2, ['=', exp[1], $atMetaExpList(env.metaIndex++)]])
 
   # macro call
   '#call!': (exp, metaExpList, env) ->
@@ -157,16 +284,26 @@ metaConvertFnMap =
     for e in exp[2] then metaExpList.push metaTransform(e, env); args.push $atMetaExpList(env.metaIndex++)
     #console.log code.text
     ['call!', metaTransform(exp[1], metaExpList, env), args]
-  # both meta level and object level
-  '#/': (exp, metaExpList, env) ->
 
+  'export!': metaConvertExport
+  'include!': metaConvertInclude
+  'import!': metaConvertImport
+
+# whehter head is a operator for meta expression?
+isMetaOperation = (head) -> head[0]=='#' or head=='include!' or head=='import!'
+
+# should be called by metaConvert while which is processing meta level code
+# exp should be the code which is known being at meta level.
 metaTransform = (exp, metaExpList, env) ->
   if Object.prototype.toString.call(exp) == '[object Array]'
     if exp.length==0 then return exp
-    else if (head=entity(exp[0])) and head[0]=='#' then metaConvert(exp, metaExpList, env)
-    else for e in exp then metaTransform(e, metaExpList, env)
+    else if (head=entity(exp[0])) and isMetaOperation(head) then metaConvert(exp, metaExpList, env)
+    else for e in exp
+      # contrary to metaConvert, no list! is unshifted and not index form
+      metaTransform(e, metaExpList, env)
   else return exp
 
+# whether exp contains any meta operations?
 hasMeta = (exp) ->
   if not exp then return false
   if exp.hasMeta then return true
@@ -182,24 +319,27 @@ hasMeta = (exp) ->
   exp.hasMeta = false
   return false
 
+# meta convert a hybrid meta and object level expression to a meta level expression, which will be the parameter of "convert" function.
+# all meta expression will be compiled to javascript code,
+# but original object level expression will be transformed to a _tjExp parameter index expression of the meta leval javascript function
 exports.metaConvert = metaConvert = (exp, metaExpList, env) ->
   if Object.prototype.toString.call(exp) == '[object Array]'
     if exp.length==0 then return []
     exp0 = entity exp[0]
     if fn=metaConvertFnMap[exp0] then return fn(exp, metaExpList, env)
     else
+      # contrary to metaConvert, list! is unshifted to the head of exp and e is transformed to index form when necessary
       if hasMeta(exp)
         result = ['list!']
         for e, i in exp then result.push metaConvert(e, metaExpList, env)
         return result
       else metaExpList.push exp; return $atMetaExpList(env.metaIndex++)
-  else
-#    e = entity exp
-#    if typeof e == 'string' and e[0]=='"' then return exp
-#    else return exp
-    metaExpList.push exp; return $atMetaExpList(env.metaIndex++)
+  else metaExpList.push exp; return $atMetaExpList(env.metaIndex++)
 
-metaProcess = (exp, env) ->
+# metaConvert expression to meta level and compile to javascript function code
+# evaluate the function with the object expression pieces list as argument
+# and get the object level expression to wait convert and compile to object level javascript code
+exports.metaProcess = metaProcess = (exp, env) ->
   env = env.extend({})
   env.metaIndex = 0
   exp = metaConvert exp, metaExpList=[], env
@@ -207,12 +347,14 @@ metaProcess = (exp, env) ->
   #console.log code
   new Function(['__tjExp'], code)(metaExpList)
 
+# metaProcess, convert and transform the expression
 exports.transformExp = transformExp = (exp, env) ->
   exp = metaProcess exp, env
   exp = convert exp, env
   exp = transform exp, env
   exp
 
+# transform and optimize expression
 exports.transformToCode = transformToCode = (exp, env) ->
   exp = transform exp, env
   exp = analyze exp, env
@@ -229,6 +371,7 @@ exports.optimizeExp = optimizeExp = (exp, env) ->
   exp
 
 exports.nonMetaCompileExp = nonMetaCompileExp = (exp, env) ->
+  console.log formatTaijiJson entity exp
   exp = convert exp, env
   exp = transform exp, env
   exp = analyze exp, env

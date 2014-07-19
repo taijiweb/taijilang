@@ -293,25 +293,19 @@ describe("parser basic: ", function() {
         var parser, x;
         parser = new Parser();
         x = parser.parse(text, parser.taijiIdentifier, 0);
-        return x.value;
+        return x && x.value;
       };
       it("parse a", function() {
         return expect(parse('a')).to.equal('a');
       });
       it("parse ?", function() {
-        return expect(function() {
-          return parse('?');
-        }).to["throw"](/Cannot read property 'value' of undefined/);
+        return expect(parse('?')).to.equal(void 0);
       });
       it("parse #", function() {
-        return expect(function() {
-          return parse('#');
-        }).to["throw"](/Cannot read property 'value' of undefined/);
+        return expect(parse('#')).to.equal(void 0);
       });
       it("parse !ds", function() {
-        return expect(function() {
-          return parse('!ds');
-        }).to["throw"](/Cannot read property 'value' of undefined/);
+        return expect(parse('!ds')).to.equal(void 0);
       });
       it("parse a!", function() {
         return expect(parse('a!')).to.equal('a!');

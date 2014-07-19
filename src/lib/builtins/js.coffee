@@ -65,6 +65,7 @@ exports['__$taiji_$_$parser__'] = ['jsvar!', '__$taiji_$_$parser__']
 exports['@'] =  ['jsvar!', 'this']
 exports['arguments'] =  ['jsvar!', 'arguments']
 exports['__slice'] =  ['jsvar!', '__slice']
+exports['__hasProp'] =  ['jsvar!', '__hasProp']
 
 exports['regexp!'] = (exp, env) -> ['regexp!', exp[0]]
 

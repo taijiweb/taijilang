@@ -1,5 +1,4 @@
 {charset, isArray, wrapInfo1, wrapInfo2, str, entity} = require '../utils'
-{compileExp} = require '../compiler'
 
 {extend, firstIdentifierChars, firstIdentifierCharSet, letterDigitSet, identifierChars,
 digitCharSet, letterCharSet, identifierCharSet,
@@ -1189,25 +1188,26 @@ exports.Parser = ->
 
     'var': (isHeadStatement) -> ['var'].concat parser.varInitList()
     'extern!': (isHeadStatement) -> ['extern!'].concat parser.identifierList()
+    # no include!, only use!
     'include!': (isHeadStatement) ->
       spc()
       if with_ = word('with')
         spc(); parseMethod = expect('taijiIdentifier', 'expect a parser method')
       spc(); filePath = expect('string', 'expect a file path')
       ['include!', filePath, parseMethod]
-    'use!': (isHeadStatement) ->
+    'import!': (isHeadStatement) ->
       spc()
       if with_ = word('with')
         spc(); parseMethod = expect('taijiIdentifier', 'expect a parser method')
       items = parser.useItemList(); spc()
       if items.length then from_ = expectWord('from') # or items[0][2]
       else from_ = word('from')
-      #if not from_ then return ['use!', names[0][0], names[0][1], []]
+      #if not from_ then return ['import!', names[0][0], names[0][1], []]
       spc(); srcModule = parser.compactClauseExpression(); spc();
       if as_ = literal('as')
         spc()
         alias = expectIdentifier('expect an alias after "as" for module')
-      ['use!'].concat [srcModule, alias, parseMethod, items]
+      ['import!'].concat [srcModule, alias, parseMethod, items]
     'export!': (isHeadStatement) -> spc(); ['export!'].concat parser.exportItemList()
 
     'let': letLikeStatement('let')
@@ -1648,3 +1648,5 @@ exports.Parser = ->
     throw cursor+'('+lineno+':'+parser.getRow()+'): '+message+': \n'+text[cursor-40...cursor]+'|   |'+text[cursor...cursor+40]
 
   return @
+
+{compileExp} = require '../compiler'

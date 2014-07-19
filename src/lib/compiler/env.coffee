@@ -3,7 +3,7 @@
 
 hasOwnProperty = Object::hasOwnProperty
 
-convertToIdentifier = (symbol) ->
+toIdentifier = (symbol) ->
   result = ''
   for c in symbol
     if identifierCharSet[c] then result += c
@@ -39,7 +39,7 @@ exports.Environment = class Environment
     functionInfo
 
   newVar: (symbol) ->
-    name = convertToIdentifier(symbol)
+    name = toIdentifier(symbol)
     functionInfo = @getFunctionInfo()
     if not hasOwnProperty.call(functionInfo, name)
       functionInfo[name] = 1; {symbol: name}
@@ -48,9 +48,25 @@ exports.Environment = class Environment
         if not hasOwnProperty.call(functionInfo, symbolIndex) then break
       functionInfo[symbolIndex] = 1
       {symbol: symbolIndex}
+
   constVar: (symbol) -> v = @newVar(symbol); v.const = true; v
   ssaVar: (symbol) -> v = @newVar(symbol); v.ssa = true; v
 
+  #__taiji$AnyIdentifier__ -> __taiji$AnyIdentifier???__, where ??? is index to avoid conflicting
+  newTaijiVar: (symbol) ->
+    name = toIdentifier(symbol)
+    functionInfo = @getFunctionInfo()
+    if not hasOwnProperty.call(functionInfo, name)
+      functionInfo[name] = 1; {symbol: name}
+    else
+      while symbolIndex = name[...name.length-2]+(++functionInfo[name])+name[name.length-2...]
+        if not hasOwnProperty.call(functionInfo, symbolIndex) then break
+      functionInfo[symbolIndex] = 1
+      {symbol: symbolIndex}
+  getSymbolIndex: (symbol) ->
+    functionInfo = @getFunctionInfo()
+    if not hasOwnProperty.call(functionInfo, symbol) then return 0
+    else return functionInfo[symbol]
   hasLocal: (symbol) ->  hasOwnProperty.call(@scope, symbol)
 
   hasFnLocal: (symbol) ->

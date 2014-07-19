@@ -1,5 +1,7 @@
 2014
 2014-7
+7-18 
+  found a group of new meta operator #-, #&, #&=
 7-17
   (x, @y...) ->, (x, @y...) =>
   refactor meta compilation once again, no metaResultList and assign when metaConvert

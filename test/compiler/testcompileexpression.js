@@ -1,4 +1,4 @@
-var Environment, builtins, chai, compile, compileExp, compileExpNoOptimize, compileNoOptimize, expect, extend, idescribe, iit, initEnv, lib, ndescribe, nit, rootModule, textizerOptions, _ref, _ref1;
+var Environment, builtins, chai, compile, compileExp, compileExpNoOptimize, compileNoOptimize, compiler, expect, extend, idescribe, iit, initEnv, lib, ndescribe, nit, rootModule, textizerOptions, transform, _ref, _ref1;
 
 chai = require("chai");
 
@@ -14,7 +14,7 @@ lib = '../../lib/';
 
 _ref = require(lib + 'taiji'), Environment = _ref.Environment, textizerOptions = _ref.textizerOptions, builtins = _ref.builtins, initEnv = _ref.initEnv, rootModule = _ref.rootModule;
 
-_ref1 = require(lib + 'compiler'), compileExp = _ref1.compileExp, compileExpNoOptimize = _ref1.compileExpNoOptimize;
+_ref1 = compiler = require(lib + 'compiler'), compileExp = _ref1.compileExp, compileExpNoOptimize = _ref1.compileExpNoOptimize;
 
 extend = require(lib + 'utils').extend;
 
@@ -24,6 +24,10 @@ compile = function(exp) {
 
 compileNoOptimize = function(code) {
   return compileExpNoOptimize(exp, initEnv(builtins, rootModule, {}));
+};
+
+transform = function(exp) {
+  return compiler.transform(exp, initEnv(builtins, rootModule, {}));
 };
 
 describe("compile expression: ", function() {

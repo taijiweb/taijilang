@@ -1,3 +1,3 @@
 taiji language 0.1
 
-include! './hello.tj'
+include! './module1.tj'

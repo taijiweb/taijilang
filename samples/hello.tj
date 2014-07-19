@@ -1,3 +1,7 @@
 taiji language 0.1
 
 print 'hello taiji'
+
+print __taijiVersion
+
+undefined? # 1
