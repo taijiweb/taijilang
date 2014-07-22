@@ -1,0 +1,56 @@
+["begin!",
+  ["lineComment!","\"// Some example code snippets\r\n\r\n\""],
+  ["#=", "undefined?",
+    ["->", ["obj"],
+      [["quasiquote!",["==",["typeof",["unquote!","obj"]],"undefined"]]]]],
+  ["#=", "object?",
+    ["->", ["obj"],
+      [["quasiquote!",["==",["typeof",["unquote!","obj"]],"\"object\""]]]]],
+  ["#=", "array?",
+    ["->", ["obj"],
+      [["quasiquote!",["===", ["call!",["attribute!",["attribute!",["attribute!","Object","prototype"]
+          "toString"]
+          "call"]
+          [["unquote!","obj"]]],
+        "\"[object Array]\""]]]]],
+  ["if", ["#call!","undefined?",["window"]],
+    [["attribute!","console","log"],["string!","\"Not Running on browser\""]],
+    [["attribute!","console","log"],["string!","\"Running on browser\""]]],
+  ["=","arr",["quote!",["list!",[1,2,3,4,5]]]],
+  [["attribute!","console","log"],["index!","arr",2]],
+  ["if!",["!=",1,2],["list!",[["attribute!","console","log"],["string!","\"Nos are not equal\""]]]],
+  ["if", ["#call!","object?",["console"]],
+    [["attribute!","console","log"],["string!","\"console is an object\""]],
+    [["attribute!","console","log"],["string!","\"console is not an object\""]]],
+  ["if", ["#call!","object?",["console"]],
+    [["attribute!","console","log"],["string!","\"console is an object\""]],
+    [["attribute!","console","log"],["string!","\"console is not an object\""]]],
+  ["if", ["#call!","object?",["console"]],
+    [["attribute!","console","log"],["string!","\"console is an object\""]],
+    [["attribute!","console","log"],["string!","\"console is not an object\""]]],
+  ["if", ["#call!","object?",["console"]],
+    ["if", "arr",
+      [["attribute!","console","log"],["string!","\"console is an object\""]],
+      [["attribute!","console","log"],["string!","\"console is not an object\""]]]],
+  ["if", ["#call!","object?",["console"]],
+    ["if", "arr",
+      ["if", ["!=","arr",1],
+        [["attribute!","console","log"],["string!","\"console is an object\""]],
+        [["attribute!","console","log"],["string!","\"console is not an object\""]]],
+      [["attribute!","console","log"],["string!","\"console is not an object\""]]]],
+  ["if", ["#call!","array?",["console"]],
+    [["attribute!","console","log"],["string!","\"console is an array\""]],
+    [["attribute!","console","log"],["string!","\"console is not an array\""]]],
+  ["=","_",["require","\"underscore\""]],
+  [["attribute!",["attribute!",["attribute!","Array","prototype"]
+    "forEach"]
+    "call"]
+    ["quote!",["list!",[1,2,3]]]
+    ["->", ["elem","i","list"],
+      [[["attribute!","console","log"],"elem"]]]],
+  [["attribute!",["attribute!",["attribute!","Array","prototype"]
+    "forEach"]
+    "call"]
+    ["list!",[1,2,3]]
+    ["->", ["elem","i","list"],
+      [[["attribute!","console","log"],"elem"]]]]]

@@ -110,6 +110,7 @@ tokenFnMap =
     if e=='' or (ee=entity(e))=='' or e==undefined or ee==undefined then exps.pop()
     if exps.length==1 then return statement exps[0]
     else statementList(for e in exps then statement(e))
+  'debugger!': (exp) -> 'debugger'
   'label!': (exp) -> [token(exp[1]), ': ', token(exp[2])]
   'break': (exp) -> ['break ', token(exp[1])]
   'continue': (exp) -> ['continue ', token(exp[1])]
@@ -132,8 +133,9 @@ tokenFnMap =
     result = ['try ', wrapBlock(token(exp[1])), clause('catch ', paren(token(exp[2]))),  wrapBlock(token(exp[3]))]
     if exp[4] then result.push  clause('finally ', wrapBlock token(exp[4]))
     compound result
+  # javascript has no "for key of hash {...}", has "for key in hash {...}" instead.
   'forIn!': (exp) -> compound('for ', paren([token(exp[1]), ' in ', token(exp[2])]), block(token(exp[3])))
-  'forOf!': (exp) -> compound('for ', paren([token(exp[1]), 'of ', token(exp[2])]), block(token(exp[3])))
+  #'forOf!': (exp) -> compound('for ', paren([token(exp[1]), 'of ', token(exp[2])]), block(token(exp[3])))
   'cfor!': (exp) ->  compound('for ', paren([token(exp[1]), ';', token(exp[2]), ';', token(exp[3])]), block(token(exp[4])))
   'switch': (exp) ->
     body = []

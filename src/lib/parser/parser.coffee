@@ -1109,21 +1109,60 @@ exports.Parser = ->
     if not result.length then rollback start, line1; return
     return result
 
-  @useItem = ->
-    if (c=text[cursor])=='#' then cursor++; meta = 'meta'; spc()
-    if (x=follow('jsIdentifier')) and x.value=='from'
-      if meta
-        error 'keyword "from" should not follow "#" immediately in use! statement, expect variable name instead'
-      else return
+  @importItem = ->
+    start = cursor; line1 = lineno
+    sym = parser.symbol()
+    if sym and (symValue=sym.value)!='#' and symValue!='#/'
+      error 'unexpected symbol after "as" in import! statement'
+    name = parser.identifier()
+    if name
+      if name.value=='from'
+        if sym
+          error 'keyword "from" should not follow "#" or "#/" immediately in import! statement, expect variable name instead'
+        else return rollback(start, lineno)
     else if text[cursor]=="'" or text[cursor]=='"'
-      if meta
-        error 'file path should not follow "#" immediately in use! statement, expect variable name instead'
-      return
-    name = expectIdentifier(); spc();
+      if sym
+        error 'file path should not follow "#" or "#/" immediately in import! statement, expect variable name instead'
+      else return  rollback(start, lineno)
+    spc()
+    start1 = cursor; line2 = lineno
     if (as_=taijiIdentifier())
-      if as_.value!='as' then error 'unexpected word '+as_.value+', expect "as", "," or "from [module path...]"'
-      else spc(); asName = expectIdentifier(); spc()
-    [name, asName, meta]
+      if as_.value=='from' then as_ = undefined; rollback start1, line2
+      else if as_.value!='as' then error 'unexpected word '+as_.value+', expect "as", "," or "from [module path...]"'
+      else
+        spc()
+        sym2 = parser.symbol()
+        if sym2 and (symValue2=sym2.value)!='#' and symValue2!='#/'
+          error 'unexpected symbol after "as" in import! statement'
+        if symValue=='#/'
+          if symValue2=='#'
+            error 'expect "as #/alias" or or "as alias #alias2" after "#/'+name.value+'"'
+        else if symValue=='#'
+          if not symValue
+            error 'meta variable can not be imported as runtime variable'
+          else if symValue=='#/'
+            error 'meta variable can not be imported as both meta and runtime variable'
+        else if not symValue
+          if symValue2=='#'
+            error 'runtime variable can not be imported as meta variable'
+          else if symValue2=='#/'
+            'runtime variable can not be imported as both meta and runtime variable'
+        spc(); asName = expectIdentifier()
+        if symValue=='#/' and not symValue2
+          spc(); sym3 = parser.symbol()
+          if not sym3 then error 'expect # after "#/'+name.value+' as '+asName.value+'"'
+          else if sym3.value!='#' then error 'unexpected '+sym3.value+' after "#/'+name.value+'as '+asName.value+'"'
+          asName2 = expectIdentifier()
+    if not as_
+      if symValue=='#/' then return [[name, name], [name, name, 'meta']]
+      else if symValue=='#' then return [[name, name, 'meta']]
+      else return [[name, name]]
+    else
+      if symValue=='#/'
+        if asName2 then return [[name, asName], [name,asName2, 'meta']]
+        else return [[name, asName], [name,asName, 'meta']]
+      else if symValue=='#' then return [[name, asName, 'meta']]
+      else return [[name, asName]]
 
   @exportItem = ->
     if (c=text[cursor])=='#' then cursor++; meta = 'meta'; spc()
@@ -1145,7 +1184,13 @@ exports.Parser = ->
         else break
       result
 
-  @useItemList = seperatorList('useItem', spaceComma)
+  importItemFn = seperatorList('importItem', spaceComma)
+  @importItemList = ->
+    lst = importItemFn()
+    result = []
+    for items in lst then result.push.apply result, items
+    result
+
   @exportItemList = seperatorList('exportItem', spaceComma)
 
   @expectIdentifier = expectIdentifier = (message) ->
@@ -1188,26 +1233,42 @@ exports.Parser = ->
 
     'var': (isHeadStatement) -> ['var'].concat parser.varInitList()
     'extern!': (isHeadStatement) -> ['extern!'].concat parser.identifierList()
-    # no include!, only use!
     'include!': (isHeadStatement) ->
       spc()
       if with_ = word('with')
         spc(); parseMethod = expect('taijiIdentifier', 'expect a parser method')
       spc(); filePath = expect('string', 'expect a file path')
       ['include!', filePath, parseMethod]
+
+    # import [#/]name [as [#/]name] ... from path as [#/]name #name [with method]
     'import!': (isHeadStatement) ->
       spc()
-      if with_ = word('with')
-        spc(); parseMethod = expect('taijiIdentifier', 'expect a parser method')
-      items = parser.useItemList(); spc()
+      items = parser.importItemList(); spc()
       if items.length then from_ = expectWord('from') # or items[0][2]
       else from_ = word('from')
       #if not from_ then return ['import!', names[0][0], names[0][1], []]
-      spc(); srcModule = parser.compactClauseExpression(); spc();
+      spc(); srcModule = parser.string(); spc();
       if as_ = literal('as')
         spc()
-        alias = expectIdentifier('expect an alias after "as" for module')
-      ['import!'].concat [srcModule, alias, parseMethod, items]
+        sym = parser.symbol()
+        if sym
+          if (symValue=sym.value)!='#' and sym.valu!='#/'
+            error 'unexpected symbol before import module name', sym
+        alias = expectIdentifier('expect an alias for module')
+        if symValue=='#' then metaAlias = alias; alias = undefined
+        else if symValue=='#/' then metaAlias = alias
+        spc()
+        sym2 = parser.symbol()
+        if sym and sym2 then error 'unexpected symbol after meta alias'
+        spc(); alias2 = parser.identifier()
+        # sym is the first symbol # or #/
+        if sym  and alias2 then 'unexpected identifier '+alias2+' after '+symValue+alias
+        if alias2 then metaAlias = alias2
+        spc()
+      if with_ = word('with')
+        spc(); parseMethod = expect('taijiIdentifier', 'expect a parser method')
+      ['import!'].concat [srcModule, parseMethod, alias, metaAlias, items]
+
     'export!': (isHeadStatement) -> spc(); ['export!'].concat parser.exportItemList()
 
     'let': letLikeStatement('let')

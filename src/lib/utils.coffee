@@ -158,7 +158,7 @@ exports.return_ = return_ = (exp) ->
   if fn=returnFnMap[exp[0]] then return fn(exp)
   ['return', exp]
 
-exports.pushExp = (lst, v) -> ['call!', ['attribute!', lst, 'push'], v]
+exports.pushExp = (lst, v) -> ['call!', ['attribute!', lst, 'push'], [v]]
 exports.notExp = (exp) -> ['prefix!', '!', exp]
 exports.undefinedExp = undefinedExp = ['prefix!', 'void', 0]
 

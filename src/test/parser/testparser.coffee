@@ -710,15 +710,27 @@ describe "parse: ",  ->
           caption cite' '''
         expect(-> parse(code)).to.throw /unexpected end of input/
 
-    describe "use module: ",  ->
-      it '''should parse use! a as A, #b as b from 'x.tj' as x''', ->
-        code = '''use! a as A, #b as b from 'x.tj' as x '''
+    describe "import module: ",  ->
+      it '''should parse import! a as A, #b as #b from 'x.tj' as x''', ->
+        code = '''import! a as A, #b as #b from 'x.tj' as x '''
         x = str parse(code)
-        expect(x).to.deep.equal "[use! \"x.tj\" x undefined [[a A undefined] [b b meta]]]"
-      it '''should parse use! x''', ->
-        code = '''use! 'x.tj' '''
+        expect(x).to.deep.equal "[import! \"x.tj\" undefined x undefined [[a A] [b b meta]]]"
+      it '''should parse import! a as A, #b from 'x.tj' as x''', ->
+        code = '''import! a as A, #b from 'x.tj' as x '''
         x = str parse(code)
-        expect(x).to.deep.equal "[use! \"x.tj\" undefined undefined []]"
+        expect(x).to.deep.equal "[import! \"x.tj\" undefined x undefined [[a A] [b b meta]]]"
+      it '''should parse import! a as A, #/b from 'x.tj' as x''', ->
+        code = '''import! a as A, #/b from 'x.tj' as x '''
+        x = str parse(code)
+        expect(x).to.deep.equal "[import! \"x.tj\" undefined x undefined [[a A] [b b] [b b meta]]]"
+      it '''should parse import! a as A, #/b as b1 #b2 from 'x.tj' as x''', ->
+        code = '''import! a as A, #/b as b1 #b2 from 'x.tj' as x '''
+        x = str parse(code)
+        expect(x).to.deep.equal "[import! \"x.tj\" undefined x undefined [[a A] [b b1] [b b2 meta]]]"
+      it '''should parse import! x''', ->
+        code = '''import! 'x.tj' '''
+        x = str parse(code)
+        expect(x).to.deep.equal "[import! \"x.tj\" undefined undefined undefined []]" # import path method alias metaAlias importItemList
 
     describe "export!: ",  ->
       it '''should parse export! a = A, #b, c, #b = d''', ->

@@ -144,14 +144,6 @@ transformUnaryExpression = (exp, env, shiftStmtInfo) ->
       [stmt, e] = transformExpression(exp[2], env, shiftStmtInfo)
       [begin([stmt, ['var', (t=env.ssaVar('t'))], ['=', t,  ['prefix!', exp[1], e]]]), t]
 
-transformForInExpression = (exp, env, shiftStmtInfo) ->
-  lst = env.newVar('list')
-  [bodyStmt, bodyValue] = transformExpression(exp[3], env, shiftStmtInfo)
-  [rangeStmt, rangeValue] = transformExpression(exp[2], env, shiftStmtInfo)
-  forInStmt = [exp[0], exp[1], rangeValue,
-               begin([bodyStmt, pushExp(lst, bodyValue)])]
-  [begin([['var', lst], rangeStmt, forInStmt]), lst]
-
 transformExpressionFnMap =
   'string!': (exp, env, shiftStmtInfo) ->
      [stmt, es] = transformExpressionList(exp[1...], env, shiftStmtInfo)
@@ -215,11 +207,21 @@ transformExpressionFnMap =
   'return': transformReturnExpression
   'throw': transformReturnExpression
 
+  'debugger': (exp, env, shiftStmtInfo) -> [exp, undefinedExp]
+
+  # break label identifier
   'break': (exp, env, shiftStmtInfo) -> [exp, undefinedExp]
+  'continue': (exp, env, shiftStmtInfo) -> [exp, undefinedExp]
   'quote!': (exp, env, shiftStmtInfo) -> [undefined, exp]
   'regexp!': (exp, env, shiftStmtInfo) -> [undefined, exp]
-  'continue': (exp, env, shiftStmtInfo) -> [exp, undefinedExp]
-  'var': (exp, env, shiftStmtInfo) -> [exp, undefinedExp]
+
+  'var': (exp, env, shiftStmtInfo) ->
+    if Object.prototype.toString.call(exp[1]) == '[object Array]'
+      env = env.outerVarScopeEnv()
+      metaVar = exp[1][1]
+      variable = metaVar+(env.getSymbolIndex(metaVar) or '')
+      [['var', variable], variable]
+    else [exp, undefinedExp]
   'label!': (exp, env, shiftStmtInfo) ->
     [stmt, e] = transformExpression(exp[1], env, shiftStmtInfo)
     [['label!', stmt], e]
@@ -228,11 +230,14 @@ transformExpressionFnMap =
     if shiftStmtInfo.maybeAffect(entity(exp[1]))
       [begin([['var', t=env.ssaVar('t')], ['=', t, exp[1]]]), t]
     else [undefined, exp]
+  '@@': (exp, env, shiftStmtInfo) ->
+    env = env.outerVarScopeEnv()
+    metaVar = exp[1][1]
+    variable = metaVar+(env.getSymbolIndex(metaVar) or '')
+    [undefined, variable]
   'metaConvertVar!':(exp, env, shiftStmtInfo) ->
     variable = exp[1]+(env.getSymbolIndex(exp[1]) or '')
-    if shiftStmtInfo.maybeAffect(entity(exp[1]))
-      [begin([['var', t=env.ssaVar('t')], ['=', t, variable]]), t]
-    else [undefined, variable]
+    [undefined, variable]
 
   'new': (exp, env, shiftStmtInfo) ->
     if exp[1] and exp[1][0]=='call!'
@@ -315,8 +320,18 @@ transformExpressionFnMap =
                   e]
     [begin([['var', lst], doWhileStmt]), lst]
 
-  'forIn!': transformForInExpression
-  'forOf!': transformForInExpression
+  'forIn!': (exp, env, shiftStmtInfo) ->
+    lst = env.newVar('list')
+    [varStmt, varName] = transformExpression(exp[1], env, shiftStmtInfo)
+    [rangeStmt, rangeValue] = transformExpression(exp[2], env, shiftStmtInfo)
+    [bodyStmt, bodyValue] = transformExpression(exp[3], env, shiftStmtInfo)
+    # exp[0]: forIn! or forOf!
+    forInStmt = ['forIn!', varName, rangeValue,
+                 begin([bodyStmt, pushExp(lst, bodyValue)])]
+    [begin([['var', lst], varStmt, rangeStmt, forInStmt]), lst]
+
+  # javascript has no for key of hash {...}
+  #'forOf!': transformForInExpression
 
   'cFor!': (exp, env, shiftStmtInfo) ->
     lst = env.newVar('list')
@@ -428,6 +443,7 @@ transformExpressionList = (exps, env, shiftStmtInfo) ->
 useTransformExpression = (exp, env) -> begin transformExpression(exp, env, new ShiftAheadStatementInfo({}))
 
 transformFnMap =
+  'debugger': idFn
   'break': idFn
   'quote!': idFn
   'regexp!': idFn
@@ -455,8 +471,15 @@ transformFnMap =
     [stmt, testExp] = transformExpression(exp[2], env, new ShiftAheadStatementInfo({}))
     ['doWhile!', begin([ transform(exp[1], env), stmt]), testExp]
 
-  'forIn!': transformForInExpression
-  'forOf!': transformForInExpression
+  # for key in hash {...}
+  # [forIn! key hash body]
+  'forIn!': (exp, env) ->
+    [stmt, hashExp] = transformExpression(exp[2], env, new ShiftAheadStatementInfo({}))
+    if stmt then ['begin!', stmt, ['forIn!', transform(exp[1], env), hashExp, transform(exp[3], env)]]
+    else ['forIn!', transform(exp[1], env), hashExp, transform(exp[3], env)]
+
+  # javascript has no for key of hash {...}
+  #'forOf!': transformForInExpression
 
   'cFor!': (exp, env) ->
     [initStmt, initValue] = transformExpression(exp[1], env, new ShiftAheadStatementInfo({}))

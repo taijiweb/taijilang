@@ -32,7 +32,7 @@ compile = function(code) {
   return taiji.compile(head + code, taiji.rootModule, taiji.builtins, {});
 };
 
-describe("module.coffee: ", function() {
+describe("taiji module: ", function() {
   describe("path: ", function() {
     it('__dirname', function() {
       return expect(__dirname).to.match(/test/);
@@ -71,7 +71,7 @@ describe("module.coffee: ", function() {
   });
   return describe('include!', function() {
     return it('include! "./hello.jt"', function() {
-      return expect(compile("include! '../samples/hello.tj'")).to.equal("console.log(\"hello taiji\")");
+      return expect(compile("include! '../samples/hello.tj'")).to.equal("var name, module = function () {\n  var exports = { };\n  console.log(\"hello taiji\");\n  return exports;\n}();\n\nfor (name in module)\n  if (__hasProp.call(module, name))\n    name = module[name];");
     });
   });
 });

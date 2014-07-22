@@ -13,6 +13,11 @@ todo: ":" at the end of line can replace 'then'
 todo: add more cases for preprocess operator
   # let, letrec!, letloop!, doWhere!, while, doWhile!, doUntil!, cFor!, forIn!, forOf!, forIn!!, forOf!!
 
+todo: remove "entity" utility function
+  # method: everything is array, even number, string, identifier or symbol
+  # ['num!', value], ['str', "some string"], ['symbol', 'console'], ['symbol', '+'], etc...
+  # syntax information(cursor, line number, etc) is attachted to array
+  
 todo: assign optimization
   # ssaVar, const var, dummy var, etc
 

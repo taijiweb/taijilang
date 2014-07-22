@@ -35,10 +35,12 @@ declareVar = (fn) -> (exp, env) ->
       v = env.set(e0, e); fn(v)
       if v.const then error 'const need to be initialized to a value'
       result.push(['var', v]); result.push v
-    else if Object.prototype.toString.call(e)=='[object Array]' and e[0]=='metaConvertVar!' then result.push e
+    else if Object.prototype.toString.call(e)=='[object Array]' and e[0]=='metaConvertVar!'
+      result.push ['var', e]
     else
       e0 = entity(e[0])
-      if typeof e0!='string' or e0[0]!='"' then error 'illegal variable name in variable initialization'
+      if typeof e0!='string' or e0[0]=='"'
+        error 'illegal variable name in variable initialization: '+JSON.stringify e0
       v = env.newVar(e0); fn(v); result.push(['var', v])
       if (e2=entity(e[2])) and e2[1]=='=' and typeof e2[0]=='string' and e2[0][0]!='"'
         result.push(['=', v, convert([exp[0], e[2]], env)])
@@ -156,6 +158,7 @@ exports['#/'] = (exp, env) -> ['#/', convert(['=', exp[0], exp[1]], env)]
 
 exports['@@'] = (exp, env) ->
   name = entity(exp[0]); outerEnv = env.outerVarScopeEnv()
+  if Object.prototype.toString.call(name) == '[object Array]' then return ['@@', name]
   if env!=outerEnv and env.hasFnLocal(name)
     error '"'+name+'" is local variable, can not access outer "'+name+'"'
   # the parser should ensure the things below never happen:
@@ -267,7 +270,7 @@ exports['codeBlockComment!'] = (exp, env) -> ''
 exports['direct!'] = (exp, env) -> exp[0]
 exports['quote!'] = (exp, env) -> ['quote!', entity(exp[0])]
 
-exports['call!'] = (exp, env) -> exp[1].unshift exp[0]; convert(exp[1], env)
+exports['call!'] = (exp, env) -> convert([exp[0]].concat(exp[1]), env)
 
 exports['label!'] = (exp, env) -> ['label!', convertIdentifier(exp[0]), convert(exp[1], env)]
 
@@ -297,38 +300,38 @@ convertDefinition =  (exp, env, mode) ->
     scope['@'] = _this
   else scope['@'] = 'this'
   exp0 = exp[0]; exp1 = exp[1]; defaultList = []; thisParams = []
+  params = []
   for param, i in exp0
     param = entity(param)
     if param[0]=='x...'
       if not ellipsis?
         ellipsis = i
         param1 = param[1]
-        if param1[0]=='attribute!' then exp0[i] = param1[2]; thisParams.push ['=', param1, param1[2]]
-        else exp0[i] = param1
+        if param1[0]=='attribute!' then params.push param1[2]; thisParams.push ['=', param1, param1[2]]
+        else params.push param1
       else error 'mulitple ellipsis parameters is not permitted'
     else if param[0]=='='
       param1 = param[1]
       if param1[0]=='attribute!'
-        exp0[i] = param1[2]; thisParams.push ['=', param1, param1[2]]
+        thisParams.push ['=', param1, param1[2]]
         param1 = param1[2]
         param = ['=', param1, param[2]]
       defaultList.push ['if', ['==', param1, ['direct!', undefinedExp]], param]
-      exp0[i] = param1
+      params.push param1
       # default parameter should not be ellipsis parameter at the same time
       # and this is the behavior in coffee-script too
     else if param[0]=='attribute!'
-      exp0[i] = param[2]; thisParams.push ['=', param, param[2]]
+      params.push param[2]; thisParams.push ['=', param, param[2]]
+    else params.push param
   if ellipsis!=undefined
+    body = convertParametersWithEllipsis(params, ellipsis, newEnv)
     params = []
-    body = convertParametersWithEllipsis(exp0, ellipsis, newEnv)
-    body.push.apply body, defaultList
-    body.push.apply body, thisParams
-    body.push.apply body, exp1
   else
-    params = for param, i in exp0 then param = entity(param); scope[param] = param
-    body = defaultList
-    body.push.apply body, thisParams
-    body.push.apply body, exp1
+    body = []
+    for param in params then param = entity(param); scope[param] = param
+  body.push.apply body, defaultList
+  body.push.apply body, thisParams
+  body.push.apply body, exp1
   if mode[0]=='|' then body =  convert(begin(body), newEnv)
   else body =  return_(convert(begin(body), newEnv))
   if mode=='=>' or mode=='|=>' then result = ['begin!', ['=', _this, 'this'], ['function', params, body]]

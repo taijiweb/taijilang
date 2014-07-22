@@ -6,7 +6,7 @@ TaijiModule = require './module'
 {Parser} = require './parser'
 {entity} = require './parser/base'
 exports.Parser = Parser
-{Environment, metaConvert, transformExp, optimizeExp, compileExp, compileExpNoOptimize} = require './compiler'
+{Environment, metaConvert, transformExp, optimizeExp, compileExp, metaCompile, compileExpNoOptimize} = require './compiler'
 exports.Environment = Environment
 exports.compileExp = compileExp
 exports.builtins =  extend {}, require('./builtins/core'), require('./builtins/js')
@@ -51,6 +51,11 @@ exports.compileInteractive = compileInteractive = (code, taijiModule, builtins, 
   env = initEnv(builtins, taijiModule, options); parser = env.parser
   exp = parser.parse(code, parser.moduleBody, 0, env)
   objCode = compileExp(exp, env)
+
+exports.metaCompile = (code, taijiModule, builtins, options) ->
+  env = initEnv(builtins, taijiModule, options); parser = env.parser
+  exp = parser.parse(code, parser.module, 0, env)
+  objCode = metaCompile(addPrelude(parser, exp.body), [], env)
 
 exports.compile = compile = (code, taijiModule, builtins, options) ->
   env = initEnv(builtins, taijiModule, options); parser = env.parser

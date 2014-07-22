@@ -1,4 +1,4 @@
-var Parser, chai, compile, compileNoOptimize, constant, expect, head, idescribe, iit, isArray, lib, ndescribe, nit, parse, run, str, taiji, _ref;
+var Parser, chai, compile, compileNoOptimize, constant, expect, head, idescribe, iit, isArray, lib, metaCompile, ndescribe, nit, parse, run, str, taiji, _ref;
 
 chai = require("chai");
 
@@ -32,6 +32,11 @@ parse = function(text) {
 compile = function(code) {
   head = 'taiji language 0.1\n';
   return taiji.compile(head + code, taiji.rootModule, taiji.builtins, {});
+};
+
+metaCompile = function(code) {
+  head = 'taiji language 0.1\n';
+  return taiji.metaCompile(head + code, taiji.rootModule, taiji.builtins, {});
 };
 
 compileNoOptimize = function(code) {
@@ -479,6 +484,12 @@ describe("compile: ", function() {
     it('should compile # if 1 then 1+2 else 3+4', function() {
       return expect(compile('# if 1 then 1+2 else 3+4')).to.equal('3');
     });
+    it('should compileNoOptimize # if 1 then 1+2 else 3+4', function() {
+      return expect(compileNoOptimize('# if 1 then 1+2 else 3+4')).to.equal("1 + 2");
+    });
+    it('should compileNoOptimize a#=0; # if a then 1+2 else 3+4', function() {
+      return expect(compileNoOptimize('a#=0; # if a then 1+2 else 3+4')).to.equal("3 + 4");
+    });
     it('should compile var a, b; # if 1 then a else b', function() {
       return expect(compile('var a, b; # if 1 then a else b')).to.equal("var a, b;\na;");
     });
@@ -500,7 +511,7 @@ describe("compile: ", function() {
       return expect(compile('## if 0 then 1+2 else 3+4')).to.equal('7');
     });
   });
-  describe("macro: ", function() {
+  describe("macro is just meta operation: ", function() {
     it('should compile ##{->} 1', function() {
       return expect(compile('##{-> 1}()')).to.equal("1");
     });
@@ -550,6 +561,58 @@ describe("compile: ", function() {
     });
     return it('should compileNoOptimize m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)', function() {
       return expect(compileNoOptimize('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)')).to.equal("var x, y, z;\n[+, [[+, x, y], [+, y, z]], ];");
+    });
+  });
+  describe("more meta: ", function() {
+    it('parse a = # #-{ print 1 } ', function() {
+      return expect(parse('a = #  #-{ print 1 }')).to.equal("[= a [# [#- [print 1]]]]");
+    });
+    it('compile a = #-{ print 1 } ', function() {
+      return expect(function() {
+        return compile('a = #-{ print 1 }');
+      }).to["throw"](/unexpected meta operator #-/);
+    });
+    it('parse #( #-{ print 1 }) ', function() {
+      return expect(parse('#(  #-{ print 1 })')).to.equal("[# [#- [print 1]]]");
+    });
+    it('compile # #-{ print 1 } ', function() {
+      return expect(compile('#  #-{ print 1 }')).to.equal("console.log(1)");
+    });
+    it('compile a = # #-{ print 1 } ', function() {
+      return expect(compile('a = #  #-{ print 1 }')).to.equal("var a = console.log(1);\na;");
+    });
+    it('compile (#{ -> #- { print 1 }}) ', function() {
+      return expect(compile('(#{ -> #- { print 1 }})')).to.equal("function () {\n  return __tjExp[0];\n}");
+    });
+    it('compile (#{ -> #- { print 1 }}); 1 ', function() {
+      return expect(compile('(#{ -> #- { print 1 }}); 1')).to.equal("1");
+    });
+    it('compile (#{ -> #- { print 1 }})() ', function() {
+      return expect(compile('(#{ -> #- { print 1 }})()')).to.equal('[print, 1]');
+    });
+    it('compile #({ -> #- { print 1 }}()) ', function() {
+      return expect(compile('#({ -> #- { print 1 }}())')).to.equal("console.log(1)");
+    });
+    it('compile #( { -> a #= 1; #-({ -> b = 1; }()); #a;} ) ', function() {
+      return expect(compile('#{ { -> a #= 1; #-({ -> b = 1; }()); #a;}() }')).to.equal("1");
+    });
+    it('compile #{ #var fnCall; { -> a #= 1; @@fnCall #= #-({ -> b = 1; }()); #a;}(); ##fnCall }', function() {
+      return expect(compile('#{ #var fnCall; { -> a #= 1; @@fnCall #= #-({ -> b = 1; }()); #a;}(); ##fnCall }')).to.equal("(function () {\n  var b = 1;\n  return b;\n})()");
+    });
+    it('metaCompile #{ #var fnCall; { -> a #= 1; @@fnCall #= #-({ -> b = 1; }()); #a;}(); ##fnCall }', function() {
+      return expect(metaCompile('#{ #var fnCall; { -> a #= 1; @@fnCall #= #-({ -> b = 1; }()); #a;}(); ##fnCall }')).to.equal("var fnCall;\n\n(function () {\n  var a = 1;\n  fnCall = __tjExp[0];\n  return a;\n})();\nreturn fnCall;");
+    });
+    it('compile (#{ -> #- { print 1 }})()() ', function() {
+      return expect(compile('(#{ -> #- { print 1 }})()()')).to.equal("[print, 1]()");
+    });
+    it('compile #{ -> #-{ print 1 }; #-{ print 2}} ', function() {
+      return expect(compile('(#{ -> #-{ print 1 }; #-{ print 2}})()')).to.equal("[print, 2]");
+    });
+    it('metaCompile #{ -> #-{ print 1 }; #-{ print 2}} ', function() {
+      return expect(metaCompile('(#{ -> #-{ print 1 }; #-{ print 2}})()')).to.equal("return [__tjExp[0], function () {\n  __tjExp[1];\n  return __tjExp[2];\n}, []]");
+    });
+    return it('metaCompile #{ -> { print 1 }; #-{ print 2}} ', function() {
+      return expect(metaCompile('(#{ -> { print 1 }; #-{ print 2}})()')).to.equal("return [__tjExp[0], function () {\n  console.log(1);\n  return __tjExp[1];\n}, []]");
     });
   });
   describe("class : ", function() {

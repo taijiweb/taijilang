@@ -77,7 +77,7 @@ describe('test command:', function() {
       it('compile hello.tj', function() {
         return expect(compile('samples-js', 'samples/hello.tj')).to.deep.equal([void 0]);
       });
-      it('sample.tj', function() {
+      it('parse sample.tj', function() {
         return expect(parse('samples-js/parse', 'samples/sample.tj')).to.deep.equal([void 0]);
       });
       it('compile sample.tj', function() {
@@ -119,10 +119,10 @@ describe('test command:', function() {
       it('compile ellipsis.tj', function() {
         return expect(compile('samples-js', 'samples/ellipsis.tj')).to.deep.equal([void 0]);
       });
-      iit('compile include.tj', function() {
+      it('compile include.tj', function() {
         return expect(compile('samples-js', 'samples/include.tj')).to.deep.equal([void 0]);
       });
-      return it('compile use.tj', function() {
+      return xit('compile use.tj', function() {
         return expect(compile('samples-js', 'samples/use.tj')).to.deep.equal([void 0]);
       });
     });

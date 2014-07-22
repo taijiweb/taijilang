@@ -20,6 +20,10 @@ compile = (code) ->
   head = 'taiji language 0.1\n'
   taiji.compile(head+code, taiji.rootModule, taiji.builtins, {})
 
+metaCompile = (code) ->
+  head = 'taiji language 0.1\n'
+  taiji.metaCompile(head+code, taiji.rootModule, taiji.builtins, {})
+
 compileNoOptimize = (code) ->
   head = 'taiji language 0.1\n'
   taiji.compileNoOptimize(head+code, taiji.rootModule, taiji.builtins, {})
@@ -344,6 +348,10 @@ describe "compile: ",  ->
       expect(compileNoOptimize('1+2')).to.equal "1 + 2"
     it 'should compile # if 1 then 1+2 else 3+4', ->
       expect(compile('# if 1 then 1+2 else 3+4')).to.equal '3'
+    it 'should compileNoOptimize # if 1 then 1+2 else 3+4', ->
+      expect(compileNoOptimize('# if 1 then 1+2 else 3+4')).to.equal "1 + 2"
+    it 'should compileNoOptimize a#=0; # if a then 1+2 else 3+4', ->
+      expect(compileNoOptimize('a#=0; # if a then 1+2 else 3+4')).to.equal "3 + 4"
     it 'should compile var a, b; # if 1 then a else b', ->
       expect(compile('var a, b; # if 1 then a else b')).to.equal "var a, b;\na;"
     it 'should compile ## if 1 then a else b', ->
@@ -357,7 +365,7 @@ describe "compile: ",  ->
     it 'should compile ## if 0 then 1+2 else 3+4', ->
       expect(compile('## if 0 then 1+2 else 3+4')).to.equal '7'
 
-  describe "macro: ",  ->
+  describe "macro is just meta operation: ",  ->
     it 'should compile ##{->} 1', ->
       expect(compile('##{-> 1}()')).to.equal "1"
     it 'should compile ##{-> ~(1+2)}()', ->
@@ -390,6 +398,46 @@ describe "compile: ",  ->
       expect(parse('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)')).to.equal "[begin! [#= m [-> [a b] [[quasiquote! [+ [unquote! a] [unquote! b]]]]]] [var x y z] [call! [# m] [[+ x y] [+ y z]]]]"
     it 'should compileNoOptimize m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)', ->
       expect(compileNoOptimize('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)')).to.equal "var x, y, z;\n[+, [[+, x, y], [+, y, z]], ];"
+
+  describe "more meta: ",  ->
+    it 'parse a = # #-{ print 1 } ', ->
+      expect(parse('a = #  #-{ print 1 }')).to.equal "[= a [# [#- [print 1]]]]"
+    it 'compile a = #-{ print 1 } ', ->
+      expect(-> compile('a = #-{ print 1 }')).to.throw /unexpected meta operator #-/
+    it 'parse #( #-{ print 1 }) ', ->
+      expect(parse('#(  #-{ print 1 })')).to.equal "[# [#- [print 1]]]"
+    it 'compile # #-{ print 1 } ', ->
+      expect(compile('#  #-{ print 1 }')).to.equal "console.log(1)"
+    it 'compile a = # #-{ print 1 } ', ->
+      expect(compile('a = #  #-{ print 1 }')).to.equal "var a = console.log(1);\na;"
+    it 'compile (#{ -> #- { print 1 }}) ', ->
+      expect(compile('(#{ -> #- { print 1 }})')).to.equal "function () {\n  return __tjExp[0];\n}"
+    it 'compile (#{ -> #- { print 1 }}); 1 ', ->
+      expect(compile('(#{ -> #- { print 1 }}); 1')).to.equal "1"
+    it 'compile (#{ -> #- { print 1 }})() ', ->
+      # in meta compilation phase, a closure function is returned and __tjExp is given [print, 1]
+      # in object convert phase, head is the above closure function, and it is evaluated and the result is ['list!', print, 1]
+      # and then the result expression is compiled to object level code.
+      # but the result code may be illegal, say, when keyword or other symbol is contained in the __tjExp...
+      expect(compile('(#{ -> #- { print 1 }})()')).to.equal '[print, 1]'
+    it 'compile #({ -> #- { print 1 }}()) ', ->
+      # in meta compilation, the function has been evaluated, and return the object level ast expression
+      # in object compilation phase, the expression is compiled to object level code
+      expect(compile('#({ -> #- { print 1 }}())')).to.equal "console.log(1)"
+    it 'compile #( { -> a #= 1; #-({ -> b = 1; }()); #a;} ) ', ->
+      expect(compile('#{ { -> a #= 1; #-({ -> b = 1; }()); #a;}() }')).to.equal "1"
+    it 'compile #{ #var fnCall; { -> a #= 1; @@fnCall #= #-({ -> b = 1; }()); #a;}(); ##fnCall }', ->
+      expect(compile('#{ #var fnCall; { -> a #= 1; @@fnCall #= #-({ -> b = 1; }()); #a;}(); ##fnCall }')).to.equal "(function () {\n  var b = 1;\n  return b;\n})()"
+    it 'metaCompile #{ #var fnCall; { -> a #= 1; @@fnCall #= #-({ -> b = 1; }()); #a;}(); ##fnCall }', ->
+      expect(metaCompile('#{ #var fnCall; { -> a #= 1; @@fnCall #= #-({ -> b = 1; }()); #a;}(); ##fnCall }')).to.equal "var fnCall;\n\n(function () {\n  var a = 1;\n  fnCall = __tjExp[0];\n  return a;\n})();\nreturn fnCall;"
+    it 'compile (#{ -> #- { print 1 }})()() ', ->
+      expect(compile('(#{ -> #- { print 1 }})()()')).to.equal "[print, 1]()"
+    it 'compile #{ -> #-{ print 1 }; #-{ print 2}} ', ->
+      expect(compile('(#{ -> #-{ print 1 }; #-{ print 2}})()')).to.equal "[print, 2]"
+    it 'metaCompile #{ -> #-{ print 1 }; #-{ print 2}} ', ->
+      expect(metaCompile('(#{ -> #-{ print 1 }; #-{ print 2}})()')).to.equal "return [__tjExp[0], function () {\n  __tjExp[1];\n  return __tjExp[2];\n}, []]"
+    it 'metaCompile #{ -> { print 1 }; #-{ print 2}} ', ->
+      expect(metaCompile('(#{ -> { print 1 }; #-{ print 2}})()')).to.equal "return [__tjExp[0], function () {\n  console.log(1);\n  return __tjExp[1];\n}, []]"
 
   describe "class : ",  ->
     it 'should parse A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)', ->

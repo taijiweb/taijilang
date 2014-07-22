@@ -9,7 +9,9 @@ INDENT, UNDENT, HALF_DENT, CURVE} = constant
 exports.prefixOperatorDict = prefixOperatorDict =
   '#':  {priority: 200}, # preprocess, conditional meta compilation operator
   '##':  {priority: 5}, # meta compilation operator
-  '#.':  {priority: 5}, # compile in both meta and object level
+  '#/':  {priority: 5}, # compile in both meta and object level
+  '#-':  {priority: 5}, # exit meta level
+  '#&':  {priority: 5}, # #& metaConvert exp and get the current expression(not metaConverted raw program)
   '~':  {priority: 5, symbol:'quote!'}
   '`':  {priority: 5, symbol:'quasiquote!'}
 

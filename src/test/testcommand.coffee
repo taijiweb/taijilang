@@ -39,7 +39,7 @@ describe 'test command:', ->
       it 'compile temp.tj', -> expect(compile 'samples-js', 'samples/temp.tj').to.deep.equal [undefined]
       it 'parse hello.tj', -> expect(parse 'samples-js/parse', 'samples/hello.tj').to.deep.equal [undefined]
       it 'compile hello.tj', -> expect(compile 'samples-js', 'samples/hello.tj').to.deep.equal [undefined]
-      it 'sample.tj', -> expect(parse 'samples-js/parse', 'samples/sample.tj').to.deep.equal [undefined]
+      it 'parse sample.tj', -> expect(parse 'samples-js/parse', 'samples/sample.tj').to.deep.equal [undefined]
       it 'compile sample.tj', -> expect(compile 'samples-js', 'samples/sample.tj').to.deep.equal [undefined]
       it 'compile blockcomment.tj', -> expect(compile 'samples-js', 'samples/blockcomment.tj').to.deep.equal [undefined]
       it 'parse indent-then-else.tj', -> expect(parse 'samples-js/parse', 'samples/indent-then-else.tj').to.deep.equal [undefined]
@@ -53,8 +53,8 @@ describe 'test command:', ->
       it 'parse snippets.tj', -> expect(parse 'samples-js', 'samples/snippets.tj').to.deep.equal [undefined]
       it 'compile snippets.tj', -> expect(compile 'samples-js', 'samples/snippets.tj').to.deep.equal [undefined]
       it 'compile ellipsis.tj', -> expect(compile 'samples-js', 'samples/ellipsis.tj').to.deep.equal [undefined]
-      iit 'compile include.tj', -> expect(compile 'samples-js', 'samples/include.tj').to.deep.equal [undefined]
-      it 'compile use.tj', -> expect(compile 'samples-js', 'samples/use.tj').to.deep.equal [undefined]
+      it 'compile include.tj', -> expect(compile 'samples-js', 'samples/include.tj').to.deep.equal [undefined]
+      xit 'compile use.tj', -> expect(compile 'samples-js', 'samples/use.tj').to.deep.equal [undefined]
 
     describe "parse and compile samples/bootstrap: ",  ->
       it 'parse require.tj', -> expect(parse 'samples-js/bootstrap/parse', 'samples/bootstrap/require.tj').to.deep.equal [undefined]

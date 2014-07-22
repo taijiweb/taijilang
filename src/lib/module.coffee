@@ -5,6 +5,8 @@ path = require 'path'
 # See: https:# github.com/joyent/node/issues/1707
 hasOwnProperty = (obj, prop) -> Object.prototype.hasOwnProperty.call(obj, prop)
 
+modulePaths = []
+
 module.exports = exports = TaijiModule = (filePath, @parent) ->
   @exports = {} # meta exports for the module
   if not filePath
@@ -20,8 +22,6 @@ module.exports = exports = TaijiModule = (filePath, @parent) ->
     @modulePaths = modulePaths.slice()
     @modulePaths.unshift path.resolve(@basePath, '../taiji_modules')
   return this
-
-modulePaths = []
 
 TaijiModule._initPaths = ->
   if process.env['TAIJILANG_PATH']

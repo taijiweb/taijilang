@@ -17,7 +17,7 @@ compile = (code) ->
   head = 'taiji language 0.1\n'
   taiji.compile(head+code, taiji.rootModule, taiji.builtins, {})
 
-describe "module.coffee: ",  ->
+describe "taiji module: ",  ->
   describe "path: ",  ->
     it '__dirname', ->
       expect(__dirname).to.match /test/
@@ -47,4 +47,4 @@ describe "module.coffee: ",  ->
 
   describe 'include!', ->
     it 'include! "./hello.jt"', ->
-      expect(compile("include! '../samples/hello.tj'")).to.equal "console.log(\"hello taiji\")"
+      expect(compile("include! '../samples/hello.tj'")).to.equal "var name, module = function () {\n  var exports = { };\n  console.log(\"hello taiji\");\n  return exports;\n}();\n\nfor (name in module)\n  if (__hasProp.call(module, name))\n    name = module[name];"
