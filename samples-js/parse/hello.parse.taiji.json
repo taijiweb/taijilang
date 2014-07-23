@@ -1,4 +1,0 @@
-["begin!",
-  ["print","\"hello taiji\""],
-  ["lineComment!","\"// print __taijiVersion\r\n\r\n\""],
-  ["lineComment!","\"// undefined? # 1\""]]

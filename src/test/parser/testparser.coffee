@@ -714,23 +714,27 @@ describe "parse: ",  ->
       it '''should parse import! a as A, #b as #b from 'x.tj' as x''', ->
         code = '''import! a as A, #b as #b from 'x.tj' as x '''
         x = str parse(code)
-        expect(x).to.deep.equal "[import! \"x.tj\" undefined x undefined [[a A] [b b meta]]]"
+        expect(x).to.deep.equal "[import! \"x.tj\" undefined x undefined [[a A]] [[b b meta]]]"
+      it '''should parse import! a as A, #b as #b from 'x.tj' as #/x''', ->
+        code = '''import! a as A, #b as #b from 'x.tj' as #/x '''
+        x = str parse(code)
+        expect(x).to.deep.equal "[import! \"x.tj\" undefined x x [[a A]] [[b b meta]]]"
       it '''should parse import! a as A, #b from 'x.tj' as x''', ->
         code = '''import! a as A, #b from 'x.tj' as x '''
         x = str parse(code)
-        expect(x).to.deep.equal "[import! \"x.tj\" undefined x undefined [[a A] [b b meta]]]"
+        expect(x).to.deep.equal "[import! \"x.tj\" undefined x undefined [[a A]] [[b b meta]]]"
       it '''should parse import! a as A, #/b from 'x.tj' as x''', ->
         code = '''import! a as A, #/b from 'x.tj' as x '''
         x = str parse(code)
-        expect(x).to.deep.equal "[import! \"x.tj\" undefined x undefined [[a A] [b b] [b b meta]]]"
+        expect(x).to.deep.equal "[import! \"x.tj\" undefined x undefined [[a A] [b b]] [[b b meta]]]"
       it '''should parse import! a as A, #/b as b1 #b2 from 'x.tj' as x''', ->
         code = '''import! a as A, #/b as b1 #b2 from 'x.tj' as x '''
         x = str parse(code)
-        expect(x).to.deep.equal "[import! \"x.tj\" undefined x undefined [[a A] [b b1] [b b2 meta]]]"
+        expect(x).to.deep.equal "[import! \"x.tj\" undefined x undefined [[a A] [b b1]] [[b b2 meta]]]"
       it '''should parse import! x''', ->
         code = '''import! 'x.tj' '''
         x = str parse(code)
-        expect(x).to.deep.equal "[import! \"x.tj\" undefined undefined undefined []]" # import path method alias metaAlias importItemList
+        expect(x).to.deep.equal "[import! \"x.tj\" undefined undefined undefined [] []]" # import path method alias metaAlias runtimeImportList metaImportItemList
 
     describe "export!: ",  ->
       it '''should parse export! a = A, #b, c, #b = d''', ->

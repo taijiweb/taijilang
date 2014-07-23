@@ -143,7 +143,7 @@ preprocessMetaConvertFnMap =
 taijiExports = ['jsvar!', 'exports']
 # use index! so taiji identifier like undefined? will not be illegal in javascript
 # if use 'attribute!' then "exports.undefined?" will be illegel javascript code
-exportsAttr = (attr) -> ['index!',taijiExports , attr]
+exportsIndex = (name) -> ['index!',taijiExports , '"'+entity(name)+'"']
 
 parseModule = (modulePath, env, parseMethod) ->
   filePath = modulePath.slice(1, modulePath.length-1)
@@ -180,35 +180,33 @@ wrapMetaObjectFunctionCall = (exp, metaExpList, env, metaModuleAlias, objectModu
 
 metaConvertExport = (exp, metaExpList, env) ->
   result = []
-  for item in exp
-    [name, value, inMeta, inObject] = item
+  for item in exp[1...]
+    [name, value, runtime, compileTime] = item
     # !!! should not env.get or do other transformation to the name
     # because the name would be the attribute of the exports object
     # not in the variable scope
     if value is undefined then value = name
-    if inMeta then fn = metaTransform
-    else fn = metaConvert
-    fn(['=', exportsAttr(name), value], metaExpList, env)
-  convert begin(result), env
+    if compileTime then result.push metaTransform(['=', exportsIndex(name), value], metaExpList, env)
+    if runtime then result.push metaConvert(['=', exportsIndex(name), value], metaExpList, env)
+  begin(result)
 
-includeModuleFunctionCall = (exp, metaExpList, env) ->
-  moduleVar = ['metaConvertVar!', 'module']
-  objLevelBody = ['metaConvertVar!', 'objLevelBody']
-  objectLevelFunctionCall = metaConvert(['begin!',
-   ['var', moduleVar],
-   ['=', moduleVar, ['call!', ['->', [], ['begin!',
+includeModuleFunctionCall = (exp, metaExpList, env, runtimeModuleAlias, metaModuleAlias) ->
+  runtimeBody = ['metaConvertVar!', 'runtimeBody']
+  runtimeFunctionCall = metaConvert(['begin!',
+   ['var', runtimeModuleAlias],
+   ['=', runtimeModuleAlias, ['call!', ['->', [], ['begin!',
       ['=',  'exports',['hash!']],
       exp,
       'exports']], []]]], metaExpList, env)
   # meta level expression
   ['begin!',
-   ['var', objLevelBody],
-   ['var', moduleVar],
-   ['=', moduleVar, ['call!', ['->', [], ['begin!',
+   ['var', runtimeBody],
+   ['var', metaModuleAlias],
+   ['=', metaModuleAlias, ['call!', ['->', [], ['begin!',
      ['=', 'exports', ['hash!']],
-     ['=', ['@@', objLevelBody], objectLevelFunctionCall],
+     ['=', ['@@', runtimeBody], runtimeFunctionCall],
      'exports']], []]],
-   objLevelBody]
+   runtimeBody]
 
 # todo: when convert non javascript symbol or name, how to ensure exported name can get the same name?
 # method 1:
@@ -221,36 +219,45 @@ includeModuleFunctionCall = (exp, metaExpList, env) ->
 metaConvertInclude = (exp, metaExpList, env) ->
   [exp, newEnv] = parseModule entity(exp[1]), env, exp[2]
   moduleVar = ['metaConvertVar!', 'module']
+  fnCall = includeModuleFunctionCall(exp, metaExpList, env, moduleVar, moduleVar)
   exportVar = ['metaConvertVar!', 'name']
   moduleFnCall = ['metaConvertVar!', 'moduleFnCall']
   metaBegin = metaConvert('begin!', metaExpList, env)
-  fnCall = includeModuleFunctionCall(exp, metaExpList, env)
-  metaLevelAssignList = ['begin!',
+  compileTimeAssignList = ['begin!',
    ['var', exportVar],
    ['forIn!', exportVar, moduleVar,
     ['if', ['call!', ['attribute!', '__hasProp', 'call'], [moduleVar, exportVar]],
      ['=', exportVar, ['index!', moduleVar, exportVar]]]]]
-  objectLevelAssignList = metaConvert(metaLevelAssignList, metaExpList, env)
+  runtimeAssignList = metaConvert(compileTimeAssignList, metaExpList, env)
   ['begin!'
     ['var', moduleFnCall]
     ['=', moduleFnCall, fnCall],
-    metaLevelAssignList,
-    ['list!', metaBegin, moduleFnCall, objectLevelAssignList]]
+    compileTimeAssignList,
+    ['list!', metaBegin, moduleFnCall, runtimeAssignList]]
 
 # import! with parseMethod #name [as alias], ..., from module as alias
 # import! name [as alias], ... from module as alias
 # import! module as alias
 metaConvertImport = (exp, metaExpList, env) ->
-  [filePath, metaModuleAlias, objectModuleAlias, importItems, parseMethod] = exp
-  [body, newEnv] = parseModule entity(filePath), env, parseMethod
-  result = []
-  moduleCall = wrapMetaObjectFunctionCall(body, metaExpList, env, metaModuleAlias, objectModuleAlias)
-  result.push moduleCall
-  for item in importItems
-    [name, asName, inMeta] = item
-    if inMeta then result.push ['=', asName, ['index!', metaModuleVar, name]]
-    else metaExpList.push ['=', asName, ['index!', metaModuleVar, name]]; result.push $atMetaExpList(env.metaIndex++)
-  begin(result)
+  [cmd, filePath, parseMethod, runtimeModuleAlias, metaModuleAlias, importItemList, metaImportItemList] = exp
+  [exp, newEnv] = parseModule entity(filePath), env, parseMethod
+  if not metaModuleAlias then metaModuleAlias = ['metaConvertVar!', 'module']
+  if not runtimeModuleAlias then runtimeModuleAlias = ['metaConvertVar!', 'module']
+  fnCall = includeModuleFunctionCall(exp, metaExpList, env, runtimeModuleAlias, metaModuleAlias)
+  moduleFnCall = ['metaConvertVar!', 'moduleFnCall']
+  metaBegin = metaConvert('begin!', metaExpList, env)
+  compileTimeAssignList = []; runtimeAssignList = []
+  for [name, asName] in metaImportItemList
+    compileTimeAssignList.push ['=', asName, ['index!', metaModuleAlias, '"'+entity(name)+'"']]
+  compileTimeAssignList = begin(compileTimeAssignList)
+  for [name, asName] in importItemList
+    runtimeAssignList.push ['=', asName, ['index!', runtimeModuleAlias, '"'+entity(name)+'"']]
+  runtimeAssignList = metaConvert(begin(runtimeAssignList), metaExpList, env)
+  ['begin!'
+   ['var', moduleFnCall]
+   ['=', moduleFnCall, fnCall],
+   compileTimeAssignList,
+   ['list!', metaBegin, moduleFnCall, runtimeAssignList]]
 
 # process code which is hybrid of object and meta level
 # exp(like [#..., ], [include!, x], ...) is hybrid code
@@ -313,7 +320,7 @@ metaConvertFnMap =
   'import!': metaConvertImport
 
 # whehter head is a operator for meta expression?
-isMetaOperation = (head) -> (head[0]=='#' and head[1]!='-') or head=='include!' or head=='import!'
+isMetaOperation = (head) -> (head[0]=='#' and head[1]!='-') or head=='include!' or head=='import!' or head=='export!'
 #isMetaOperation = (head) -> (head[0]=='#') or head=='include!' or head=='import!'
 
 # should be called by metaConvert while which is processing meta level code
@@ -341,8 +348,14 @@ hasMeta = (exp) ->
       if (eLength=e.length)<=1 then continue
       else
         if (e0=entity(e[0])) and typeof e0 == 'string'
-          if e0[0]=='#' then exp.hasMeta = true; return true
+          if isMetaOperation(e0) then exp.hasMeta = true; return true
         if hasMeta(e) then exp.hasMeta = true; return true
+#          else
+#            for x in e[1...]
+#              if hasMeta(x) then exp.hasMeta = true; return true
+#        else if hasMeta(e0) then exp.hasMeta = true; return true
+#        for x in e[1...]
+#          if hasMeta(x) then exp.hasMeta = true; return true
   exp.hasMeta = false
   return false
 
@@ -377,7 +390,7 @@ exports.metaCompile = metaCompile = (exp, metaExpList, env) ->
 # and get the object level expression to wait convert and compile to object level javascript code
 exports.metaProcess = metaProcess = (exp, env) ->
   code = metaCompile(exp, metaExpList=[], env)
-  #console.log code
+  console.log code
   new Function(['__tjExp'], code)(metaExpList)
 
 exports.nonMetaCompileExp = nonMetaCompileExp = (exp, env) ->

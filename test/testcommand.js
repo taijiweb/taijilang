@@ -122,8 +122,11 @@ describe('test command:', function() {
       it('compile include.tj', function() {
         return expect(compile('samples-js', 'samples/include.tj')).to.deep.equal([void 0]);
       });
-      return xit('compile use.tj', function() {
-        return expect(compile('samples-js', 'samples/use.tj')).to.deep.equal([void 0]);
+      it('parse import.tj', function() {
+        return expect(parse('samples-js', 'samples/import.tj')).to.deep.equal([void 0]);
+      });
+      return iit('compile import.tj', function() {
+        return expect(compile('samples-js', 'samples/import.tj')).to.deep.equal([void 0]);
       });
     });
     describe("parse and compile samples/bootstrap: ", function() {

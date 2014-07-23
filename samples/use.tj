@@ -1,8 +1,0 @@
-taiji language 0.1
-
-use! a as A from 'html.tj' as html
-use! 'html.tj'
-use! 'html.tj' as html2
-
-use! #x as A from 'html.tj' as html3
-A()

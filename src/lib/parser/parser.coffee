@@ -1165,13 +1165,16 @@ exports.Parser = ->
       else return [[name, asName]]
 
   @exportItem = ->
-    if (c=text[cursor])=='#' then cursor++; meta = 'meta'; spc()
+    runtime = undefined
+    if text[cursor...cursor+2]=='#/' then cursor+=2; runtime = 'runtime'; meta = 'meta'; spc()
+    else if (c=text[cursor])=='#' then cursor++; meta = 'meta'; spc()
+    else runtime = 'runtime'
     if meta then name = expectIdentifier()
     else if not (name = taijiIdentifier()) then return
     spc()
     if text[cursor]=='=' and cursor++
       spc(); value = parser.spaceClauseExpression(); spc()
-    [name, value, meta]
+    [name, value, runtime, meta]
 
   @spaceComma = spaceComma = -> spc(); if text[cursor]==',' then cursor++; spc(); return true
   @seperatorList = seperatorList = (item, seperator) ->
@@ -1184,12 +1187,7 @@ exports.Parser = ->
         else break
       result
 
-  importItemFn = seperatorList('importItem', spaceComma)
-  @importItemList = ->
-    lst = importItemFn()
-    result = []
-    for items in lst then result.push.apply result, items
-    result
+  @importItemList = seperatorList('importItem', spaceComma)
 
   @exportItemList = seperatorList('exportItem', spaceComma)
 
@@ -1252,7 +1250,7 @@ exports.Parser = ->
         spc()
         sym = parser.symbol()
         if sym
-          if (symValue=sym.value)!='#' and sym.valu!='#/'
+          if (symValue=sym.value)!='#' and sym.value!='#/'
             error 'unexpected symbol before import module name', sym
         alias = expectIdentifier('expect an alias for module')
         if symValue=='#' then metaAlias = alias; alias = undefined
@@ -1267,7 +1265,12 @@ exports.Parser = ->
         spc()
       if with_ = word('with')
         spc(); parseMethod = expect('taijiIdentifier', 'expect a parser method')
-      ['import!'].concat [srcModule, parseMethod, alias, metaAlias, items]
+      runtimeImportList = []; metaImportList = []
+      for item in items
+        for x in item
+          if x[2] then  metaImportList.push x
+          else runtimeImportList.push x
+      ['import!'].concat [srcModule, parseMethod, alias, metaAlias, runtimeImportList, metaImportList]
 
     'export!': (isHeadStatement) -> spc(); ['export!'].concat parser.exportItemList()
 

@@ -1027,31 +1027,37 @@ describe("parse: ", function() {
         var code, x;
         code = 'import! a as A, #b as #b from \'x.tj\' as x ';
         x = str(parse(code));
-        return expect(x).to.deep.equal("[import! \"x.tj\" undefined x undefined [[a A] [b b meta]]]");
+        return expect(x).to.deep.equal("[import! \"x.tj\" undefined x undefined [[a A]] [[b b meta]]]");
+      });
+      it('should parse import! a as A, #b as #b from \'x.tj\' as #/x', function() {
+        var code, x;
+        code = 'import! a as A, #b as #b from \'x.tj\' as #/x ';
+        x = str(parse(code));
+        return expect(x).to.deep.equal("[import! \"x.tj\" undefined x x [[a A]] [[b b meta]]]");
       });
       it('should parse import! a as A, #b from \'x.tj\' as x', function() {
         var code, x;
         code = 'import! a as A, #b from \'x.tj\' as x ';
         x = str(parse(code));
-        return expect(x).to.deep.equal("[import! \"x.tj\" undefined x undefined [[a A] [b b meta]]]");
+        return expect(x).to.deep.equal("[import! \"x.tj\" undefined x undefined [[a A]] [[b b meta]]]");
       });
       it('should parse import! a as A, #/b from \'x.tj\' as x', function() {
         var code, x;
         code = 'import! a as A, #/b from \'x.tj\' as x ';
         x = str(parse(code));
-        return expect(x).to.deep.equal("[import! \"x.tj\" undefined x undefined [[a A] [b b] [b b meta]]]");
+        return expect(x).to.deep.equal("[import! \"x.tj\" undefined x undefined [[a A] [b b]] [[b b meta]]]");
       });
       it('should parse import! a as A, #/b as b1 #b2 from \'x.tj\' as x', function() {
         var code, x;
         code = 'import! a as A, #/b as b1 #b2 from \'x.tj\' as x ';
         x = str(parse(code));
-        return expect(x).to.deep.equal("[import! \"x.tj\" undefined x undefined [[a A] [b b1] [b b2 meta]]]");
+        return expect(x).to.deep.equal("[import! \"x.tj\" undefined x undefined [[a A] [b b1]] [[b b2 meta]]]");
       });
       return it('should parse import! x', function() {
         var code, x;
         code = 'import! \'x.tj\' ';
         x = str(parse(code));
-        return expect(x).to.deep.equal("[import! \"x.tj\" undefined undefined undefined []]");
+        return expect(x).to.deep.equal("[import! \"x.tj\" undefined undefined undefined [] []]");
       });
     });
     describe("export!: ", function() {

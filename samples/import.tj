@@ -1,0 +1,13 @@
+taiji language 0.1
+
+//import! './hello.tj'
+import! './module1.tj'
+//import! a from './hello.tj'
+//import! a as a2 from './hello.tj' as html
+//import! a as A, #b from 'html.tj' as html #html2
+/.
+    import! 'html.tj'
+    import! 'html.tj' as html2
+
+    import! #x as A from 'html.tj' as html3
+    A()
