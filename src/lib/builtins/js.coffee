@@ -64,8 +64,8 @@ exports['__$taiji_$_$parser__'] = ['jsvar!', '__$taiji_$_$parser__']
 
 exports['@'] =  ['jsvar!', 'this']
 exports['arguments'] =  ['jsvar!', 'arguments']
-exports['__slice'] =  ['jsvar!', '__slice']
-exports['__hasProp'] =  ['jsvar!', '__hasProp']
+#exports['__slice'] =  ['jsvar!', '__slice']
+#exports['__hasProp'] =  ['jsvar!', '__hasProp']
 
 exports['regexp!'] = (exp, env) -> ['regexp!', exp[0]]
 
@@ -104,7 +104,8 @@ exports["hash!"] = convertHash = (exp, env) ->
 
 convertForInOf = (head) -> (exp, env) ->
   [item, range, body] = exp
-  if not env.hasFnLocal(item.value) then env.set(item.value, item); item = ['var', item]
+  if item[0]!='metaConvertVar!' and not env.hasFnLocal(item.value)
+    env.set(item.value, item); item = ['var', item]
   else item = convert(item, env)
   [head, item, convert(range, env), convert(body, env)]
 

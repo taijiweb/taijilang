@@ -84,13 +84,15 @@ exports.toExpression = toExpression = (exp) ->
   if exp0=='begin!' then return ['comma!'].concat(for e in exp[1...] then toExpression(e))
   else return exp
 
+JSONstringify = ['attribute!', ['jsvar!', 'JSON'], 'stringify']
+
 transformInterpolatedString = (exp) ->
   exp = entity(exp)
   if typeof exp =='string'
     if exp[0]=='"' then return exp
-    else  return ['call!', 'JSON.stringify', [exp]]
+    else  return ['call!', JSONstringify, [exp]]
   else if Object.prototype.toString.call(exp) == '[object Array]'
-    return ['call!', 'JSON.stringify', [exp]]
+    return ['call!', JSONstringify, [exp]]
   else return exp
 
 transformAndOrExpression = (exp, env, shiftStmtInfo) ->
@@ -262,7 +264,10 @@ transformExpressionFnMap =
     [begin([callerStmt, argsStmts]), ['call!', callerValue, argsValues]]
 
   'function': (exp, env, shiftStmtInfo) ->
-    [undefined, ['function', exp[1], transform(exp[2], env)]]
+    env = exp.env
+    exp = ['function', exp[1], transform(exp[2], env)]
+    exp.env = env
+    [undefined, exp]
 
   'begin!': (exp, env, shiftStmtInfo) ->
     if exp.length==0 then return [undefined, undefinedExp]
@@ -328,7 +333,7 @@ transformExpressionFnMap =
     # exp[0]: forIn! or forOf!
     forInStmt = ['forIn!', varName, rangeValue,
                  begin([bodyStmt, pushExp(lst, bodyValue)])]
-    [begin([['var', lst], varStmt, rangeStmt, forInStmt]), lst]
+    [begin([['var', lst], ['=', lst, ['list!']], varStmt, rangeStmt, forInStmt]), lst]
 
   # javascript has no for key of hash {...}
   #'forOf!': transformForInExpression

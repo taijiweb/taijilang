@@ -163,12 +163,23 @@ exports.notExp = (exp) -> ['prefix!', '!', exp]
 exports.undefinedExp = undefinedExp = ['prefix!', 'void', 0]
 
 exports.addPrelude = (parser, body) ->
-  return body
-#  result = []
-#  if parser.meetEllipsis then result.push ['=', '__slice', ['attribute!', [], 'slice']]
-#  result.push ['include!', '"prelude.tj"']
-#  result.push body
-#  begin(result)
+  # return body
+  result = []
+  #if parser.meetEllipsis then result.push ['=', '__slice', ['attribute!', [], 'slice']]
+  result.push ['var', '__slice']
+  result.push ['#/=', '__slice', ['attribute!', [], 'slice']]
+  result.push ['var', '__hasProp']
+  result.push ['#/=', '__hasProp', ['attribute!', ['hash!'], 'hasOwnProperty']]
+  result.push ['include!', '"prelude.tj"']
+  result.push body
+  begin(result)
+
+exports.realCode = (code) ->
+  endModuleText = 'name = module[name];\n'
+  if ((realCodePos=code.indexOf(endModuleText))>=0)
+    if code[code.length-1]==';'then code.slice(realCodePos+endModuleText.length, code.length-1)
+    else code.slice(realCodePos+endModuleText.length)
+  else code
 
 exports.wrapInfo1 = (exp, info) ->
   if typeof exp != 'object' then exp = {value: exp}

@@ -1,4 +1,4 @@
-var Parser, chai, compile, compileNoOptimize, constant, expect, idescribe, iit, isArray, lib, str, taiji, _ref;
+var Parser, chai, compile, compileNoOptimize, constant, expect, idescribe, iit, isArray, lib, realCode, str, taiji, _ref;
 
 chai = require("chai");
 
@@ -16,66 +16,68 @@ _ref = require(lib + 'parser/base'), constant = _ref.constant, isArray = _ref.is
 
 taiji = require(lib + 'taiji');
 
+realCode = require(lib + 'utils').realCode;
+
 compile = function(code) {
   var head;
   head = 'taiji language 0.1\n';
-  return taiji.compile(head + code, taiji.rootModule, taiji.builtins, {});
+  return realCode(taiji.compile(head + code, taiji.rootModule, taiji.builtins, {}));
 };
 
 compileNoOptimize = function(code) {
   var head;
   head = 'taiji language 0.1\n';
-  return taiji.compileNoOptimize(head + code, taiji.rootModule, taiji.builtins, {});
+  return realCode(taiji.compileNoOptimize(head + code, taiji.rootModule, taiji.builtins, {}));
 };
 
 describe("compile dyanmic syntax: ", function() {
   describe("compile parser attribute: ", function() {
     it('should compile ?xyz[0]()', function() {
-      return expect(compile('?xyz[0]()')).to.equal("__$taiji_$_$parser__.xyz[0]()");
+      return expect(compile('?xyz[0]()')).to.have.string("__$taiji_$_$parser__.xyz[0]()");
     });
     it('should compile ?cursor', function() {
-      return expect(compile('?cursor')).to.equal("__$taiji_$_$parser__.cursor");
+      return expect(compile('?cursor')).to.have.string("__$taiji_$_$parser__.cursor");
     });
     return it('should compile ?char()', function() {
-      return expect(compile('?char()')).to.equal("__$taiji_$_$parser__.char()");
+      return expect(compile('?char()')).to.have.string("__$taiji_$_$parser__.char()");
     });
   });
   describe("parsing time evaluation: ", function() {
     it('should compile ?? 1', function() {
-      return expect(compile('?? 1')).to.equal("1");
+      return expect(compile('?? 1')).to.have.string("1");
     });
     it('should compile ?? ?cursor()', function() {
-      return expect(compile('?? ?cursor()')).to.equal("31");
+      return expect(compile('?? ?cursor()')).to.have.string("31");
     });
     return it('should compile ?? ?clause()', function() {
-      return expect(compile('?? ?clause(), 1')).to.equal("1");
+      return expect(compile('?? ?clause(), 1')).to.have.string("1");
     });
   });
   describe("parsing time evaluation macro ?/: ", function() {
     it('should compile ?/ cursor', function() {
-      return expect(compile('?/ cursor')).to.equal("function () {\n    return cursor;\n  }");
+      return expect(compile('?/ cursor')).to.have.string("function () {\n    return cursor;\n  }");
     });
     it('should compile ?/ cursor', function() {
-      return expect(compile('?/ cursor()')).to.equal("30");
+      return expect(compile('?/ cursor()')).to.have.string("30");
     });
     it('should compile ?/ clause(), 1', function() {
-      return expect(compile('?/ clause(), 1')).to.equal("1");
+      return expect(compile('?/ clause(), 1')).to.have.string("1");
     });
     return it('should compile ?/ clause(), 1', function() {
-      return expect(compile('?/ clause(), print 1')).to.equal("console.log(1)");
+      return expect(compile('?/ clause(), print 1')).to.have.string("console.log(1)");
     });
   });
   describe("macro ?! used by ?!: ", function() {
     it('should compile ?! cursor()', function() {
-      return expect(compile('?! cursor()')).to.equal("30");
+      return expect(compile('?! cursor()')).to.have.string("30");
     });
     return it('should compile ?! char()', function() {
-      return expect(compile('?! char()')).to.equal("true");
+      return expect(compile('?! char()')).to.have.string("true");
     });
   });
   return describe("?-then statement: ", function() {
     return xit('should compile ? xyz then x = abc', function() {
-      return expect(compile('? xyz then x = abc')).to.equal("[? [xyz] [then \"= x abc\"]]");
+      return expect(compile('? xyz then x = abc')).to.have.string("[? [xyz] [then \"= x abc\"]]");
     });
   });
 });

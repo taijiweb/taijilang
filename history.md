@@ -1,5 +1,7 @@
 2014
 2014-7
+7-20 -> 7-24
+  reimplement module after reimplementing meta compilation 
 7-18 
   found a group of new meta operator #-, #&, #&=
 7-17

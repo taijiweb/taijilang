@@ -294,9 +294,9 @@ convertParametersWithEllipsis = (exp, ellipsis, env) ->
   result
 
 convertDefinition =  (exp, env, mode) ->
-  newEnv = env.extend(scope={}, env.parser, env.module, {})
+  newEnv = env.extend(scope={}, env.parser, env.module, {})  #scope, parser, module, functionInfo(i.e. newVarIndexMap...)
   if mode=='=>' or mode=='|=>' or mode=='==>' or mode=='|==>'
-    _this = newEnv.newVar('_this')
+    _this = env.newVar('_this')
     scope['@'] = _this
   else scope['@'] = 'this'
   exp0 = exp[0]; exp1 = exp[1]; defaultList = []; thisParams = []
@@ -334,10 +334,10 @@ convertDefinition =  (exp, env, mode) ->
   body.push.apply body, exp1
   if mode[0]=='|' then body =  convert(begin(body), newEnv)
   else body =  return_(convert(begin(body), newEnv))
-  if mode=='=>' or mode=='|=>' then result = ['begin!', ['=', _this, 'this'], ['function', params, body]]
-  else result = ['function', params, body]
-  result.env = newEnv
-  result
+  functionExp = ['function', params, body]
+  functionExp.env = newEnv
+  if mode=='=>' or mode=='|=>' then ['begin!', ['var', _this], ['=', _this, 'this'], functionExp]
+  else functionExp
 
 for sym in '-> |-> => |=>'.split(' ') then do (sym=sym) ->
     exports[sym] = (exp, env) -> convertDefinition(exp, env,sym)

@@ -740,7 +740,7 @@ describe "parse: ",  ->
       it '''should parse export! a = A, #b, c, #b = d''', ->
         code = '''export! a = A, #b, c, #b = d '''
         x = str parse(code)
-        expect(x).to.deep.equal "[export! [a A undefined] [b undefined meta] [c undefined undefined] [b d meta]]"
+        expect(x).to.deep.equal "[export! [a A runtime undefined] [b undefined undefined meta] [c undefined runtime undefined] [b d undefined meta]]"
 
     describe "assign to outer scope var: ",  ->
       it "should parse @@a", ->

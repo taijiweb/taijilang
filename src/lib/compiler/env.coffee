@@ -92,4 +92,10 @@ exports.Environment = class Environment
     if hasOwnProperty.call(@scope, symbol) then  return @scope[symbol]
     else if @parent then return @parent.get(symbol)
 
+  info: (symbol) ->
+    if @optimizeInfoMap and hasOwnProperty.call(@optimizeInfoMap, symbol) then  return @optimizeInfoMap[symbol]
+    else if @parent then return @parent.info(symbol)
 
+# analysis and optimization use the same environment, but add the property "optimizeInfoMap" to the env instance
+# the root env is the initial env which is be used to convert and transform the exp
+# when 'function!' is met, the corresponding env is used.

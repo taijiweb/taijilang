@@ -7,48 +7,49 @@ lib = '../../lib/'
 {Parser} = require lib+'parser'
 {constant, isArray, str} = require lib+'parser/base'
 taiji = require lib+'taiji'
+{realCode} = require lib+'utils'
 
 compile = (code) ->
   head = 'taiji language 0.1\n'
-  taiji.compile(head+code, taiji.rootModule, taiji.builtins, {})
+  realCode taiji.compile(head+code, taiji.rootModule, taiji.builtins, {})
 
 compileNoOptimize = (code) ->
   head = 'taiji language 0.1\n'
-  taiji.compileNoOptimize(head+code, taiji.rootModule, taiji.builtins, {})
+  realCode taiji.compileNoOptimize(head+code, taiji.rootModule, taiji.builtins, {})
 
 describe "compile dyanmic syntax: ",  ->
   describe "compile parser attribute: ",  ->
     it 'should compile ?xyz[0]()', ->
-      expect(compile('?xyz[0]()')).to.equal "__$taiji_$_$parser__.xyz[0]()"
+      expect(compile('?xyz[0]()')).to.have.string "__$taiji_$_$parser__.xyz[0]()"
     it 'should compile ?cursor', ->
-      expect(compile('?cursor')).to.equal "__$taiji_$_$parser__.cursor"
+      expect(compile('?cursor')).to.have.string "__$taiji_$_$parser__.cursor"
     it 'should compile ?char()', ->
-      expect(compile('?char()')).to.equal "__$taiji_$_$parser__.char()"
+      expect(compile('?char()')).to.have.string "__$taiji_$_$parser__.char()"
 
   describe "parsing time evaluation: ",  ->
     it 'should compile ?? 1', ->
-      expect(compile('?? 1')).to.equal "1"
+      expect(compile('?? 1')).to.have.string "1"
     it 'should compile ?? ?cursor()', ->
-      expect(compile('?? ?cursor()')).to.equal "31"
+      expect(compile('?? ?cursor()')).to.have.string "31"
     it 'should compile ?? ?clause()', ->
-      expect(compile('?? ?clause(), 1')).to.equal "1"
+      expect(compile('?? ?clause(), 1')).to.have.string "1"
 
   describe "parsing time evaluation macro ?/: ",  ->
     it 'should compile ?/ cursor', ->
-      expect(compile('?/ cursor')).to.equal "function () {\n    return cursor;\n  }"
+      expect(compile('?/ cursor')).to.have.string "function () {\n    return cursor;\n  }"
     it 'should compile ?/ cursor', ->
-      expect(compile('?/ cursor()')).to.equal "30"
+      expect(compile('?/ cursor()')).to.have.string "30"
     it 'should compile ?/ clause(), 1', ->
-      expect(compile('?/ clause(), 1')).to.equal "1"
+      expect(compile('?/ clause(), 1')).to.have.string "1"
     it 'should compile ?/ clause(), 1', ->
-      expect(compile('?/ clause(), print 1')).to.equal "console.log(1)"
+      expect(compile('?/ clause(), print 1')).to.have.string "console.log(1)"
 
   describe "macro ?! used by ?!: ",  ->
     it 'should compile ?! cursor()', ->
-      expect(compile('?! cursor()')).to.equal "30"
+      expect(compile('?! cursor()')).to.have.string "30"
     it 'should compile ?! char()', ->
-      expect(compile('?! char()')).to.equal "true"
+      expect(compile('?! char()')).to.have.string "true"
 
   describe "?-then statement: ",  ->
     xit 'should compile ? xyz then x = abc', ->
-      expect(compile('? xyz then x = abc')).to.equal "[? [xyz] [then \"= x abc\"]]"
+      expect(compile('? xyz then x = abc')).to.have.string "[? [xyz] [then \"= x abc\"]]"

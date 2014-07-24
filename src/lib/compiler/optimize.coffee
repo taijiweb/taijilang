@@ -115,11 +115,16 @@ rewriteLetloopBody = (exp, initRemoved) ->
 
 optimizeFnMap =
   '=': (exp, env) ->
-    left = exp[1]
-    eLeft = entity(left)
-    if typeof eLeft!='string' then exp[1] = optimize(left, env)
-    exp[2] = optimize(exp[2], env)
-    exp
+    left = entity(exp[1])
+    if typeof eLeft=='string'
+      # while optimizing, replace the reference of left with value unconditionally.
+      # is this necessary to do this while analyzing?
+      if left.const and isAtomicValue(exp[2])
+        env.scope[eLeft] = exp[2]
+        return ''
+      if left.refCount==undefined then return ''
+    else left = optimize(left, env)
+    ['=', left, optimize(exp[2], env)]
 
   'prefix!': (exp, env) ->
     exp2 = optimize(exp[2])
@@ -165,16 +170,23 @@ optimizeFnMap =
       ['if', test, then_, else_]
 
   'while': (exp, env) ->
-    test = optimize(exp[1]); body = optimize(exp[2])
+    test = optimize(exp[1], env); body = optimize(exp[2], env)
     if truth(test)!=2 then ['while', test, body]
 
   'doWhile!': (exp, env) ->
-    test = optimize(exp[2]); body = optimize(exp[1])
+    test = optimize(exp[2], env); body = optimize(exp[1], env)
     if truth(test)==2 then body else ['doWhile!', body, test]
 
   'forIn!': (exp, env) -> exp
 
   'forOf!': (exp, env) -> exp
+
+  'function': (exp, env) ->
+    # use the env which is own to [function! ...]
+    env = exp.env
+    exp = ['function', exp[1], optimize(exp[2], env)]
+    exp.env = env
+    exp
 
   'letloop!':(exp, env) ->
     params = exp[1]; bindings = exp[2]; body = exp[3]; expEnv = exp.env

@@ -11,6 +11,7 @@ taiji language 0.1
 //
   __taijiVersion = '0.1.0'
   __compileMode = 'test'
+  //__hasProp #/= {. .}.hasOwnProperty
 
 //macro definition will not generate code in the object code, but macro call will.
 

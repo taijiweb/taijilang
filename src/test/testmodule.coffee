@@ -12,10 +12,11 @@ lib = '../lib/'
 {} = require lib+'compiler/compile'
 taiji = require lib+'taiji'
 TaijiModule = require lib+'module'
+{realCode} = require lib+'utils'
 
 compile = (code) ->
   head = 'taiji language 0.1\n'
-  taiji.compile(head+code, taiji.rootModule, taiji.builtins, {})
+  realCode taiji.compile(head+code, taiji.rootModule, taiji.builtins, {})
 
 describe "taiji module: ",  ->
   describe "path: ",  ->
@@ -46,5 +47,5 @@ describe "taiji module: ",  ->
       expect(childModule.findPath('html.tj')).to.equal 'f:\\taijilang\\taiji-libraries\\html.tj'
 
   describe 'include!', ->
-    it 'include! "./hello.jt"', ->
-      expect(compile("include! '../samples/hello.tj'")).to.equal "var name, module = function () {\n  var exports = { };\n  console.log(\"hello taiji\");\n  return exports;\n}();\n\nfor (name in module)\n  if (__hasProp.call(module, name))\n    name = module[name];"
+    it 'include! "./hello.tj"', ->
+      expect(compile("include! '../samples/hello.tj'")).to.have.string "var name, module = function () {\n  var exports = { };\n  console.log(\"hello taiji\");\n  return exports;\n}();\n\nfor (name in module)\n  if (__hasProp.call(module, name))\n    name = module[name]"

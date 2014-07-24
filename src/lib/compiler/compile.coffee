@@ -14,7 +14,12 @@ INDENT, UNDENT, HALF_DENT
 exports.Environment = Environment
 {transform} = require './transform'
 exports.transform = transform
+
 {analyze} = require './analyze'
+doAnalyze = (exp, env) ->
+  env.optimizeInfoMap = {}
+  analyze(exp, env)
+
 {optimize} = require './optimize'
 {tocode} = require './textize'
 {Parser} = require '../parser'
@@ -199,7 +204,7 @@ includeModuleFunctionCall = (exp, metaExpList, env, runtimeModuleAlias, metaModu
       exp,
       'exports']], []]]], metaExpList, env)
   # meta level expression
-  ['begin!',
+  begin [
    ['var', runtimeBody],
    ['var', metaModuleAlias],
    ['=', metaModuleAlias, ['call!', ['->', [], ['begin!',
@@ -229,7 +234,7 @@ metaConvertInclude = (exp, metaExpList, env) ->
     ['if', ['call!', ['attribute!', '__hasProp', 'call'], [moduleVar, exportVar]],
      ['=', exportVar, ['index!', moduleVar, exportVar]]]]]
   runtimeAssignList = metaConvert(compileTimeAssignList, metaExpList, env)
-  ['begin!'
+  begin [
     ['var', moduleFnCall]
     ['=', moduleFnCall, fnCall],
     compileTimeAssignList,
@@ -380,26 +385,28 @@ exports.metaConvert = metaConvert = (exp, metaExpList, env) ->
 # evaluate the function with the object expression pieces list as argument
 # and get the object level expression to wait convert and compile to object level javascript code
 exports.metaCompile = metaCompile = (exp, metaExpList, env) ->
-  env = env.extend({})
-  env.metaIndex = 0
+  # env = env.extend({}) # env is not used in metaCompile phase
+  # todo: remove the parameter "env" from metaCompile, metaConvert and metaTransform ...
+  env.metaIndex = 0 #todo: Instead of member of env, metaIndex may become a global variable
   exp = metaConvert exp, metaExpList, env
-  code = nonMetaCompileExp(['return', exp], env)
+  code = nonMetaCompileExp(['->', ['__tjExp'], ['return', exp]], env)
 
 # metaConvert expression to meta level and compile to javascript function code
 # evaluate the function with the object expression pieces list as argument
 # and get the object level expression to wait convert and compile to object level javascript code
 exports.metaProcess = metaProcess = (exp, env) ->
+  env = env.extend({}) # this line is necessary to avoid put the mete variable in the runtime scope.
   code = metaCompile(exp, metaExpList=[], env)
-  console.log code
-  new Function(['__tjExp'], code)(metaExpList)
+  #console.log code
+  eval(code)(metaExpList)
 
 exports.nonMetaCompileExp = nonMetaCompileExp = (exp, env) ->
   exp = convert exp, env
   #console.log formatTaijiJson entity exp
   exp = transform exp, env
-  exp = analyze exp, env
+  doAnalyze exp, env
   exp = optimize exp, env
-  exp = tocode exp
+  exp = tocode exp, env
   exp
 
 exports.compileExp = compileExp = (exp, env) ->
@@ -409,7 +416,7 @@ exports.compileExp = compileExp = (exp, env) ->
 exports.nonMetaCompileExpNoOptimize = nonMetaCompileExpNoOptimize = (exp, env) ->
   exp = convert exp, env
   exp = transform exp, env
-  exp = tocode exp
+  exp = tocode exp, env
   exp
 
 exports.compileExpNoOptimize = compileExpNoOptimize = (exp, env) ->
@@ -427,16 +434,16 @@ exports.transformExp = transformExp = (exp, env) ->
 # transform and optimize expression
 exports.transformToCode = transformToCode = (exp, env) ->
   exp = transform exp, env
-  exp = analyze exp, env
+  doAnalyze exp, env
   exp = optimize exp, env
-  exp = tocode exp
+  exp = tocode exp, env
   exp
 
 exports.optimizeExp = optimizeExp = (exp, env) ->
   exp = metaProcess exp, env
   exp = convert exp, env
   exp = transform exp, env
-  exp = analyze exp, env
+  doAnalyze exp, env
   exp = optimize exp, env
   exp
 
