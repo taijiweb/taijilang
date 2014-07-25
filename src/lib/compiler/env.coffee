@@ -38,6 +38,16 @@ exports.Environment = class Environment
     while not functionInfo = env.functionInfo then env = env.parent
     functionInfo
 
+  getFunctionEnv: ->
+    env = @
+    while not env.functionInfo then env = env.parent
+    env
+
+  getDefinitionExpListEnv: ->
+    env = @
+    while not env.definitionExpList then env = env.parent
+    env
+
   newVar: (symbol) ->
     name = toIdentifier(symbol)
     functionInfo = @getFunctionInfo()

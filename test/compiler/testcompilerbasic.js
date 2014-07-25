@@ -249,8 +249,11 @@ describe("compiler basic: ", function() {
     it('should compile /. some comment', function() {
       return expect(compile('/. some comment')).to.have.string('');
     });
-    return it('should compile /. some \n  embedded \n  comment', function() {
+    it('should compile /. some \n  embedded \n  comment', function() {
       return expect(compile('/. some \n  embedded \n  comment')).to.have.string('');
+    });
+    return it('should compile /// line comment\n 1', function() {
+      return expect(compile('/// line comment\n 1')).to.equal("/// line comment;\n1");
     });
   });
 });

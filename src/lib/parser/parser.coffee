@@ -161,7 +161,10 @@ exports.Parser = ->
     while ++lineno and lineno<=maxLine and lineInfo[lineno].empty then continue
     cursor = lineInfo[lineno].start + lineInfo[lineno].indentRow
     #cursor = lineInfo[lineno].start-1; lineno--
-    { type: LINE_COMMENT, value:text.slice(start, cursor), start:start, stop:cursor, line1:line1, line: lineno
+    lastPos =  lineInfo[lineno].start-1
+    if text[lastPos]=='\n' then lastPos--
+    if text[lastPos]=='\r' then lastPos--
+    { type: LINE_COMMENT, value:text.slice(start, lastPos+1), start:start, stop:cursor, line1:line1, line: lineno
     #indent:lineno<maxLine and indentRow<lineInfo[lineno+1].indentRow
     indent: indentRow<lineInfo[lineno].indentRow
     }
@@ -1509,8 +1512,13 @@ exports.Parser = ->
   @lineCommentBlock = memo ->
     start = cursor
     if comment=parser.lineComment()
-      if comment.indent then parser.blockWithoutIndentHead()
-      else [extend(['lineComment!', '"'+text[start...cursor]+'"'], {start:start, stop:cursor, line: lineno})]
+      if comment.indent
+        if comment.value[...3]=='///' then result = parser.blockWithoutIndentHead(); result.unshift ['directLineComment!', comment.value]; result
+        else parser.blockWithoutIndentHead()
+      else
+        if text[start...start+3]=='///'
+          [extend(['directLineComment!', comment.value], {start:start, stop:cursor, line: lineno})]
+        else [extend(['lineComment!', comment.value], {start:start, stop:cursor, line: lineno})]
 
   @codeCommentBlockComment = memo ->
     if cursor!=lineInfo[lineno].start+lineInfo[lineno].indentRow then return

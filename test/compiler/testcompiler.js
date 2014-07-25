@@ -585,7 +585,12 @@ describe("compile: ", function() {
       return expect(compile('a = #  #-{ print 1 }')).to.have.string("var a = console.log(1);\na");
     });
     it('compile (#{ -> #- { print 1 }}) ', function() {
-      return expect(compile('(#{ -> #- { print 1 }})')).to.have.string('function () {\n    return __tjExp[20];\n  }');
+      return expect(compile('(#{ -> #- { print 1 }})()')).to.equal('[print, 1]');
+    });
+    it('run (#{ -> #- { print 1 }}) ', function() {
+      return expect(function() {
+        return run('(#{ -> #- { print 1 }})()');
+      }).to["throw"](/print is not defined/);
     });
     it('compile (#{ -> #- { print 1 }}); 1 ', function() {
       return expect(compile('(#{ -> #- { print 1 }}); 1')).to.have.string("1");

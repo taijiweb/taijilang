@@ -666,6 +666,8 @@ describe "parser basic: ",  ->
       x = parser.parse(text, parser.moduleBody, 0)
     it 'should parse // line comment\n 1', ->
       expect(str parse('// line comment\n 1')).to.equal '1'
+    it 'should parse /// line comment\n 1', ->
+      expect(str parse('/// line comment\n 1')).to.equal "[begin! [directLineComment! /// line comment] 1]"
     it 'should parse // line comment block\n 1 2', ->
       expect(str parse('// line comment block\n 1 2')).to.equal "[1 2]"
     it 'should parse // line comment block\n 1 2, 3 4', ->

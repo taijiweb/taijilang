@@ -2,6 +2,9 @@ taiji language 0.1
 
   this file is not tested
 
+// # array?(1)
+include! 'types.tj'
+
 convertClassItem #= (item, name) ->
   if not array?.item then return item
   if item[0]=='class' then \class item[1] item[2] item[3]

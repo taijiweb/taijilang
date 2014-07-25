@@ -79,6 +79,8 @@ tokenFnMap =
     priority([(if x.pri>15 then paren(x) else x), '? ',
               (if y.pri>15 then paren(y) else y), ': ',  (if z.pri>15 then paren(z) else z)],15) # test? then: else
   'noop!': (exp) ->  ''
+  'directLineComment!': (exp) -> entity(exp[1])
+  'directCBlockComment!': (exp) -> entity(exp[1])
   'var': (exp) ->
     exps = []; assigns = []
     for e in exp[1...]

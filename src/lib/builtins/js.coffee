@@ -1,4 +1,5 @@
 {isArray, error, entity, begin, undefinedExp} = require '../utils'
+{identifierCharSet} = require '../parser/base'
 {convertList, convert} = require '../compiler'
 
 exports['index!'] = (exp, env) -> ['index!', convert(exp[0], env), convert exp[1], env]
@@ -7,8 +8,12 @@ exports['::'] = ['attribute!', 'this', 'prototype']
 
 exports['attribute!'] = (exp, env) ->
   obj = convert(exp[0], env)
-  if entity(exp[1])=='::' then return ['attribute!', obj, 'prototype']
-  ['attribute!', obj, exp[1]]
+  if (attr=entity(exp[1]))=='::' then return ['attribute!', obj, 'prototype']
+  nonJs = false
+  for c in attr
+    if not identifierCharSet[c] then nonJs = true; break
+  if nonJs then ['index!', obj, '"'+attr+'"']
+  else ['attribute!', obj, attr]
 
 call = (caller) -> (exp, env) -> convert ['call!', caller, exp], env
 

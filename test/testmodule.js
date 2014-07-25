@@ -1,4 +1,4 @@
-var Parser, TaijiModule, chai, compile, constant, expect, idescribe, iit, isArray, lib, ndescribe, nit, path, realCode, str, taiji, _ref;
+var Parser, TaijiModule, chai, compile, constant, expect, idescribe, iit, isArray, lib, ndescribe, nit, path, realCode, run, str, taiji, _ref;
 
 chai = require("chai");
 
@@ -32,6 +32,13 @@ compile = function(code) {
   var head;
   head = 'taiji language 0.1\n';
   return realCode(taiji.compile(head + code, taiji.rootModule, taiji.builtins, {}));
+};
+
+run = function(code) {
+  var head;
+  head = 'taiji language 0.1\n';
+  code = taiji.compile(head + code, taiji.rootModule, taiji.builtins, {});
+  return str(eval(code));
 };
 
 describe("taiji module: ", function() {
@@ -73,7 +80,7 @@ describe("taiji module: ", function() {
   });
   return describe('include!', function() {
     return it('include! "./hello.tj"', function() {
-      return expect(compile("include! '../samples/hello.tj'")).to.have.string("var name, module = function () {\n  var exports = { };\n  console.log(\"hello taiji\");\n  return exports;\n}();\n\nfor (name in module)\n  if (__hasProp.call(module, name))\n    name = module[name]");
+      return expect(run("include! '../samples/hello.tj'")).to.equal("hello taiji");
     });
   });
 });

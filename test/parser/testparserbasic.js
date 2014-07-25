@@ -963,6 +963,9 @@ describe("parser basic: ", function() {
     it('should parse // line comment\n 1', function() {
       return expect(str(parse('// line comment\n 1'))).to.equal('1');
     });
+    it('should parse /// line comment\n 1', function() {
+      return expect(str(parse('/// line comment\n 1'))).to.equal("[begin! [directLineComment! /// line comment] 1]");
+    });
     it('should parse // line comment block\n 1 2', function() {
       return expect(str(parse('// line comment block\n 1 2'))).to.equal("[1 2]");
     });

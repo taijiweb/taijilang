@@ -18,6 +18,11 @@ compile = (code) ->
   head = 'taiji language 0.1\n'
   realCode taiji.compile(head+code, taiji.rootModule, taiji.builtins, {})
 
+run = (code) ->
+  head = 'taiji language 0.1\n'
+  code = taiji.compile(head+code, taiji.rootModule, taiji.builtins, {})
+  str eval code
+
 describe "taiji module: ",  ->
   describe "path: ",  ->
     it '__dirname', ->
@@ -48,4 +53,4 @@ describe "taiji module: ",  ->
 
   describe 'include!', ->
     it 'include! "./hello.tj"', ->
-      expect(compile("include! '../samples/hello.tj'")).to.have.string "var name, module = function () {\n  var exports = { };\n  console.log(\"hello taiji\");\n  return exports;\n}();\n\nfor (name in module)\n  if (__hasProp.call(module, name))\n    name = module[name]"
+      expect(run("include! '../samples/hello.tj'")).to.equal "hello taiji"

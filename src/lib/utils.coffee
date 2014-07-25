@@ -166,16 +166,17 @@ exports.addPrelude = (parser, body) ->
   # return body
   result = []
   #if parser.meetEllipsis then result.push ['=', '__slice', ['attribute!', [], 'slice']]
-  result.push ['var', '__slice']
-  result.push ['#/=', '__slice', ['attribute!', [], 'slice']]
-  result.push ['var', '__hasProp']
-  result.push ['#/=', '__hasProp', ['attribute!', ['hash!'], 'hasOwnProperty']]
+  #result.push ['var', '__slice']
+  #result.push ['#/=', '__slice', ['attribute!', [], 'slice']]
+  #result.push ['var', '__hasProp']
+  #result.push ['#/=', '__hasProp', ['attribute!', ['hash!'], 'hasOwnProperty']]
   result.push ['include!', '"prelude.tj"']
+  result.push ['directLineComment!', '/// end of prelude']
   result.push body
   begin(result)
 
 exports.realCode = (code) ->
-  endModuleText = 'name = module[name];\n'
+  endModuleText = '/// end of prelude;\n'
   if ((realCodePos=code.indexOf(endModuleText))>=0)
     if code[code.length-1]==';'then code.slice(realCodePos+endModuleText.length, code.length-1)
     else code.slice(realCodePos+endModuleText.length)

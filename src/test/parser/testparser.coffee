@@ -132,22 +132,18 @@ describe "parse: ",  ->
       it 'should parse # ( #(1+2) + #(3+4))', ->
         expect(str parse('# ( #(1+2) + #(3+4))')).to.equal "[# [+ [# [+ 1 2]] [# [+ 3 4]]]]"
 
-    xdescribe 'class: ', ->
+    describe 'class: ', ->
       it 'should parse class', ->
         x = parse('class')
-        expect(str x).to.equal '[class [] undefined]'
+        expect(str x).to.equal "[class undefined undefined]"
 
       it 'should parse class extends A', ->
         x = parse('class extends A')
-        expect(str x).to.equal '[class [A] undefined]'
+        expect(str x).to.equal "[class A undefined]"
 
-      it 'should parse class extends (A, B)', ->
-        x = parse('class extends (A, B)')
-        expect(str x).to.equal '[class [, A B] undefined]'
-
-      it 'should parse class extends (A, B)  ::init = x', ->
-        x = parse('class extends (A, B)  ::init = x')
-        expect(str x).to.equal "[class [, A B] [= [attribute! :: init] x]]"
+      it 'should parse class extends A  :: = ->', ->
+        x = parse('class extends A  :: = ->')
+        expect(str x).to.equal "[class A [:: = [-> [] []]]]"
 
     describe 'for', ->
       it 'should parse for (i=0; i<10; i++) then print i', ->

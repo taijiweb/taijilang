@@ -1,5 +1,5 @@
 fs = require 'fs'
-{evaljs, isArray, extend, str, formatTaijiJson, wrapInfo1, entity, pushExp, undefinedExp, begin} = require '../utils'
+{evaljs, isArray, extend, str, formatTaijiJson, wrapInfo1, entity, pushExp, undefinedExp, begin, return_} = require '../utils'
 
 {constant} = require '../parser/base'
 {NUMBER, STRING, IDENTIFIER, SYMBOL, REGEXP, HEAD_SPACES, CONCAT_LINE, PUNCT, FUNCTION,
@@ -121,12 +121,27 @@ exports.convertEllipsisList = convertEllipsisList = (exp, env) ->
     result.concated = concated
     result
 
+convertScopeExp = (exp, env) ->
+  env.definitionExpList = []
+  exp = convert(exp, env)
+  for [defExp, newEnv, mode] in env.definitionExpList
+    if mode=='letloop!' then defExp[1] = return_(convertScopeExp(begin(defExp[1]), newEnv))
+    else
+      if mode[0]=='|' then defExp[2] =  convertScopeExp(begin(defExp[2]), newEnv)
+      else defExp[2] =  return_(convertScopeExp(begin(defExp[2]), newEnv))
+  exp
+
 $atMetaExpList = (index) -> ['index!', ['jsvar!', '__tjExp'], index]
 
 TaijiModule = require '../module'
 parser = new Parser
 
+metaInclude = (exp, metaExpList, env) ->
+  [exp, newEnv] = parseModule entity(exp[1]), env, exp[2]
+  metaTransform(exp, metaExpList, env) # when including, necessary use the same "env"
+
 preprocessMetaConvertFnMap =
+  'include': metaInclude
   'if': (exp, metaExpList, env) ->
     ['if', metaTransform(exp[1], metaExpList, env),
      metaConvert(exp[2], metaExpList, env),
@@ -213,33 +228,6 @@ includeModuleFunctionCall = (exp, metaExpList, env, runtimeModuleAlias, metaModu
      'exports']], []]],
    runtimeBody]
 
-# todo: when convert non javascript symbol or name, how to ensure exported name can get the same name?
-# method 1:
-# 1.1 when exporting, the name should not be changed to add to __taijiModule.
-# 1.2 when including, use the same name, do not use env.newVar('x') and the like?
-# method 2:
-# based on 1.1, use env.newVar for the exported
-# please notice that we are in the metaConvert phases, not the convert phases, so name should not be converted.
-# include! with parseMethod filePath
-metaConvertInclude = (exp, metaExpList, env) ->
-  [exp, newEnv] = parseModule entity(exp[1]), env, exp[2]
-  moduleVar = ['metaConvertVar!', 'module']
-  fnCall = includeModuleFunctionCall(exp, metaExpList, env, moduleVar, moduleVar)
-  exportVar = ['metaConvertVar!', 'name']
-  moduleFnCall = ['metaConvertVar!', 'moduleFnCall']
-  metaBegin = metaConvert('begin!', metaExpList, env)
-  compileTimeAssignList = ['begin!',
-   ['var', exportVar],
-   ['forIn!', exportVar, moduleVar,
-    ['if', ['call!', ['attribute!', '__hasProp', 'call'], [moduleVar, exportVar]],
-     ['=', exportVar, ['index!', moduleVar, exportVar]]]]]
-  runtimeAssignList = metaConvert(compileTimeAssignList, metaExpList, env)
-  begin [
-    ['var', moduleFnCall]
-    ['=', moduleFnCall, fnCall],
-    compileTimeAssignList,
-    ['list!', metaBegin, moduleFnCall, runtimeAssignList]]
-
 # import! with parseMethod #name [as alias], ..., from module as alias
 # import! name [as alias], ... from module as alias
 # import! module as alias
@@ -263,6 +251,10 @@ metaConvertImport = (exp, metaExpList, env) ->
    ['=', moduleFnCall, fnCall],
    compileTimeAssignList,
    ['list!', metaBegin, moduleFnCall, runtimeAssignList]]
+
+include = (exp, metaExpList, env) ->
+  [exp, newEnv] = parseModule entity(exp[1]), env, exp[2]
+  metaConvert(exp, metaExpList, env)
 
 # process code which is hybrid of object and meta level
 # exp(like [#..., ], [include!, x], ...) is hybrid code
@@ -321,7 +313,7 @@ metaConvertFnMap =
     ['call!', metaTransform(exp[1], metaExpList, env), args]
 
   'export!': metaConvertExport
-  'include!': metaConvertInclude
+  'include!': include
   'import!': metaConvertImport
 
 # whehter head is a operator for meta expression?
@@ -389,7 +381,7 @@ exports.metaCompile = metaCompile = (exp, metaExpList, env) ->
   # todo: remove the parameter "env" from metaCompile, metaConvert and metaTransform ...
   env.metaIndex = 0 #todo: Instead of member of env, metaIndex may become a global variable
   exp = metaConvert exp, metaExpList, env
-  code = nonMetaCompileExp(['->', ['__tjExp'], ['return', exp]], env)
+  code = nonMetaCompileExp(['->', ['__tjExp'], exp], env)
 
 # metaConvert expression to meta level and compile to javascript function code
 # evaluate the function with the object expression pieces list as argument
@@ -401,7 +393,7 @@ exports.metaProcess = metaProcess = (exp, env) ->
   eval(code)(metaExpList)
 
 exports.nonMetaCompileExp = nonMetaCompileExp = (exp, env) ->
-  exp = convert exp, env
+  exp = convertScopeExp exp, env
   #console.log formatTaijiJson entity exp
   exp = transform exp, env
   doAnalyze exp, env
@@ -414,7 +406,7 @@ exports.compileExp = compileExp = (exp, env) ->
   exp = nonMetaCompileExp exp, env
 
 exports.nonMetaCompileExpNoOptimize = nonMetaCompileExpNoOptimize = (exp, env) ->
-  exp = convert exp, env
+  exp = convertScopeExp exp, env
   exp = transform exp, env
   exp = tocode exp, env
   exp
@@ -427,7 +419,7 @@ exports.compileExpNoOptimize = compileExpNoOptimize = (exp, env) ->
 # metaProcess, convert and transform the expression
 exports.transformExp = transformExp = (exp, env) ->
   exp = metaProcess exp, env
-  exp = convert exp, env
+  exp = convertScopeExp exp, env
   exp = transform exp, env
   exp
 
@@ -441,7 +433,7 @@ exports.transformToCode = transformToCode = (exp, env) ->
 
 exports.optimizeExp = optimizeExp = (exp, env) ->
   exp = metaProcess exp, env
-  exp = convert exp, env
+  exp = convertScopeExp exp, env
   exp = transform exp, env
   doAnalyze exp, env
   exp = optimize exp, env

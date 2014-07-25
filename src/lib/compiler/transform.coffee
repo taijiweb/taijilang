@@ -147,6 +147,8 @@ transformUnaryExpression = (exp, env, shiftStmtInfo) ->
       [begin([stmt, ['var', (t=env.ssaVar('t'))], ['=', t,  ['prefix!', exp[1], e]]]), t]
 
 transformExpressionFnMap =
+  'directLineComment!': (exp, env, shiftStmtInfo) -> [exp, exp] # error 'direct line comment should not been here'
+  'directCBlockComment!': (exp, env, shiftStmtInfo) -> [exp, exp]  #error 'direct line comment should not been here'
   'string!': (exp, env, shiftStmtInfo) ->
      [stmt, es] = transformExpressionList(exp[1...], env, shiftStmtInfo)
      str = transformInterpolatedString(es[0])
@@ -205,7 +207,11 @@ transformExpressionFnMap =
 
   'list!':(exp, env, shiftStmtInfo) ->
     [argsStmts, argsValues] = transformExpressionList(exp[1...], env, shiftStmtInfo)
-    [argsStmts, ['list!'].concat(argsValues)]
+    args = []
+    for e in argsValues
+      if e and e[0]=='directLineComment!' or e[0]=='directCBlockComment!' then continue
+      else args.push e
+    [argsStmts, ['list!'].concat(args)]
   'return': transformReturnExpression
   'throw': transformReturnExpression
 
@@ -261,6 +267,10 @@ transformExpressionFnMap =
   'call!': (exp, env, shiftStmtInfo) ->
     [argsStmts, argsValues] = transformExpressionList(exp[2], env, shiftStmtInfo)
     [callerStmt, callerValue] = transformExpression(exp[1], env, shiftStmtInfo)
+    args = []
+    for e in argsValues
+      if e and e[0]=='directLineComment!' or e[0]=='directCBlockComment!' then continue
+      else args.push e
     [begin([callerStmt, argsStmts]), ['call!', callerValue, argsValues]]
 
   'function': (exp, env, shiftStmtInfo) ->
@@ -455,6 +465,8 @@ transformFnMap =
   'continue': idFn
   'label!': (exp, env, shiftStmtInfo) -> ['label!', exp[1], transform(exp[2], env)]
   'noop!': idFn
+  'directLineComment!': idFn
+  'directCBlockComment!': idFn
 
   'begin!': (exp, env) ->
     stmts = []

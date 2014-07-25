@@ -3,7 +3,7 @@
 `__slice = [].slice`
 
 fs = require 'fs'
-{convertIdentifier, entity, begin, error, isArray, error, extend, splitSpace, return_, undefinedExp, addPrelude} = require '../utils'
+{convertIdentifier, entity, begin, error, isArray, error, extend, splitSpace, undefinedExp, addPrelude} = require '../utils' #return_,
 {Parser} = require '../parser'
 {convert, convertList, convertEllipsisList, convertExps, compileExp, transformToCode, metaProcessConvert, metaProcess} = require '../compiler'
 
@@ -222,12 +222,14 @@ exports['letloop!'] = (exp, env) ->
         else if p1!=params[i] then error 'different parameter list for functions in letloop bindings is not allowed', p
     if not fnBodyEnv then fnBodyEnv = newEnv.extend(fnScope={})
     for p in params then fnScope[p] = {symbol: p}
-    [scope[entity(x[0])], return_(convert(begin(value[2]), fnBodyEnv)) ]
+    # converting the body of definition is moved to convertScopeExp in compile.coffee
+    #[scope[entity(x[0])], return_(convert(begin(value[2]), fnBodyEnv))]
+    env.getDefinitionExpListEnv().definitionExpList.push binding = [[scope[entity(x[0])], value[2]], fnBodyEnv, 'letloop!']
+    binding
   exp = ['letloop!', params, bindings, convert(exp[1], newEnv)]
   exp.env = newEnv
   result.push exp
   result = begin(result)
-  result.env = newEnv
   result
 
 # don't convert the bound expression, similar to macro
@@ -265,7 +267,9 @@ idConvert = (keyword) -> (exp, env) -> [keyword, exp[0]]
 do -> for word in splitSpace 'break continue' then exports[word] = idConvert(word)
 
 exports['lineComment!'] = (exp, env) -> ''
+exports['directLineComment!'] = (exp, env) -> ['directLineComment!', exp[0]]
 exports['codeBlockComment!'] = (exp, env) -> ''
+exports['directCBlockComment!'] = (exp, env) -> ['directCBlockComment!', exp[0]]
 
 exports['direct!'] = (exp, env) -> exp[0]
 exports['quote!'] = (exp, env) -> ['quote!', entity(exp[0])]
@@ -332,10 +336,12 @@ convertDefinition =  (exp, env, mode) ->
   body.push.apply body, defaultList
   body.push.apply body, thisParams
   body.push.apply body, exp1
-  if mode[0]=='|' then body =  convert(begin(body), newEnv)
-  else body =  return_(convert(begin(body), newEnv))
+  # converting the body of definition is moved to convertScopeExp in compile.coffee
+  # if mode[0]=='|' then body =  convert(begin(body), newEnv)
+  # else body =  return_(convert(begin(body), newEnv))
   functionExp = ['function', params, body]
   functionExp.env = newEnv
+  env.getDefinitionExpListEnv().definitionExpList.push [functionExp, newEnv, mode]
   if mode=='=>' or mode=='|=>' then ['begin!', ['var', _this], ['=', _this, 'this'], functionExp]
   else functionExp
 

@@ -1,0 +1,6 @@
+taiji language 0.1
+
+  some utilities for taiji language
+
+// math utilities
+  exports.sqr! #= (n) -> ` [let x = ^n then (x * x) ]

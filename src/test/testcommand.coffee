@@ -36,7 +36,7 @@ describe 'test command:', ->
     describe "samples: ",  ->
       it 'parse temp.tj', -> expect(parse 'samples-js/parse', 'samples/temp.tj').to.deep.equal [undefined]
       it 'transform temp.tj', -> expect(transform 'samples-js/transform', 'samples/temp.tj').to.deep.equal [undefined]
-      it 'compile temp.tj', -> expect(compile 'samples-js', 'samples/temp.tj').to.deep.equal [undefined]
+      iit 'compile temp.tj', -> expect(compile 'samples-js', 'samples/temp.tj').to.deep.equal [undefined]
       it 'parse hello.tj', -> expect(parse 'samples-js/parse', 'samples/hello.tj').to.deep.equal [undefined]
       it 'compile hello.tj', -> expect(compile 'samples-js', 'samples/hello.tj').to.deep.equal [undefined]
       it 'parse sample.tj', -> expect(parse 'samples-js/parse', 'samples/sample.tj').to.deep.equal [undefined]
@@ -70,9 +70,8 @@ describe 'test command:', ->
       it 'parse class.tj', -> expect(parse 'taiji-libraries-js/parse', 'taiji-libraries/class.tj').to.deep.equal [undefined]
       xit 'compile class.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/class.tj').to.deep.equal [undefined]
       it 'compile browser.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/browser.tj').to.deep.equal [undefined]
-      xit 'compile html.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/html.tj').to.deep.equal [undefined]
+      it 'compile html.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/html.tj').to.deep.equal [undefined]
       it 'parse prelude.tj', -> expect(parse 'taiji-libraries-js', 'taiji-libraries/prelude.tj').to.deep.equal [undefined]
-      it 'compile prelude.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/prelude.tj').to.deep.equal [undefined]
 
   run = (filePath) ->
     command.opts = {run:true, arguments:[filePath]}

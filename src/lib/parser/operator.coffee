@@ -90,7 +90,7 @@ do -> for op, result of exports.binaryOperatorDict
   if not result.symbol then result.symbol = op
 
 #: #=: meta assign, assign meta value or macro to variable
-exports.assignOperators = ('= #= += -= *= /= %= <<= >>= >>>= &= |\= |='+' &&= ||=').split(' ')
+exports.assignOperators = ('= #= += -= *= /= %= <<= >>= >>>= &= |\= |='+' &&= ||= #= #/= #&=').split(' ')
 do -> for op in exports.assignOperators
   exports.binaryOperatorDict[op] = {priority:20, value: op, symbol:op, rightAssoc: true, assign:true}
 

@@ -413,7 +413,9 @@ describe "compile: ",  ->
     it 'compile a = # #-{ print 1 } ', ->
       expect(compile('a = #  #-{ print 1 }')).to.have.string "var a = console.log(1);\na"
     it 'compile (#{ -> #- { print 1 }}) ', ->
-      expect(compile('(#{ -> #- { print 1 }})')).to.have.string 'function () {\n    return __tjExp[20];\n  }'
+      expect(compile('(#{ -> #- { print 1 }})()')).to.equal '[print, 1]'
+    it 'run (#{ -> #- { print 1 }}) ', ->
+      expect(-> run('(#{ -> #- { print 1 }})()')).to.throw /print is not defined/
     it 'compile (#{ -> #- { print 1 }}); 1 ', ->
       expect(compile('(#{ -> #- { print 1 }}); 1')).to.have.string "1"
     it 'compile (#{ -> #- { print 1 }})() ', ->

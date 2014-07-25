@@ -171,3 +171,5 @@ describe "compiler basic: ",  ->
       expect(compile('/. some comment')).to.have.string ''
     it 'should compile /. some \n  embedded \n  comment', ->
       expect(compile('/. some \n  embedded \n  comment')).to.have.string ''
+    it 'should compile /// line comment\n 1', ->
+      expect(compile('/// line comment\n 1')).to.equal "/// line comment;\n1"

@@ -1,10 +1,11 @@
 taiji language 0.1
 
+include! 'types.tj'
 // Some example code snippets
 
-undefined? #= (obj) -> `(typeof( ^obj )==undefined)
-object? #= (obj) -> `( typeof( ^obj ) == 'object' )
-array? #= (obj) -> `( Object.prototype.toString.call( ^obj ) === '[object Array]' )
+//undefined? #= (obj) -> `(typeof( ^obj )==undefined)
+//object? #= (obj) -> `( typeof( ^obj ) == 'object' )
+//array? #= (obj) -> `( Object.prototype.toString.call( ^obj ) === '[object Array]' )
 
 if undefined? # window then
   console.log "Not Running on browser"
