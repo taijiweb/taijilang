@@ -2,26 +2,49 @@ taiji language 0.1
 
   this file is not tested
 
-// # array?(1)
 include! 'types.tj'
 
-convertClassItem #= (item, name) ->
-  if not array?.item then return item
-  if item[0]=='class' then \class item[1] item[2] item[3]
-  if item[0]=='='
-    if item[1]=='::' then return ['=' name item[2]]
-    else if array? item[1] then
-      if item[1][0]=='attribute!' and item[1][1]=='::' then
-        return ['=', ['attribute!', ['attribute' name '::'], item[1][2]]]
-  if (x=item[0].slice(item.length-2))=='->' or x=='=>' then
-    return item
+#{
+    utils = require('../utils')
+    entity = utils.entity
 
-\class #= (name, super, body) ->
-   result = []
-   if not name then name = ssaVar '_class'; result.push `[const ^name]
-   if super then result.push `[__extends ^name ^super]
-   resultBody = []
-   for item in body then
-     resultBody.push convertClassItem(item, name)
-   result.push resultBody
-   result
+    var \class
+
+    __extends  = (child, parent) ->
+      for key in parent then if __hasProp.call(parent, key) then child[key] = parent[key]
+      ctor = -> @constructor = child
+      ctor:: = parent::
+      child:: = new ctor; child.__super__ = parent::
+      child
+
+    convertClassItem = (item, className, superClass) ->
+      if not array?(item) then return item
+      else if item0=item[0] and item0=='class' then return \class item[1] item[2] item[3]
+      else if item0=='=' then
+        if array? item[1] then    // ::member = value
+          if item1=item[1] and item1[0]=='attribute!' and item1[1]=='::' then
+            \super = (args...) -> superClass::item1[2].call args
+            return `{ \= { (^className):: } ^(item1[2]) }
+      if item0 and (item0[0]=='->' or item0[0]=='=>') then
+        return item
+
+    \class = (className, superClass, body) ->
+      result = []
+      if not className then className = newvar! '_class'; result.push `{const ^className}
+      // if constructor is provided, then it must be the first statement of the body
+      if body0=body[0] and entity(body0[0])=='=' and entity(body0[1])=='::' then
+        var index = 1
+        if superClass
+          result.push `{ \super = `((^(^superClass)).constructor.call)}
+        result.push `{ \= ^className ^(body0[2]) }
+      else
+        index = 0
+        result.push `{ \= ^className -> }
+      if superClass then result.push `{__extends ^className ^superClass}
+      resultBody = []
+      for item in body.slice(index) then
+        resultBody.push convertClassItem(item, className, superClass)
+      result.push resultBody
+      result
+}
+undefined

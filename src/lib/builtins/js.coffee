@@ -107,15 +107,14 @@ exports["hash!"] = convertHash = (exp, env) ->
   result.push v
   result
 
-convertForInOf = (head) -> (exp, env) ->
+convertForInOf = (head) ->
+
+exports['forIn!'] = (exp, env) ->
   [item, range, body] = exp
   if item[0]!='metaConvertVar!' and not env.hasFnLocal(item.value)
     env.set(item.value, item); item = ['var', item]
   else item = convert(item, env)
-  [head, item, convert(range, env), convert(body, env)]
-
-exports['forIn!'] = convertForInOf('forIn!')
-exports['forOf!'] = convertForInOf('forOf!')
+  ['forIn!', item, convert(range, env), convert(body, env)]
 
 exports['forIn!!'] = (exp, env) ->
   [item, index, range, body] = exp

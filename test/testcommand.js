@@ -68,7 +68,7 @@ describe('test command:', function() {
       it('transform temp.tj', function() {
         return expect(transform('samples-js/transform', 'samples/temp.tj')).to.deep.equal([void 0]);
       });
-      iit('compile temp.tj', function() {
+      it('compile temp.tj', function() {
         return expect(compile('samples-js', 'samples/temp.tj')).to.deep.equal([void 0]);
       });
       it('parse hello.tj', function() {
@@ -156,7 +156,7 @@ describe('test command:', function() {
       it('parse class.tj', function() {
         return expect(parse('taiji-libraries-js/parse', 'taiji-libraries/class.tj')).to.deep.equal([void 0]);
       });
-      xit('compile class.tj', function() {
+      iit('compile class.tj', function() {
         return expect(compile('taiji-libraries-js', 'taiji-libraries/class.tj')).to.deep.equal([void 0]);
       });
       it('compile browser.tj', function() {

@@ -3,7 +3,7 @@
 `__slice = [].slice`
 
 fs = require 'fs'
-{convertIdentifier, entity, begin, error, isArray, error, extend, splitSpace, undefinedExp, addPrelude} = require '../utils' #return_,
+{convertIdentifier, entity, begin, return_, error, isArray, error, extend, splitSpace, undefinedExp, addPrelude} = require '../utils'
 {Parser} = require '../parser'
 {convert, convertList, convertEllipsisList, convertExps, compileExp, transformToCode, metaProcessConvert, metaProcess} = require '../compiler'
 
@@ -31,7 +31,7 @@ declareVar = (fn) -> (exp, env) ->
     e0 = entity(e)
     if typeof e0=='string'
       if e0[0]=='"' then error 'variable name should not be a string'
-      if env.hasLocal(e) then error 'repeat declaring variable: '+e0
+      if env.hasLocal(e0) then error 'repeat declaring variable: '+e0
       v = env.set(e0, e); fn(v)
       if v.const then error 'const need to be initialized to a value'
       result.push(['var', v]); result.push v
@@ -53,6 +53,8 @@ declareVar = (fn) -> (exp, env) ->
 # assure when transforming, only there exists ['var', variable]
 exports['var'] = declareVar((v) -> v)
 exports['const'] = declareVar( (v) -> v.const=true; v )
+
+exports['newvar!'] = (exp, env) -> '"'+env.newVar((x=entity(exp[0])).slice(1, x.length-1))+'"'
 
 makeSlice = (obj, start, stop) ->
   if stop==undefined then ['call!', ['attribute!', '__slice', 'call'], [obj, start]]
@@ -222,10 +224,7 @@ exports['letloop!'] = (exp, env) ->
         else if p1!=params[i] then error 'different parameter list for functions in letloop bindings is not allowed', p
     if not fnBodyEnv then fnBodyEnv = newEnv.extend(fnScope={})
     for p in params then fnScope[p] = {symbol: p}
-    # converting the body of definition is moved to convertScopeExp in compile.coffee
-    #[scope[entity(x[0])], return_(convert(begin(value[2]), fnBodyEnv))]
-    env.getDefinitionExpListEnv().definitionExpList.push binding = [[scope[entity(x[0])], value[2]], fnBodyEnv, 'letloop!']
-    binding
+    [scope[entity(x[0])], return_(convert(begin(value[2]), fnBodyEnv))]
   exp = ['letloop!', params, bindings, convert(exp[1], newEnv)]
   exp.env = newEnv
   result.push exp
@@ -238,8 +237,8 @@ exports['letloop!'] = (exp, env) ->
 keywordConvert = (keyword) -> (exp, env) -> [keyword].concat(for e in exp then convert e, env)
 
 do ->
-  symbols  = 'throw return break label! if! cFor! forIn! forOf! while! doWhile! try! with! ?: ,'
-  keywords = 'throw return break label!  if  cFor! forIn!  forOf!  while  doWhile! try with! ?: list!'
+  symbols  = 'throw return break label! if! cFor! while! doWhile! try! with! ?: ,'
+  keywords = 'throw return break label!  if  cFor! while  doWhile! try with! ?: list!'
   for sym, i in splitSpace symbols then exports[sym] = keywordConvert(splitSpace(keywords)[i])
 
 exports['begin!'] = (exp, env) -> begin(for e in exp then convert e, env)
@@ -336,53 +335,56 @@ convertDefinition =  (exp, env, mode) ->
   body.push.apply body, defaultList
   body.push.apply body, thisParams
   body.push.apply body, exp1
-  # converting the body of definition is moved to convertScopeExp in compile.coffee
-  # if mode[0]=='|' then body =  convert(begin(body), newEnv)
-  # else body =  return_(convert(begin(body), newEnv))
+  if mode[0]=='|' then body =  convert(begin(body), newEnv)
+  else body =  return_(convert(begin(body), newEnv))
   functionExp = ['function', params, body]
   functionExp.env = newEnv
-  env.getDefinitionExpListEnv().definitionExpList.push [functionExp, newEnv, mode]
   if mode=='=>' or mode=='|=>' then ['begin!', ['var', _this], ['=', _this, 'this'], functionExp]
   else functionExp
 
 for sym in '-> |-> => |=>'.split(' ') then do (sym=sym) ->
     exports[sym] = (exp, env) -> convertDefinition(exp, env,sym)
 
-# macro truly have become a special case of meta compilation
-convertMacro = (exp, env, mode) ->
-  resultExp = convertDefinition(exp, env, mode)
-  fnCode = transformToCode(resultExp, resultExp.newEnv)
-  macroFn = eval '('+fnCode+')'
-  macroFn.expression = exp
-  #console.log fnCode
-  (exp, env) -> expanded = macroFn(exp...); convert(expanded, env)
-
-# -=>, ==>, |-=> and |==> is removed
-#for sym in '-=> ==> |-=> |==>'.split(' ') then do (sym=sym) ->
-#  exports[sym] = (exp, env) -> convertMacro(exp, env,sym)
-
 exports['unquote!'] = (exp, env) -> error('unexpected unquote!', exp)
 exports['unquote-splice'] = (exp, env) -> error('unexpected unquote-splice', exp)
-exports['quasiquote!'] =  quasiquote = (exp, env) ->
+exports['quasiquote!'] = (exp, env) -> quasiquote(exp, env, 0)
+
+quasiquote = (exp, env, level) ->
   exp0 = exp[0]
-  if not isArray(exp0) then return ['quote!', entity(exp0)]
+  if not isArray(exp0) then return JSON.stringify entity(exp0)
   else if not exp0.length then return []
-  if (head=entity exp0[0])=='unquote!' or head=='unquote-splice' then return convert(exp0[1], env)
+  if (head=entity exp0[0])=='unquote!' or head=='unquote-splice' then return convert(exp0[1], env, level-1)
+  else if head=='quasiquote!' then return ['list!', '"quasiquote!"', quasiquote(exp0[1], env, level+1)]
   result = ['list!']
   meetSplice = false
   for e in exp[0]
     if isArray(e) and e.length
       head = entity(e[0])
       if head=='unquote-splice'
-        result = ['call!', ['attribute!', result, 'concat'], [convert(e[1], env)]]
-        meetSplice = true
+        if level==0
+          result = ['call!', ['attribute!', result, 'concat'], [convert(e[1], env)]]
+          meetSplice = true
+        else
+          if not meetSpice
+            result.push ['list!', '"unquote-splice"', quasiquote(e[1], env, level-1)]
+          else result = ['call!', ['attribute', result, 'concat'], [['list!', quasiquote(e[1], env, level-1)]]]
       else
         if not meetSplice
-          if head=='unquote!' then result.push convert(e[1], env)
-          else result.push quasiquote([e], env)
+          if head=='unquote!'
+            if level==0
+              result.push convert(e[1], env)
+            else
+              result.push ['unquote!', quasiquote(e[1], env, level-1)]
+          else if head=='quasiquote!' then result.push ['list!',  '"quasiquote!"', quasiquote(e[1], env, level+1)]
+          else result.push quasiquote([e], env, level)
         else
-          if head=='unquote!' then result = ['call!', ['attribute', result, 'concat'], [['list!', convert(e[1], env)]]]
-          else result = ['call!', ['attribute!', result, 'concat'], [['list!', quasiquote([e], env)]]]
+          if head=='unquote!'
+            if level==0
+              result = ['call!', ['attribute', result, 'concat'], [['list!', convert(e[1], env)]]]
+            else
+              result = ['call!', ['attribute', result, 'concat'], [['list!', ['"unquote!"', quasiquote(e[1], env, level-1)]]]]
+          else if head=='quasiquote!' then result = ['call!', ['attribute', result, 'concat'], [['list!', ['quasiquote!', quasiquote(e[1], env, level+1)]]]]
+          else result = ['call!', ['attribute!', result, 'concat'], [['list!', [quasiquote(e, env, level)]]]]
     else
       if not meetSplice then result.push JSON.stringify entity e
       else result = ['call!', ['attribute!', result, 'concat'], [['list!', JSON.stringify entity e]]]

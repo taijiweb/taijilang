@@ -1,5 +1,5 @@
 fs = require 'fs'
-{evaljs, isArray, extend, str, formatTaijiJson, wrapInfo1, entity, pushExp, undefinedExp, begin, return_} = require '../utils'
+{evaljs, isArray, extend, str, formatTaijiJson, wrapInfo1, entity, pushExp, undefinedExp, begin} = require '../utils'
 
 {constant} = require '../parser/base'
 {NUMBER, STRING, IDENTIFIER, SYMBOL, REGEXP, HEAD_SPACES, CONCAT_LINE, PUNCT, FUNCTION,
@@ -120,16 +120,6 @@ exports.convertEllipsisList = convertEllipsisList = (exp, env) ->
         else piece.push  e
     result.concated = concated
     result
-
-convertScopeExp = (exp, env) ->
-  env.definitionExpList = []
-  exp = convert(exp, env)
-  for [defExp, newEnv, mode] in env.definitionExpList
-    if mode=='letloop!' then defExp[1] = return_(convertScopeExp(begin(defExp[1]), newEnv))
-    else
-      if mode[0]=='|' then defExp[2] =  convertScopeExp(begin(defExp[2]), newEnv)
-      else defExp[2] =  return_(convertScopeExp(begin(defExp[2]), newEnv))
-  exp
 
 $atMetaExpList = (index) -> ['index!', ['jsvar!', '__tjExp'], index]
 
@@ -381,7 +371,7 @@ exports.metaCompile = metaCompile = (exp, metaExpList, env) ->
   # todo: remove the parameter "env" from metaCompile, metaConvert and metaTransform ...
   env.metaIndex = 0 #todo: Instead of member of env, metaIndex may become a global variable
   exp = metaConvert exp, metaExpList, env
-  code = nonMetaCompileExp(['->', ['__tjExp'], exp], env)
+  code = nonMetaCompileExp(['->', ['__tjExp'], ['return', exp]], env)
 
 # metaConvert expression to meta level and compile to javascript function code
 # evaluate the function with the object expression pieces list as argument
@@ -389,11 +379,11 @@ exports.metaCompile = metaCompile = (exp, metaExpList, env) ->
 exports.metaProcess = metaProcess = (exp, env) ->
   env = env.extend({}) # this line is necessary to avoid put the mete variable in the runtime scope.
   code = metaCompile(exp, metaExpList=[], env)
-  #console.log code
+  console.log code
   eval(code)(metaExpList)
 
 exports.nonMetaCompileExp = nonMetaCompileExp = (exp, env) ->
-  exp = convertScopeExp exp, env
+  exp = convert exp, env
   #console.log formatTaijiJson entity exp
   exp = transform exp, env
   doAnalyze exp, env
@@ -406,7 +396,7 @@ exports.compileExp = compileExp = (exp, env) ->
   exp = nonMetaCompileExp exp, env
 
 exports.nonMetaCompileExpNoOptimize = nonMetaCompileExpNoOptimize = (exp, env) ->
-  exp = convertScopeExp exp, env
+  exp = convert exp, env
   exp = transform exp, env
   exp = tocode exp, env
   exp
@@ -419,7 +409,7 @@ exports.compileExpNoOptimize = compileExpNoOptimize = (exp, env) ->
 # metaProcess, convert and transform the expression
 exports.transformExp = transformExp = (exp, env) ->
   exp = metaProcess exp, env
-  exp = convertScopeExp exp, env
+  exp = convert exp, env
   exp = transform exp, env
   exp
 
@@ -433,7 +423,7 @@ exports.transformToCode = transformToCode = (exp, env) ->
 
 exports.optimizeExp = optimizeExp = (exp, env) ->
   exp = metaProcess exp, env
-  exp = convertScopeExp exp, env
+  exp = convert exp, env
   exp = transform exp, env
   doAnalyze exp, env
   exp = optimize exp, env

@@ -1,4 +1,4 @@
-{extend, javascriptKeywordSet} = require '../utils'
+{extend, javascriptKeywordSet, entity} = require '../utils'
 {identifierCharSet} = require '../parser/base'
 
 hasOwnProperty = Object::hasOwnProperty
@@ -7,9 +7,7 @@ toIdentifier = (symbol) ->
   result = ''
   for c in symbol
     if identifierCharSet[c] then result += c
-    else if c=='!' then result += '$'
-    else if c=='?' then result += '_$'
-    else result += '_'
+    else result += '$'
   if javascriptKeywordSet[symbol] then result += '1'
   result
 
@@ -41,11 +39,6 @@ exports.Environment = class Environment
   getFunctionEnv: ->
     env = @
     while not env.functionInfo then env = env.parent
-    env
-
-  getDefinitionExpListEnv: ->
-    env = @
-    while not env.definitionExpList then env = env.parent
     env
 
   newVar: (symbol) ->
@@ -95,7 +88,9 @@ exports.Environment = class Environment
 
   set: (symbol, value) ->
     functionInfo = @getFunctionInfo()
-    if not functionInfo[symbol] then functionInfo[symbol] = 1
+    if typeof(value) == 'object' then value.value = name = toIdentifier(entity(value))
+    else value = name = toIdentifier(value)
+    if not functionInfo[name] then functionInfo[name] = 1
     @scope[symbol] = value
 
   get: (symbol) ->

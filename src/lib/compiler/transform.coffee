@@ -337,13 +337,14 @@ transformExpressionFnMap =
 
   'forIn!': (exp, env, shiftStmtInfo) ->
     lst = env.newVar('list')
-    [varStmt, varName] = transformExpression(exp[1], env, shiftStmtInfo)
+    # do not transform exp[1], because it must be [var name] or name
+    #[varStmt, varName] = transformExpression(exp[1], env, shiftStmtInfo)
     [rangeStmt, rangeValue] = transformExpression(exp[2], env, shiftStmtInfo)
     [bodyStmt, bodyValue] = transformExpression(exp[3], env, shiftStmtInfo)
     # exp[0]: forIn! or forOf!
-    forInStmt = ['forIn!', varName, rangeValue,
+    forInStmt = ['forIn!', exp[1], rangeValue,
                  begin([bodyStmt, pushExp(lst, bodyValue)])]
-    [begin([['var', lst], ['=', lst, ['list!']], varStmt, rangeStmt, forInStmt]), lst]
+    [begin([['var', lst], ['=', lst, ['list!']], rangeStmt, forInStmt]), lst]
 
   # javascript has no for key of hash {...}
   #'forOf!': transformForInExpression
@@ -492,8 +493,9 @@ transformFnMap =
   # [forIn! key hash body]
   'forIn!': (exp, env) ->
     [stmt, hashExp] = transformExpression(exp[2], env, new ShiftAheadStatementInfo({}))
-    if stmt then ['begin!', stmt, ['forIn!', transform(exp[1], env), hashExp, transform(exp[3], env)]]
-    else ['forIn!', transform(exp[1], env), hashExp, transform(exp[3], env)]
+    # do not transform exp[1], because it must be [var name] or name
+    if stmt then ['begin!', stmt, ['forIn!', exp[1], hashExp, transform(exp[3], env)]]
+    else ['forIn!', exp[1], hashExp, transform(exp[3], env)]
 
   # javascript has no for key of hash {...}
   #'forOf!': transformForInExpression

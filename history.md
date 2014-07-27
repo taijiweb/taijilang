@@ -1,5 +1,9 @@
 2014
 2014-7
+7-27
+  fix bug: multi level quasiquote and unquote
+7-25 -> 7-26 
+  try to implementing class by meta language
 7-20 -> 7-24
   reimplement module after reimplementing meta compilation 
 7-18 
