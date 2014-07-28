@@ -1,4 +1,5 @@
 fs = require 'fs'
+path = require 'path'
 {evaljs, isArray, extend, str, formatTaijiJson, wrapInfo1, entity, pushExp, undefinedExp, begin} = require '../utils'
 
 {constant} = require '../parser/base'
@@ -298,7 +299,7 @@ metaConvertFnMap =
   # macro call
   '#call!': (exp, metaExpList, env) ->
     args = []
-    for e in exp[2] then metaExpList.push metaTransform(e, env); args.push $atMetaExpList(env.metaIndex++)
+    for e in exp[2] then metaExpList.push metaTransform(e, metaExpList, env); args.push $atMetaExpList(env.metaIndex++)
     #console.log code.text
     ['call!', metaTransform(exp[1], metaExpList, env), args]
 
@@ -371,7 +372,7 @@ exports.metaCompile = metaCompile = (exp, metaExpList, env) ->
   # todo: remove the parameter "env" from metaCompile, metaConvert and metaTransform ...
   env.metaIndex = 0 #todo: Instead of member of env, metaIndex may become a global variable
   exp = metaConvert exp, metaExpList, env
-  code = nonMetaCompileExp(['->', ['__tjExp'], ['return', exp]], env)
+  code = nonMetaCompileExp(['=', ['attribute!', 'module', 'exports'], ['->', ['__tjExp'], ['return', exp]]], env)
 
 # metaConvert expression to meta level and compile to javascript function code
 # evaluate the function with the object expression pieces list as argument
@@ -379,8 +380,12 @@ exports.metaCompile = metaCompile = (exp, metaExpList, env) ->
 exports.metaProcess = metaProcess = (exp, env) ->
   env = env.extend({}) # this line is necessary to avoid put the mete variable in the runtime scope.
   code = metaCompile(exp, metaExpList=[], env)
-  console.log code
-  eval(code)(metaExpList)
+  compiledPath = path.join process.cwd(), '/lib/compiler/metacompiled.js'
+  fs.writeFileSync(compiledPath, code)
+  delete require.cache[require.resolve(compiledPath)]
+  metaFn = require(compiledPath)
+  #console.log code
+  metaFn(metaExpList)
 
 exports.nonMetaCompileExp = nonMetaCompileExp = (exp, env) ->
   exp = convert exp, env

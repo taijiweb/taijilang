@@ -56,6 +56,8 @@ describe 'test command:', ->
       it 'compile include.tj', -> expect(compile 'samples-js', 'samples/include.tj').to.deep.equal [undefined]
       it 'parse import.tj', -> expect(parse 'samples-js', 'samples/import.tj').to.deep.equal [undefined]
       it 'compile import.tj', -> expect(compile 'samples-js', 'samples/import.tj').to.deep.equal [undefined]
+      it 'parse democlass.tj', -> expect(parse 'samples-js', 'samples/democlass.tj').to.deep.equal [undefined]
+      iit 'compile democlass.tj', -> expect(compile 'samples-js', 'samples/democlass.tj').to.deep.equal [undefined]
 
     describe "parse and compile samples/bootstrap: ",  ->
       it 'parse require.tj', -> expect(parse 'samples-js/bootstrap/parse', 'samples/bootstrap/require.tj').to.deep.equal [undefined]
@@ -68,7 +70,8 @@ describe 'test command:', ->
       it 'parse macros.tj', -> expect(parse 'taiji-libraries-js/parse', 'taiji-libraries/macros.tj').to.deep.equal [undefined]
       it 'compile macros.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/macros.tj').to.deep.equal [undefined]
       it 'parse class.tj', -> expect(parse 'taiji-libraries-js/parse', 'taiji-libraries/class.tj').to.deep.equal [undefined]
-      iit 'compile class.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/class.tj').to.deep.equal [undefined]
+      it 'parse lib class.tj', -> expect(parse 'taiji-libraries-js', 'taiji-libraries/class.tj').to.deep.equal [undefined]
+      it 'compile lib class.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/class.tj').to.deep.equal [undefined]
       it 'compile browser.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/browser.tj').to.deep.equal [undefined]
       it 'compile html.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/html.tj').to.deep.equal [undefined]
       it 'parse prelude.tj', -> expect(parse 'taiji-libraries-js', 'taiji-libraries/prelude.tj').to.deep.equal [undefined]

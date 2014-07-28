@@ -54,7 +54,7 @@ declareVar = (fn) -> (exp, env) ->
 exports['var'] = declareVar((v) -> v)
 exports['const'] = declareVar( (v) -> v.const=true; v )
 
-exports['newvar!'] = (exp, env) -> '"'+env.newVar((x=entity(exp[0])).slice(1, x.length-1))+'"'
+exports['newvar!'] = (exp, env) -> '"'+env.newVar((x=entity(exp[0])).slice(1, x.length-1)).symbol+'"'
 
 makeSlice = (obj, start, stop) ->
   if stop==undefined then ['call!', ['attribute!', '__slice', 'call'], [obj, start]]
@@ -150,13 +150,6 @@ exports['='] = (exp, env) -> convertAssign(exp[0], exp[1], env)
 # meta assign, macro assign
 exports['#='] = (exp, env) -> ['##', convert(['=', exp[0], exp[1]], env)]
 exports['#/'] = (exp, env) -> ['#/', convert(['=', exp[0], exp[1]], env)]
-#  left = entity exp[0]; right = exp[1]
-#  if typeof left== 'string'
-#    if left[0]=='"' then error 'left side of assign should not be string'
-#    else
-#      env.set(left, left); value = convert(right, env)
-#      env.set(left, value); ''
-#  else error 'should not assign macro or meta value to non variable'
 
 exports['@@'] = (exp, env) ->
   name = entity(exp[0]); outerEnv = env.outerVarScopeEnv()
@@ -237,8 +230,8 @@ exports['letloop!'] = (exp, env) ->
 keywordConvert = (keyword) -> (exp, env) -> [keyword].concat(for e in exp then convert e, env)
 
 do ->
-  symbols  = 'throw return break label! if! cFor! while! doWhile! try! with! ?: ,'
-  keywords = 'throw return break label!  if  cFor! while  doWhile! try with! ?: list!'
+  symbols  = 'throw return break label! if! cFor! while while! doWhile! try! with! ?: ,'
+  keywords = 'throw return break label!  if  cFor! while while  doWhile! try with! ?: list!'
   for sym, i in splitSpace symbols then exports[sym] = keywordConvert(splitSpace(keywords)[i])
 
 exports['begin!'] = (exp, env) -> begin(for e in exp then convert e, env)
@@ -360,31 +353,27 @@ quasiquote = (exp, env, level) ->
   for e in exp[0]
     if isArray(e) and e.length
       head = entity(e[0])
-      if head=='unquote-splice'
-        if level==0
-          result = ['call!', ['attribute!', result, 'concat'], [convert(e[1], env)]]
-          meetSplice = true
-        else
-          if not meetSpice
-            result.push ['list!', '"unquote-splice"', quasiquote(e[1], env, level-1)]
-          else result = ['call!', ['attribute', result, 'concat'], [['list!', quasiquote(e[1], env, level-1)]]]
+      if head=='unquote-splice' and level==0
+        result = ['call!', ['attribute!', result, 'concat'], [convert(e[1], env)]]
+        meetSplice = true
+      else if not meetSplice
+        if head=='unquote-splice'
+          result.push ['list!', '"unquote-splice"', quasiquote(e[1], env, level-1)]
+        else if head=='unquote!'
+          if level==0 then result.push convert(e[1], env)
+          else result.push ['unquote!', quasiquote(e[1], env, level-1)]
+        else if head=='quasiquote!' then result.push ['list!',  '"quasiquote!"', quasiquote(e[1], env, level+1)]
+        else result.push quasiquote([e], env, level)
       else
-        if not meetSplice
-          if head=='unquote!'
-            if level==0
-              result.push convert(e[1], env)
-            else
-              result.push ['unquote!', quasiquote(e[1], env, level-1)]
-          else if head=='quasiquote!' then result.push ['list!',  '"quasiquote!"', quasiquote(e[1], env, level+1)]
-          else result.push quasiquote([e], env, level)
+        if head=='unquote-splice'
+          item = [['list!', quasiquote(e[1], env, level-1)]]
         else
           if head=='unquote!'
-            if level==0
-              result = ['call!', ['attribute', result, 'concat'], [['list!', convert(e[1], env)]]]
-            else
-              result = ['call!', ['attribute', result, 'concat'], [['list!', ['"unquote!"', quasiquote(e[1], env, level-1)]]]]
-          else if head=='quasiquote!' then result = ['call!', ['attribute', result, 'concat'], [['list!', ['quasiquote!', quasiquote(e[1], env, level+1)]]]]
-          else result = ['call!', ['attribute!', result, 'concat'], [['list!', [quasiquote(e, env, level)]]]]
+            if level==0 then item = [['list!', convert(e[1], env)]]
+            else item = [['list!', ['"unquote!"', quasiquote(e[1], env, level-1)]]]
+          else if head=='quasiquote!' then item = [['list!', ['quasiquote!', quasiquote(e[1], env, level+1)]]]
+          else item = [['list!', [quasiquote(e, env, level)]]]
+        result = ['call!', ['attribute', result, 'concat'], item]
     else
       if not meetSplice then result.push JSON.stringify entity e
       else result = ['call!', ['attribute!', result, 'concat'], [['list!', JSON.stringify entity e]]]
@@ -442,5 +431,5 @@ convertParserExpression = (exp) ->
     else exp
   else exp
 
-exports['?attribute'] = (exp, env) ->
+exports['parserAttr!'] = (exp, env) ->
   convert(['attribute!', '__$taiji_$_$parser__', exp[0]], env)

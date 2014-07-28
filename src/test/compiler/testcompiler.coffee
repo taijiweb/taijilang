@@ -444,8 +444,8 @@ describe "compile: ",  ->
       expect(metaCompile('(#{ -> { print 1 }; #-{ print 2}})()')).to.equal "1"
 
   describe "class : ",  ->
-    it 'should parse A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)', ->
-      expect(parse('A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)')).to.have.string "[= A [class B [= :: [-> [a [attribute! @ b]] [super]]] [= [attribute! :: f] [-> [x] [[call! super [x]]]]]]]"
+    it 'should parse class A extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)', ->
+      expect(parse('class A extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)')).to.have.string '[#call! class [A B [[= :: [-> [a [attribute! @ b]] [super]]] [= [attribute! :: f] [-> [x] [[call! super [x]]]]]]]]'
     xit 'should compile A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)', ->
       expect(compile('A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)')).to.have.string '7'
 

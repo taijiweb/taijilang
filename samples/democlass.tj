@@ -1,0 +1,8 @@
+taiji language 0.1
+
+//import! #\class from 'class.tj'
+include! 'class.tj'
+
+//class A
+//class B extends A
+class C :: = ->

@@ -26,7 +26,7 @@ m #= (x..., b) -> ` [begin!: print ^&x, print ^b ]
 
 m#(1, 2, 3)
 
-var x, y, z, a, m, n, p, q
+var x, y, z, a, n, p, q
 
 [x, y..., z] = [1, 2, 3, 4]
 a = [1, 2, 3, 4]

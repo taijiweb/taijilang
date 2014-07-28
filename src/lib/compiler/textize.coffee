@@ -103,7 +103,8 @@ tokenFnMap =
     exps = []
     e1 = ''
     for e in exp[1...]
-      if e1[0]=='var'
+      if not e then exps.push e
+      else if e1[0]=='var'
         if e[0]=='var' then e1.push e[1]
         else if e[0]=='=' and (ee1=entity(e[1])) and (typeof ee1 == 'string') and ee1==entity(e1[e1.length-1]) then e1.pop(); e1.push e
         else exps.push e; e1 = e
@@ -136,7 +137,7 @@ tokenFnMap =
     if exp[4] then result.push  clause('finally ', wrapBlock token(exp[4]))
     compound result
   # javascript has no "for key of hash {...}", has "for key in hash {...}" instead.
-  'forIn!': (exp) -> compound('for ', paren([token(exp[1]), ' in ', token(exp[2])]), block(token(exp[3])))
+  'jsForIn!': (exp) -> compound('for ', paren([token(exp[1]), ' in ', token(exp[2])]), block(token(exp[3])))
   #'forOf!': (exp) -> compound('for ', paren([token(exp[1]), 'of ', token(exp[2])]), block(token(exp[3])))
   'cfor!': (exp) ->  compound('for ', paren([token(exp[1]), ';', token(exp[2]), ';', token(exp[3])]), block(token(exp[4])))
   'switch': (exp) ->

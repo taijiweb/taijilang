@@ -22,3 +22,5 @@ dev
 build
 deprecated
 samples-js
+
+/lib/compiler/metacompiled.js

@@ -202,18 +202,18 @@ describe("parse: ", function() {
     describe('class: ', function() {
       it('should parse class', function() {
         var x;
-        x = parse('class');
-        return expect(str(x)).to.equal("[class undefined undefined]");
+        x = parse('class A');
+        return expect(str(x)).to.equal("[#call! class [A undefined undefined]]");
       });
-      it('should parse class extends A', function() {
+      it('should parse class B extends A', function() {
         var x;
-        x = parse('class extends A');
-        return expect(str(x)).to.equal("[class A undefined]");
+        x = parse('class B extends A');
+        return expect(str(x)).to.equal("[#call! class [B A undefined]]");
       });
-      return it('should parse class extends A  :: = ->', function() {
+      return it('should parse class B extends A  :: = ->', function() {
         var x;
-        x = parse('class extends A  :: = ->');
-        return expect(str(x)).to.equal("[class A [:: = [-> [] []]]]");
+        x = parse('class B extends A  :: = ->');
+        return expect(str(x)).to.equal("[#call! class [B A [[:: = [-> [] []]]]]]");
       });
     });
     describe('for', function() {

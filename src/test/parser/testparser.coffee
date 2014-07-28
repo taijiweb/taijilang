@@ -134,16 +134,16 @@ describe "parse: ",  ->
 
     describe 'class: ', ->
       it 'should parse class', ->
-        x = parse('class')
-        expect(str x).to.equal "[class undefined undefined]"
+        x = parse('class A')
+        expect(str x).to.equal "[#call! class [A undefined undefined]]"
 
-      it 'should parse class extends A', ->
-        x = parse('class extends A')
-        expect(str x).to.equal "[class A undefined]"
+      it 'should parse class B extends A', ->
+        x = parse('class B extends A')
+        expect(str x).to.equal "[#call! class [B A undefined]]"
 
-      it 'should parse class extends A  :: = ->', ->
-        x = parse('class extends A  :: = ->')
-        expect(str x).to.equal "[class A [:: = [-> [] []]]]"
+      it 'should parse class B extends A  :: = ->', ->
+        x = parse('class B extends A  :: = ->')
+        expect(str x).to.equal "[#call! class [B A [[:: = [-> [] []]]]]]"
 
     describe 'for', ->
       it 'should parse for (i=0; i<10; i++) then print i', ->

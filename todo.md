@@ -1,3 +1,5 @@
+todo: embedded meta compilation: #call, by evaluating the embedded meta code while running
+
 todo: class similar to coffee-script
   # things like super, construcotr(too long name, maybe I'll use init: (...)->)
   

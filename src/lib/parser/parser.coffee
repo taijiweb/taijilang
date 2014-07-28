@@ -134,18 +134,21 @@ exports.Parser = ->
     else return
     {type: NEWLINE, value: c+(c2 or ''), start:start, stop: cursor, line1:line1, line:lineno}
 
+  @followNewline = followNewline = ->
+    if x=newline() then rollback(x.start, x.line1); return x
+
   # \n\r, don't eat spaces.
   @newLineAndEmptyLines = newLineAndEmptyLines = ->
     start = cursor; line1 = lineno
     if not newline() then return
     while lineno<maxLine and lineInfo[lineno].emtpy then lineno++;
-    cursor = lineInfo[lineno].start+lineInfo[lineno].indentRow
+    cursor = lineInfo[lineno].start+lineInfo[lineno].indentColumn
     {type: NEWLINE, value:text[start...cursor], start:start, stop: cursor, line1:line1, line:lineno}
 
   @tailComment = ->
     if text[cursor...cursor+2]!='//' then return
-    indentRow = lineInfo[lineno].indentRow
-    if cursor==lineInfo[lineno].start+indentRow then return
+    indentColumn = lineInfo[lineno].indentColumn
+    if cursor==lineInfo[lineno].start+indentColumn then return
     start = cursor
     if lineno+1==maxLine then cursor = text.length; lineno++
     else cursor = lineInfo[lineno+1].start-1
@@ -155,45 +158,45 @@ exports.Parser = ->
 
   @lineComment = ->
     if text[cursor]!='/' or text[cursor+1]!='/' then return
-    indentRow = lineInfo[lineno].indentRow
-    if cursor!=lineInfo[lineno].start+indentRow then return
+    indentColumn = lineInfo[lineno].indentColumn
+    if cursor!=lineInfo[lineno].start+indentColumn then return
     start = cursor; line1 = lineno
     while ++lineno and lineno<=maxLine and lineInfo[lineno].empty then continue
-    cursor = lineInfo[lineno].start + lineInfo[lineno].indentRow
+    cursor = lineInfo[lineno].start + lineInfo[lineno].indentColumn
     #cursor = lineInfo[lineno].start-1; lineno--
     lastPos =  lineInfo[lineno].start-1
     if text[lastPos]=='\n' then lastPos--
     if text[lastPos]=='\r' then lastPos--
     { type: LINE_COMMENT, value:text.slice(start, lastPos+1), start:start, stop:cursor, line1:line1, line: lineno
-    #indent:lineno<maxLine and indentRow<lineInfo[lineno+1].indentRow
-    indent: indentRow<lineInfo[lineno].indentRow
+    #indent:lineno<maxLine and indentColumn<lineInfo[lineno+1].indentColumn
+    indent: indentColumn<lineInfo[lineno].indentColumn
     }
 
   @indentBlockComment = ->
-    if cursor!=lineInfo[lineno].start+(indentRow=lineInfo[lineno].indentRow) then return
+    if cursor!=lineInfo[lineno].start+(indentColumn=lineInfo[lineno].indentColumn) then return
     if text[cursor..cursor+1]!='/.' then return
     start = cursor; line1 = lineno; lineno++
     while lineno<=maxLine
       if lineInfo[lineno].empty then lineno++
-      else if lineInfo[lineno].indentRow>indentRow then lineno++
+      else if lineInfo[lineno].indentColumn>indentColumn then lineno++
       else break
     if lineno>maxLine then cursor = text.length
-    else cursor = lineInfo[lineno].start+lineInfo[lineno].indentRow
+    else cursor = lineInfo[lineno].start+lineInfo[lineno].indentColumn
     { type: BLOCK_COMMENT, value: text.slice(start, cursor), start:start, stop:cursor, line1: line1, line: lineno}
 
   # default /* some content */, can cross lines
   @cBlockComment = ->
     if text.slice(cursor, cursor+2) !='/*' then return
     start = cursor; cursor +=2; line1 = lineno
-    indentRow = lineInfo[lineno].indentRow
+    indentColumn = lineInfo[lineno].indentColumn
     while 1
       if not (c=text[cursor]) then error 'meet unexpected end of input while parsing inline comment'
       if text.slice(cursor, cursor+2)=='*/' then cursor += 2; break
       else if newline()
         while lineno<maxLine and lineInfo[lineno].empty then lineno++
-        if lineInfo[lineno].indentRow<indentRow
+        if lineInfo[lineno].indentColumn<indentColumn
           error 'the lines in c style block comment should not indent less than its begin line'
-        cursor = lineInfo[lineno].start+lineInfo[lineno].indentRow
+        cursor = lineInfo[lineno].start+lineInfo[lineno].indentColumn
       else cursor++
     { type: C_BLOCK_COMMENT, value:text.slice(start, cursor), start:start, stop:cursor, line1:line1, line: lineno}
 
@@ -216,12 +219,12 @@ exports.Parser = ->
     multiLine: line1!=lineno, lineTail: lineTail, concat:concat, inline:true}
 
   @multilineSpaceComment = memo ->
-    start = cursor; line1 = lineno; indentRow = lineInfo[lineno].indentRow
+    start = cursor; line1 = lineno; indentColumn = lineInfo[lineno].indentColumn
     spc();
     multiStart = cursor
     while c=text[cursor]
       if newLineAndEmptyLines() then continue
-      else if indentRow!=lineInfo[lineno].indentRow then break  # stop at indent or undent
+      else if indentColumn!=lineInfo[lineno].indentColumn then break  # stop at indent or undent
       else if parser.indentBlockComment() then continue
       else if parser.cBlockComment() then spc(); continue
       else break
@@ -229,15 +232,15 @@ exports.Parser = ->
     atStatementHead = true
     {type: SPACE_COMMENT, value:text[start...cursor], start: start, stop:cursor, line1:line1, line:lineno
     multipleLine: true
-    indent:indentRow<lineInfo[lineno].indentRow
-    undent:indentRow>lineInfo[lineno].indentRow
-    newline:indentRow==lineInfo[lineno].indentRow}
+    indent:indentColumn<lineInfo[lineno].indentColumn
+    undent:indentColumn>lineInfo[lineno].indentColumn
+    newline:indentColumn==lineInfo[lineno].indentColumn}
 
   @spaceComment = bigSpc = memo -> parser.multilineSpaceComment() or spc()
 
   @regexp = memo ->
     if text[start=cursor]!='/' then return
-    if cursor==(indentRow=lineInfo[lineno].indentRow) then return # code block comment
+    if cursor==(indentColumn=lineInfo[lineno].indentColumn) then return # code block comment
     c = text[cursor+1]
     if c=='*' or c=='/' then return
     start = cursor
@@ -363,8 +366,8 @@ exports.Parser = ->
     if text[cursor...cursor+3]=="'''" then quote = "'''"
     else if text[cursor]=="'" then quote = "'"
     else return
-    start = cursor; line1 = lineno; quoteLength = quote.length; indentRow = null
-    if cursor==lineInfo[lineno].start+lineInfo[lineno].indentRow then indentRow = lineInfo[lineno].indentRow
+    start = cursor; line1 = lineno; quoteLength = quote.length; indentColumn = null
+    if cursor==lineInfo[lineno].start+lineInfo[lineno].indentColumn then indentColumn = lineInfo[lineno].indentColumn
     cursor += quoteLength; str = ''
     while text[cursor]
       if text[cursor...cursor+quoteLength]==quote
@@ -374,14 +377,14 @@ exports.Parser = ->
         str += nonInterpolatedStringLine(quote, quoteLength)
         continue
       else if lineno!=line1
-        myLineInfo =  lineInfo[lineno]; myIndent = myLineInfo.indentRow
-        if indentRow==null then indentRow = myIndent
-        else if myIndent<indentRow then error 'wrong indent in string'
-        cursor += indentRow
+        myLineInfo =  lineInfo[lineno]; myIndent = myLineInfo.indentColumn
+        if indentColumn==null then indentColumn = myIndent
+        else if myIndent<indentColumn then error 'wrong indent in string'
+        cursor += indentColumn
       str += nonInterpolatedStringLine(quote, quoteLength)
     if not text[cursor] then error 'expect '+quote+', unexpected end of input while parsing interpolated string'
 
-  interpolateStringPiece = (quote, quoteLength, indentRow, lineIndex) ->
+  interpolateStringPiece = (quote, quoteLength, indentColumn, lineIndex) ->
     str = '"'
     while c = text[cursor]
       if text[cursor...cursor+quoteLength]==quote then return str+'"'
@@ -389,9 +392,9 @@ exports.Parser = ->
         if c!=quote then str +='\\"'; cursor++
         else return str +'\\"'
       else if x = newline()
-        if not lineInfo[lineno].empty and (myIndent=lineInfo[lineno].indentRow) and lineIndex.value++
-          if indentRow.value==null then indentRow.value = myIndent
-          else if myIndent!=indentRow.value then error 'wrong indent in string'
+        if not lineInfo[lineno].empty and (myIndent=lineInfo[lineno].indentColumn) and lineIndex.value++
+          if indentColumn.value==null then indentColumn.value = myIndent
+          else if myIndent!=indentColumn.value then error 'wrong indent in string'
           else cursor += myIndent
         return str+escapeNewLine(x)+'"'
       else if c=='(' or c=='{' or c=='[' then return str+c+'"'
@@ -407,9 +410,9 @@ exports.Parser = ->
     if text[cursor...cursor+3]=='"""' then quote = '"""'
     else if text[cursor]=='"' then quote = '"'
     else return
-    start = cursor; line1 = lineno; indentRow = null
-    if (row=parser.getRow())==lineInfo[lineno].indentRow then indentRow = {value:row}
-    else indentRow = {}
+    start = cursor; line1 = lineno; indentColumn = null
+    if (column=parser.getColumn())==lineInfo[lineno].indentColumn then indentColumn = {value:column}
+    else indentColumn = {}
     quoteLength = quote.length; cursor += quoteLength; pieces = []
     lineIndex = {value:0}
     while c=text[cursor]
@@ -433,7 +436,7 @@ exports.Parser = ->
           else if c=='[' then  pieces.push '"]"'
           else if c=='{' then  pieces.push '"}"'
         else pieces.push '"'+c+'"'
-      else pieces.push interpolateStringPiece(quote, quoteLength, indentRow, lineIndex)
+      else pieces.push interpolateStringPiece(quote, quoteLength, indentColumn, lineIndex)
     if not text[cursor] then error 'expect '+quote+', unexpected end of input while parsing interpolated string'
 
   @string = -> parser.interpolatedString() or parser.nonInterpolatedString()
@@ -445,17 +448,17 @@ exports.Parser = ->
     if space.undent then error 'unexpected undent while parsing parenethis "(...)"'
     exp = parser.operatorExpression()
     bigSpc()
-    if lineInfo[lineno].indentRow<lineInfo[line1].indentRow
+    if lineInfo[lineno].indentColumn<lineInfo[line1].indentColumn
       error 'expect ) indent equal to or more than ('
     if text[cursor]!=')' then error 'expect )' else cursor++
     {type: PAREN, value: exp, start:start, stop:cursor, line1:line1, line: lineno}
 
   @curve = curve = memo ->
-    start = cursor; line1 = lineno; indentRow = lineInfo[lineno].indentRow
+    start = cursor; line1 = lineno; indentColumn = lineInfo[lineno].indentColumn
     if text[cursor]!='{' or text[cursor+1]=='.' then return else cursor++; spc()
     body = parser.lineBlock()
     bigSpc()
-    if lineInfo[lineno].indentRow<indentRow then error 'unexpected undent while parsing parenethis "{...}"'
+    if lineInfo[lineno].indentColumn<indentColumn then error 'unexpected undent while parsing parenethis "{...}"'
     if text[cursor]!='}' then error 'expect }' else cursor++
     if body.length==0 then {type: CURVE, value:'', start:start, stop: cursor, line1:line1, line:lineno}
     else
@@ -464,26 +467,26 @@ exports.Parser = ->
       extend body, {type: CURVE, start:start, stop: cursor, line1:line1, line:lineno}
 
   @bracket = memo ->
-    start = cursor; line1 = lineno; indentRow = lineInfo[lineno].indentRow
+    start = cursor; line1 = lineno; indentColumn = lineInfo[lineno].indentColumn
     if text[cursor]!='[' then return else cursor++
     expList = parser.lineBlock()
     bigSpc()
-    if lineInfo[lineno].indentRow<indentRow then error 'unexpected undent while parsing parenethis "[...]"'
+    if lineInfo[lineno].indentColumn<indentColumn then error 'unexpected undent while parsing parenethis "[...]"'
     if text[cursor]!=']' then error 'expect ]' else cursor++
     if expList then expList.unshift 'list!'
     else expList = []
     extend expList, {type: BRACKET, isBracket: true, start:start, stop: cursor, line1:line1, line:lineno}
 
   @dataBracket = memo ->
-    start = cursor; line1 = lineno; indentRow = lineInfo[lineno].indentRow
+    start = cursor; line1 = lineno; indentColumn = lineInfo[lineno].indentColumn
     if text[cursor...cursor+2]!='[\\' then return else cursor+=2
     result = []
     while (x=parser.dataLine()) and (space = bigSpc())
       result.push x
-      if lineInfo[lineno].indentRow<indentRow
+      if lineInfo[lineno].indentColumn<indentColumn
         error 'expect to indent the same as or more than  the line of [\\'
     spc()
-    if lineInfo[lineno].indentRow<indentRow then error 'unexpected undent while parsing parenethis "[\\ ...\\]"'
+    if lineInfo[lineno].indentColumn<indentColumn then error 'unexpected undent while parsing parenethis "[\\ ...\\]"'
     if text[cursor...cursor+2]!='\\]' then error 'expect \\]' else cursor+=2
     result.unshift 'list!'
     extend result, {type: DATA_BRACKET, start:start, stop:cursor, line1:line1, line: lineno}
@@ -509,9 +512,9 @@ exports.Parser = ->
       extend result, {start:start, stop:cursor, line1:line1, line:lineno}
 
   @hashBlock = memo ->
-    start = cursor; line1 = lineno; row1 = lineInfo[lineno].indentRow
+    start = cursor; line1 = lineno; column1 = lineInfo[lineno].indentColumn
     if (space=bigSpc()) and space.undent then return
-    result = []; if space.indent then indentRow = lineInfo[lineno].indentRow
+    result = []; if space.indent then indentColumn = lineInfo[lineno].indentColumn
     while (x=parser.hashItem()) and result.push x
       spc()
       if not (c=text[cursor]) then break
@@ -522,24 +525,25 @@ exports.Parser = ->
       space2 = bigSpc()
       if not (c=text[cursor]) or c=='}' then break
       if lineno==line1 then continue
-      if (row=lineInfo[lineno].indentRow)>row1
-        if indentRow and row!=indentRow then error 'unconsistent indent in hash {. .}'
-        else indentRow = row
-      else if row==row1 then break
-      else if row<row1 then rollbackToken space2; return
+      if (column=lineInfo[lineno].indentColumn)>column1
+        if indentColumn and column!=indentColumn then error 'unconsistent indent in hash {. .}'
+        else indentColumn = column
+      else if column==column1 then break
+      else if column<column1 then rollbackToken space2; return
     result.start = start; result.stop = cursor; result
 
   @hash = memo ->
-    start = cursor; line1 = lineno; indentRow = lineInfo[lineno].indentRow
+    start = cursor; line1 = lineno; indentColumn = lineInfo[lineno].indentColumn
     if text[cursor...cursor+2]!='{.' then return else cursor += 2
     items = parser.hashBlock()
-    if lineInfo[lineno].indentRow<indentRow then error 'unexpected undent while parsing parenethis "{.  ... .}"'
+    if lineInfo[lineno].indentColumn<indentColumn then error 'unexpected undent while parsing parenethis "{.  ... .}"'
     if text[cursor...cursor+2]!='.}' then error 'expect .}' else cursor += 2
     extend ['hash!'].concat(items), {start:start, stop:cursor, line1:line1, line:lineno}
 
   @delimiterExpression = memo -> parser.paren() or parser.dataBracket() or parser.bracket() or parser.curve() or parser.hash()
 
-  symbolStopChars = extend charset(' \t\v\n\r()[]{},;:\'\".@'), identifierCharSet
+  # \ keyword and key symbol escape char
+  symbolStopChars = extend charset(' \t\v\n\r()[]{},;:\'\".@\\'), identifierCharSet
 
   # parser.conjunction uses private var "symbol".
   @symbol = symbol = memo ->
@@ -596,7 +600,7 @@ exports.Parser = ->
   @prefixParserAttributeOperator = (priority, leftAssoc) ->
     start = cursor
     if (x=parser.symbol()) and x.value=='?' and parser.follow('atom')
-      {symbol:'?attribute', value: '?', priority: 800: start:cursor-1, stop:cursor, line:lineno}
+      {symbol:'parserAttr!', value: '?', priority: 800: start:cursor-1, stop:cursor, line:lineno}
     else cursor = start; return
 
   @customPrefixOperators = [@prefixParserAttributeOperator]
@@ -695,7 +699,7 @@ exports.Parser = ->
     if space1.indent or space1.newline then priInc = 0
     else if undentFromLine(line1) then return rollback start, line1
     else if space1.value then priInc = 300
-    else if cursor==lineInfo[lineno].start+lineInfo[lineno].indentRow then priInc = 0
+    else if cursor==lineInfo[lineno].start+lineInfo[lineno].indentColumn then priInc = 0
     else priInc = 600
     if priority>=priInc+300 then return rollback start, line1
     if priInc==600 and text[cursor]=='.'and text[cursor+1]!='.' and text[cursor+1]!='}' then cursor++ # meetDot = true;
@@ -970,19 +974,19 @@ exports.Parser = ->
     else optionalClause = word!='then'
     if options.optionalWord? then optionalWord = options.optionalWord
     else optionalWord = word=='then'
-    indentRow = lineInfo[line1].indentRow
-    space = bigSpc(); row = lineInfo[lineno].indentRow
-    if row==indentRow and lineno!=line1 and not isHeadStatement
+    indentColumn = lineInfo[line1].indentColumn
+    space = bigSpc(); column = lineInfo[lineno].indentColumn
+    if column==indentColumn and lineno!=line1 and not isHeadStatement
       if not optionalClause
         error 'meet new line, expect inline keyword "'+word+'" for inline statement'
       else rollbackToken space; return
-    if row<indentRow
+    if column<indentColumn
       if not optionalClause then error 'unexpected undent, expect '+word
       else rollbackToken space; return
-    else if row>indentRow
-      if options.indentRow
-        if row!=options.indentRow then error 'unconsistent indent'
-      else options.indentRow = row
+    else if column>indentColumn
+      if options.indentColumn
+        if column!=options.indentColumn then error 'unconsistent indent'
+      else options.indentColumn = column
     w = taijiIdentifier()
     meetWord = w and w.value==word
     if not meetWord
@@ -1065,17 +1069,17 @@ exports.Parser = ->
 
   # no cursor and lineno is attached in result, so can not be memorized directly.
   @identifierList = ->
-    line1 = lineno; indentRow = lineInfo[line1].indentRow
+    line1 = lineno; indentColumn = lineInfo[line1].indentColumn
     result = parser.identifierLine()
     space = bigSpc();
-    if (row0=lineInfo[lineno].indentRow)<=indentRow
+    if (row0=lineInfo[lineno].indentColumn)<=indentColumn
       rollbackToken space; return result
     if text[cursor]==';' then return result
     while varList=parser.identifierLine()
       result.push.apply result, varList
       space = bigSpc()
-      if (row=lineInfo[lineno].indentRow)<=indentRow then rollbackToken space; break
-      else if row!=row0 then error 'inconsistent indent of multiple identifiers lines after extern!'
+      if (column=lineInfo[lineno].indentColumn)<=indentColumn then rollbackToken space; break
+      else if column!=row0 then error 'inconsistent indent of multiple identifiers lines after extern!'
       if text[cursor]==';' then break
     result
 
@@ -1091,22 +1095,22 @@ exports.Parser = ->
 
   @varInitList = ->
     start = cursor; line1 = lineno; result = []
-    indentRow0 = lineInfo[lineno].indentRow
+    indentColumn0 = lineInfo[lineno].indentColumn
     space = bigSpc()
-    row = lineInfo[lineno].indentRow
-    if row>indentRow0 then indentRow1 = row
+    column = lineInfo[lineno].indentColumn
+    if column>indentColumn0 then indentColumn1 = column
     else if space.undent or space.newline then error 'unexpected new line, expect at least one variable in var statement'
     while 1
       if x=parser.varInit() then result.push x
       else break
       space1 = bigSpc()
-      row = lineInfo[lineno].indentRow
+      column = lineInfo[lineno].indentColumn
       if not text[cursor] or text[cursor]==';' or follow 'rightDelimiter' then break
       if lineno==line1 then continue
-      if row>indentRow0
-        if indentRow1 and row!=indentRow1 then error 'unconsitent indent in var initialization block'
-        else if not indentRow1 then indentRow1 = row
-      else if row==indentRow0 then break
+      if column>indentColumn0
+        if indentColumn1 and column!=indentColumn1 then error 'unconsitent indent in var initialization block'
+        else if not indentColumn1 then indentColumn1 = column
+      else if column==indentColumn0 then break
       else rollbackToken space1
     # if not result.length then error 'expect at least one variable in var statement'
     if not result.length then rollback start, line1; return
@@ -1296,14 +1300,18 @@ exports.Parser = ->
       if (token=jsIdentifier()) and value=token.value
         if value=='in' or value=='of' then inOf = value
         else name2 = value; spc(); inOf = expectOneOfWords('in', 'of')
-        spc(); list = parser.clause()
-      if inOf=='in' then kw = 'forIn!!' else kw = 'forOf!!'
-      [kw, name1, name2, list, thenClause(line1, isHeadStatement, {})]
+        spc(); obj = parser.clause()
+      if name2
+        if inOf=='in' then kw = 'forIn!!' else kw = 'forOf!!'
+        [kw, name1, name2, obj, thenClause(line1, isHeadStatement, {})]
+      else
+        if inOf=='in' then kw = 'forIn!' else kw = 'forOf!'
+        [kw, name1, obj, thenClause(line1, isHeadStatement, {})]
 
     'do': (isHeadStatement) ->
-      line1 = lineno; spc(); indentRow = lineInfo[lineno].indentRow
+      line1 = lineno; spc(); indentColumn = lineInfo[lineno].indentColumn
       body = parser.lineBlock()
-      if newlineFromLine(line1) and not isHeadStatement then return body
+      if newlineFromLine(line1, lineno) and not isHeadStatement then return body
       if not (conj=maybeOneOfWords('where', 'when', 'until'))
         error 'expect conjunction where, when or until'
       if conj=='where' then tailClause = parser.varInitList()
@@ -1331,11 +1339,14 @@ exports.Parser = ->
       ['try', begin(test), catchClauses, else_, final]
 
     'class': (isHeadStatement) ->
-      spc()
+      line1 = lineno; spc();
+      # class name should be provided explicitly
+      name = expect('identifier', 'expect class name'); spc()
       if parser.conjunction('extends') then spc(); superClass = parser.identifier(); spc()
-      else supers = []
-      body = parser.lineBlock()
-      ['class', superClass].concat body
+      else supers = undefined
+      if followNewline() and newlineFromLine(line1, line1+1) then body = undefined
+      else body = parser.lineBlock()
+      ['#call!', 'class', [name, superClass, body]]
 
   @statement = memo ->
     start = cursor; line1 = lineno
@@ -1521,7 +1532,7 @@ exports.Parser = ->
         else [extend(['lineComment!', comment.value], {start:start, stop:cursor, line: lineno})]
 
   @codeCommentBlockComment = memo ->
-    if cursor!=lineInfo[lineno].start+lineInfo[lineno].indentRow then return
+    if cursor!=lineInfo[lineno].start+lineInfo[lineno].indentColumn then return
     if text[cursor]!='/' then return
     if (c=text[cursor+1])=='.' or c=='/' or c=='*' then return
     start = cursor; line1 = lineno; cursor++
@@ -1540,29 +1551,29 @@ exports.Parser = ->
     result
 
   @block = ->
-    indentRow = lineInfo[lineno].indentRow; space = bigSpc();
+    indentColumn = lineInfo[lineno].indentColumn; space = bigSpc();
     if not space.indent then return rollbackToken space
     else
       x = parser.blockWithoutIndentHead()
       space = bigSpc()
-      if lineInfo[lineno].indentRow<indentRow then rollbackToken space
+      if lineInfo[lineno].indentColumn<indentColumn then rollbackToken space
       x
 
   @blockWithoutIndentHead = ->
-    indentRow = lineInfo[lineno].indentRow; result = []
+    indentColumn = lineInfo[lineno].indentColumn; result = []
     while (x=parser.line()) and (space = bigSpc())
       if x.length!=1 or not (x0=x[0]) or (x0[0]!='lineComment!' and x0[0]!='codeBlockComment!')
         result.push.apply(result, x)
-      if lineInfo[lineno].indentRow<indentRow then rollbackToken space; break
+      if lineInfo[lineno].indentColumn<indentColumn then rollbackToken space; break
     result
 
   @lineBlock = ->
-    start = cursor; line1 = lineno; indentRow = lineInfo[lineno].indentRow
+    start = cursor; line1 = lineno; indentColumn = lineInfo[lineno].indentColumn
     space1 = bigSpc(); if space1.indent then return parser.blockWithoutIndentHead()
     line = parser.line()
     cursor2 = cursor; line2 = lineno;
-    bigSpc(); row = lineInfo[lineno].indentRow
-    if row<=indentRow then rollback cursor2, line2
+    bigSpc(); column = lineInfo[lineno].indentColumn
+    if column<=indentColumn then rollback cursor2, line2
     else line.push.apply line, parser.blockWithoutIndentHead()
     line
 
@@ -1598,27 +1609,27 @@ exports.Parser = ->
     processDataBracetResult result
 
   @dataBlock = ->
-    indentRow = lineInfo[lineno].indentRow; result = []
+    indentColumn = lineInfo[lineno].indentColumn; result = []
     space = bigSpc()
     # had better to check indent before call dataBlock
     # space.indent is a wrong check, because it will ignore half dent wrongly.
     #if not space.indent then return rollbackToken space
     while (x=parser.dataLine()) and (space = bigSpc())
       result.push(x)
-      if lineInfo[lineno].indentRow<indentRow then rollbackToken space; break
+      if lineInfo[lineno].indentColumn<indentColumn then rollbackToken space; break
     result
 
   @dataLine = ->
-    line1 = lineno; indentRow = lineInfo[lineno].indentRow
+    line1 = lineno; indentColumn = lineInfo[lineno].indentColumn
     result = parser.basicDataLine()
-    if lineInfo[lineno].indentRow>indentRow then result.concat parser.dataBlock()
+    if lineInfo[lineno].indentColumn>indentColumn then result.concat parser.dataBlock()
     result
 
   @lines = ->
-    indentRow = lineInfo[lineno].indentRow; result = []
+    indentColumn = lineInfo[lineno].indentColumn; result = []
     while (x=parser.line()) and (space = bigSpc())
       result.push.apply result, x
-      if lineInfo[lineno].indentRow<indentRow then rollbackToken space; break
+      if lineInfo[lineno].indentColumn<indentColumn then rollbackToken space; break
     result
 
   @moduleHeader = ->
@@ -1627,9 +1638,9 @@ exports.Parser = ->
       error 'taiji language module should begin with "taiji language x.x"'
     if (x=x.value)!=0 or (y=y.value)!=1 then error 'taiji 0.1 can not process taiji language'+x+'.'+y
     lineno = 2
-    while lineno<=maxLine and (lineInfo[lineno].indentRow>0 or lineInfo[lineno].empty) then lineno++
+    while lineno<=maxLine and (lineInfo[lineno].indentColumn>0 or lineInfo[lineno].empty) then lineno++
     if lineno>maxLine then cursor = text.length
-    else cursor = lineInfo[lineno].start # lineInfo[lineno].indentRow = 0
+    else cursor = lineInfo[lineno].start # lineInfo[lineno].indentColumn = 0
     {type: MODULE_HEADER, version: {main:x, minor:y}, text: text[...cursor]}
 
   @moduleBody = ->
@@ -1641,66 +1652,67 @@ exports.Parser = ->
     header = parser.moduleHeader()
     {type: MODULE, header:header, body:parser.moduleBody()}
 
-  @indentFromLine = indentFromLine = (line1) -> lineInfo[lineno].indentRow>lineInfo[line1].indentRow
-  @undentFromLine = undentFromLine = (line1) -> lineInfo[lineno].indentRow<lineInfo[line1].indentRow
-  @sameIndentFromLine = sameIndentFromLine = (line1) -> lineInfo[lineno].indentRow==lineInfo[line1].indentRow
-  @newlineFromLine = newlineFromLine = (line1) -> lineno!=line1 and lineInfo[lineno].indentRow==lineInfo[line1].indentRow
-  @getRow = -> cursor-lineInfo[lineno].start
+  @indentFromLine = indentFromLine = (line1) -> lineInfo[lineno].indentColumn>lineInfo[line1].indentColumn
+  @undentFromLine = undentFromLine = (line1) -> lineInfo[lineno].indentColumn<lineInfo[line1].indentColumn
+  @sameIndentFromLine = sameIndentFromLine = (line1) -> lineInfo[lineno].indentColumn==lineInfo[line1].indentColumn
+  @newlineFromLine = newlineFromLine = (line1, line2) ->
+    line2!=line1 and lineInfo[line2].indentColumn==lineInfo[line1].indentColumn
+  @getColumn = -> cursor-lineInfo[lineno].start
 
   @preparse = ->
-    i = 0; line = 1; row = 0; parser.lineInfo = lineInfo = [{start:-1, empty:true, indentRow:0}, {start:0}]
+    i = 0; line = 1; column = 0; parser.lineInfo = lineInfo = [{start:-1, empty:true, indentColumn:0}, {start:0}]
     atLineHead = true; diffSpace = undefined; lineHeadChar = undefined
-    indentStack = [0]; indentLine = 0; indentRow = 0; indentStackIndex = 0
+    indentStack = [0]; indentLine = 0; indentColumn = 0; indentStackIndex = 0
     while c=text[i]
       if c=='\n' and ++i
         lineInfo.push {}
         if atLineHead
           lineInfo[line].empty = true
-          lineInfo[line].indentRow = row
+          lineInfo[line].indentColumn = column
         if text[i]=='\r'then i++
-        lineInfo[++line].start = i; row = 0; atLineHead = true
+        lineInfo[++line].start = i; column = 0; atLineHead = true
       else if c=='\r' and ++i
         lineInfo.push {}
         if atLineHead
           lineInfo[line].empty = true
-          lineInfo[line].indentRow = row
+          lineInfo[line].indentColumn = column
         if text[i]=='\n' then i++
-        lineInfo[++line].start = i; row = 0; atLineHead = true
+        lineInfo[++line].start = i; column = 0; atLineHead = true
       else
         if atLineHead
           if c==' ' or c=='\t'
             if lineHeadChar
-              if lineHeadChar!=c then diffSpace = row
+              if lineHeadChar!=c then diffSpace = column
             else lineHeadChar = c
           else if diffSpace
             error i+'('+line+':'+diffSpace+'): '+'unconsistent space or tab character in the head of a line'
           else
-            lineInfo[line].indentRow = row; atLineHead = false
-            if row>indentRow
+            lineInfo[line].indentColumn = column; atLineHead = false
+            if column>indentColumn
               lineInfo[line].indent = indentLine
               indentStack.push indentLine=line
-              indentRow = row
+              indentColumn = column
               indentStackIndex++
-            else if row==indentRow
+            else if column==indentColumn
               lineInfo[line].prevLine = indentLine
               indentStack[indentStackIndex] = indentLine = line
               if indentStackIndex>1 then lineInfo[line].indent = indentStack[indentStackIndex-1]
             else
-              while row<indentRow
+              while column<indentColumn
                 prevIndentLine = indentStack[indentStackIndex]
                 indentStack.pop(); --indentStackIndex
-                indentRow = lineInfo[indentStack[indentStackIndex]].indentRow
+                indentColumn = lineInfo[indentStack[indentStackIndex]].indentColumn
               lineInfo[line].undent = prevIndentLine
-              if row==indentRow
+              if column==indentColumn
                  lineInfo[line].prevLine = indentStack[indentStackIndex]
               else
                  lineInfo[line].indent = indentStack[indentStackIndex]
                  indentStack.push line
-                 indentRow = row
+                 indentColumn = column
                  indentStackIndex++
               indentLine = line
-        i++; row++
-    lineInfo.push {indentRow:0, start:text.length}
+        i++; column++
+    lineInfo.push {indentColumn:0, start:text.length}
     maxLine = line
     return
 
@@ -1717,7 +1729,7 @@ exports.Parser = ->
     root()
 
   @error = error = (message) ->
-    throw cursor+'('+lineno+':'+parser.getRow()+'): '+message+': \n'+text[cursor-40...cursor]+'|   |'+text[cursor...cursor+40]
+    throw cursor+'('+lineno+':'+parser.getColumn()+'): '+message+': \n'+text[cursor-40...cursor]+'|   |'+text[cursor...cursor+40]
 
   return @
 

@@ -109,23 +109,44 @@ exports["hash!"] = convertHash = (exp, env) ->
 
 convertForInOf = (head) ->
 
-exports['forIn!'] = (exp, env) ->
-  [item, range, body] = exp
-  if item[0]!='metaConvertVar!' and not env.hasFnLocal(item.value)
-    env.set(item.value, item); item = ['var', item]
-  else item = convert(item, env)
-  ['forIn!', item, convert(range, env), convert(body, env)]
+exports['forOf!!'] = (exp, env) ->
+  [key, value, obj, body] = exp
+  if key[0]!='metaConvertVar!' and not env.hasFnLocal(key.value)
+    env.set(key.value, key); key1 = ['var', key]
+  else key1 = convert(key, env)
+  body = begin(['=', value, ['index!', obj, key]])
+  ['jsForIn!', key1, convert(obj, env), convert(body, env)]
+
+exports['forOf!'] = (exp, env) ->
+  [key, obj, body] = exp
+  if key[0]!='metaConvertVar!' and not env.hasFnLocal(key.value)
+    env.set(key.value, key); key = ['var', key]
+  else key = convert(key, env)
+  ['jsForIn!', key, convert(obj, env), convert(body, env)]
 
 exports['forIn!!'] = (exp, env) ->
   [item, index, range, body] = exp
-  if not index
-    convert ['forIn!', item, range, body], env
-  else
-    result = []
-    result.push ['var', index]
-    t = env.ssaVar('t')
-    result.push ['=', index, 0]
-    result.push ['forIn!', item, range, ['begin!', ['=', t, body], ['x++', index], t]]
-    begin(result)
+  result = []
+  length = env.newVar('length')
+  result.push ['direct!', ['var', length]]
+  result.push ['=', length, ['attribute!', range, 'length']]
+  result.push ['=', index, 0]
+  result.push ['while', ['<', ['x++', index], length], ['=', item, ['index!', range, index]], body]
+  convert begin(result), env
 
+exports['forIn!'] = (exp, env) ->
+  [item, range, body] = exp
+  result = []
+  length = env.newVar('length')
+  result.push ['direct!', ['var', length]]
+  i = env.newVar('i')
+  result.push ['direct!', ['var', i]]
+  result.push ['=', length, ['attribute!', range, 'length']]
+  result.push ['=', i, 0]
+  result.push ['while', ['<', ['x++', i], length], ['=', item, ['index!', range, i]], body]
+  convert begin(result), env
 
+# caller.call(this, args)
+exports['callByThis'] = (exp, env) ->
+  [caller, args] = exp
+  convert([['attribute!', caller, 'call'], ['this'].concat(args)], env)

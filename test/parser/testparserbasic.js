@@ -27,7 +27,7 @@ describe("parser basic: ", function() {
       parser.init('1', 0);
       parser.preparse();
       expect(parser.lineInfo.length).to.equal(3);
-      return expect(parser.lineInfo[1].indentRow).to.equal(0);
+      return expect(parser.lineInfo[1].indentColumn).to.equal(0);
     });
     it("parse \n", function() {
       var parser;
@@ -35,8 +35,8 @@ describe("parser basic: ", function() {
       parser.init('\n', 0);
       parser.preparse();
       expect(parser.lineInfo.length).to.equal(4);
-      expect(parser.lineInfo[1].indentRow).to.equal(0);
-      return expect(parser.lineInfo[2].indentRow).to.equal(void 0);
+      expect(parser.lineInfo[1].indentColumn).to.equal(0);
+      return expect(parser.lineInfo[2].indentColumn).to.equal(void 0);
     });
     it("parse 1\n", function() {
       var parser;
@@ -44,8 +44,8 @@ describe("parser basic: ", function() {
       parser.init('1\n', 0);
       parser.preparse();
       expect(parser.lineInfo.length).to.equal(4);
-      expect(parser.lineInfo[1].indentRow).to.equal(0);
-      return expect(parser.lineInfo[2].indentRow).to.equal(void 0);
+      expect(parser.lineInfo[1].indentColumn).to.equal(0);
+      return expect(parser.lineInfo[2].indentColumn).to.equal(void 0);
     });
     it("parse \n1", function() {
       var parser;
@@ -54,8 +54,8 @@ describe("parser basic: ", function() {
       parser.preparse();
       expect(parser.lineInfo.length).to.equal(4);
       expect(parser.lineInfo[1].empty).to.equal(true);
-      expect(parser.lineInfo[1].indentRow).to.equal(0);
-      return expect(parser.lineInfo[2].indentRow).to.equal(0);
+      expect(parser.lineInfo[1].indentColumn).to.equal(0);
+      return expect(parser.lineInfo[2].indentColumn).to.equal(0);
     });
     it("parse \n 1", function() {
       var parser;
@@ -64,8 +64,8 @@ describe("parser basic: ", function() {
       parser.preparse();
       expect(parser.lineInfo.length).to.equal(4);
       expect(parser.lineInfo[1].empty).to.equal(true);
-      expect(parser.lineInfo[1].indentRow).to.equal(0);
-      return expect(parser.lineInfo[2].indentRow).to.equal(1);
+      expect(parser.lineInfo[1].indentColumn).to.equal(0);
+      return expect(parser.lineInfo[2].indentColumn).to.equal(1);
     });
     it("parse \n 1\n  2", function() {
       var parser;
@@ -74,11 +74,11 @@ describe("parser basic: ", function() {
       parser.preparse();
       expect(parser.lineInfo.length).to.equal(5);
       expect(parser.lineInfo[1].empty).to.equal(true);
-      expect(parser.lineInfo[1].indentRow).to.equal(0);
-      expect(parser.lineInfo[2].indentRow).to.equal(1);
+      expect(parser.lineInfo[1].indentColumn).to.equal(0);
+      expect(parser.lineInfo[2].indentColumn).to.equal(1);
       expect(parser.lineInfo[2].indent).to.equal(0);
       expect(parser.lineInfo[2].undent).to.equal(void 0);
-      expect(parser.lineInfo[3].indentRow).to.equal(2);
+      expect(parser.lineInfo[3].indentColumn).to.equal(2);
       expect(parser.lineInfo[3].indent).to.equal(2);
       return expect(parser.lineInfo[3].prevLine).to.equal(void 0);
     });
@@ -89,11 +89,11 @@ describe("parser basic: ", function() {
       parser.preparse();
       expect(parser.lineInfo.length).to.equal(5);
       expect(parser.lineInfo[1].empty).to.equal(true);
-      expect(parser.lineInfo[1].indentRow).to.equal(0);
-      expect(parser.lineInfo[2].indentRow).to.equal(2);
+      expect(parser.lineInfo[1].indentColumn).to.equal(0);
+      expect(parser.lineInfo[2].indentColumn).to.equal(2);
       expect(parser.lineInfo[2].indent).to.equal(0);
       expect(parser.lineInfo[2].undent).to.equal(void 0);
-      expect(parser.lineInfo[3].indentRow).to.equal(1);
+      expect(parser.lineInfo[3].indentColumn).to.equal(1);
       expect(parser.lineInfo[3].undent).to.equal(2);
       expect(parser.lineInfo[3].indent).to.equal(0);
       return expect(parser.lineInfo[3].prevLine).to.equal(void 0);
@@ -105,15 +105,15 @@ describe("parser basic: ", function() {
       parser.preparse();
       expect(parser.lineInfo.length).to.equal(6);
       expect(parser.lineInfo[1].empty).to.equal(true);
-      expect(parser.lineInfo[1].indentRow).to.equal(0);
-      expect(parser.lineInfo[2].indentRow).to.equal(2);
+      expect(parser.lineInfo[1].indentColumn).to.equal(0);
+      expect(parser.lineInfo[2].indentColumn).to.equal(2);
       expect(parser.lineInfo[2].indent).to.equal(0);
       expect(parser.lineInfo[2].undent).to.equal(void 0);
-      expect(parser.lineInfo[3].indentRow).to.equal(1);
+      expect(parser.lineInfo[3].indentColumn).to.equal(1);
       expect(parser.lineInfo[3].undent).to.equal(2);
       expect(parser.lineInfo[3].indent).to.equal(0);
       expect(parser.lineInfo[3].prevLine).to.equal(void 0);
-      expect(parser.lineInfo[4].indentRow).to.equal(0);
+      expect(parser.lineInfo[4].indentColumn).to.equal(0);
       expect(parser.lineInfo[4].undent).to.equal(3);
       expect(parser.lineInfo[4].indent).to.equal(void 0);
       return expect(parser.lineInfo[4].prevLine).to.equal(0);
@@ -125,15 +125,15 @@ describe("parser basic: ", function() {
       parser.preparse();
       expect(parser.lineInfo.length).to.equal(6);
       expect(parser.lineInfo[1].empty).to.equal(true);
-      expect(parser.lineInfo[1].indentRow).to.equal(0);
-      expect(parser.lineInfo[2].indentRow).to.equal(6);
+      expect(parser.lineInfo[1].indentColumn).to.equal(0);
+      expect(parser.lineInfo[2].indentColumn).to.equal(6);
       expect(parser.lineInfo[2].indent).to.equal(0);
       expect(parser.lineInfo[2].undent).to.equal(void 0);
-      expect(parser.lineInfo[3].indentRow).to.equal(4);
+      expect(parser.lineInfo[3].indentColumn).to.equal(4);
       expect(parser.lineInfo[3].undent).to.equal(2);
       expect(parser.lineInfo[3].indent).to.equal(0);
       expect(parser.lineInfo[3].prevLine).to.equal(void 0);
-      expect(parser.lineInfo[4].indentRow).to.equal(2);
+      expect(parser.lineInfo[4].indentColumn).to.equal(2);
       expect(parser.lineInfo[4].undent).to.equal(3);
       expect(parser.lineInfo[4].indent).to.equal(0);
       return expect(parser.lineInfo[4].prevLine).to.equal(void 0);
@@ -145,15 +145,15 @@ describe("parser basic: ", function() {
       parser.preparse();
       expect(parser.lineInfo.length).to.equal(6);
       expect(parser.lineInfo[1].empty).to.equal(true);
-      expect(parser.lineInfo[1].indentRow).to.equal(0);
-      expect(parser.lineInfo[2].indentRow).to.equal(1);
+      expect(parser.lineInfo[1].indentColumn).to.equal(0);
+      expect(parser.lineInfo[2].indentColumn).to.equal(1);
       expect(parser.lineInfo[2].indent).to.equal(0);
       expect(parser.lineInfo[2].undent).to.equal(void 0);
-      expect(parser.lineInfo[3].indentRow).to.equal(2);
+      expect(parser.lineInfo[3].indentColumn).to.equal(2);
       expect(parser.lineInfo[3].undent).to.equal(void 0);
       expect(parser.lineInfo[3].indent).to.equal(2);
       expect(parser.lineInfo[3].prevLine).to.equal(void 0);
-      expect(parser.lineInfo[4].indentRow).to.equal(0);
+      expect(parser.lineInfo[4].indentColumn).to.equal(0);
       expect(parser.lineInfo[4].undent).to.equal(2);
       expect(parser.lineInfo[4].indent).to.equal(void 0);
       return expect(parser.lineInfo[4].prevLine).to.equal(0);

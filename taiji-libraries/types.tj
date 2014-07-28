@@ -15,3 +15,5 @@ string? #= (obj) -> ` (Object::toString.call(^obj) == '[object String]')
 array? #= (obj) -> ` (Object::toString.call(^obj) == '[object Array]')
 object? #= (obj) -> ` (Object::toString.call(^obj) == '[object Object]')
 function? #= (obj) -> ` (Object::toString.call(^obj) == '[object Function]')
+
+isArray #= (obj) ->  (Object::toString.call(obj) == '[object Array]')

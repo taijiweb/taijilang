@@ -61,7 +61,7 @@ class ShiftAheadStatementInfo
 
 
 statementHeadMap = {'break':1, 'continue':1, 'switch':1, 'try':1, 'throw':1,
-'forIn!':1, 'forOf!': 1, 'cFor!':1, 'while':1, 'doWhile!':1,  'letloop':1,
+'jsForIn!':1, 'forOf!': 1, 'cFor!':1, 'while':1, 'doWhile!':1,  'letloop':1,
 'with':1, 'var':1, 'label!':1}
 
 exports.isExpression = isExpression = (exp) ->
@@ -269,7 +269,7 @@ transformExpressionFnMap =
     [callerStmt, callerValue] = transformExpression(exp[1], env, shiftStmtInfo)
     args = []
     for e in argsValues
-      if e and e[0]=='directLineComment!' or e[0]=='directCBlockComment!' then continue
+      if e and (e[0]=='directLineComment!' or e[0]=='directCBlockComment!') then continue
       else args.push e
     [begin([callerStmt, argsStmts]), ['call!', callerValue, argsValues]]
 
@@ -314,13 +314,18 @@ transformExpressionFnMap =
 
   'while': (exp, env, shiftStmtInfo) ->
     lst = env.newVar('list')
-    [stmt, e] = transformExpression(exp[1], env, shiftStmtInfo)
+    [stmtTest, expTest] = transformExpression(exp[1], env, shiftStmtInfo)
     [bodyStmt, bodyValue] = transformExpression(exp[2], env, shiftStmtInfo)
-    whileStmt = ['while', 1,
-                 begin([stmt,
-                        ['if', notExp(e), 'break'],
+    if stmtTest
+      whileStmt = ['while', 1,
+                 begin([stmtTest,
+                        ['if', notExp(expTest), 'break'],
                         bodyStmt,
                         pushExp(lst, bodyValue)])]
+    else
+      whileStmt = ['while', expTest,
+                   begin([bodyStmt,
+                          pushExp(lst, bodyValue)])]
     [begin([['var', lst], whileStmt]), lst]
 
   'doWhile!': (exp, env, shiftStmtInfo) ->
@@ -335,14 +340,14 @@ transformExpressionFnMap =
                   e]
     [begin([['var', lst], doWhileStmt]), lst]
 
-  'forIn!': (exp, env, shiftStmtInfo) ->
+  'jsForIn!': (exp, env, shiftStmtInfo) ->
     lst = env.newVar('list')
     # do not transform exp[1], because it must be [var name] or name
     #[varStmt, varName] = transformExpression(exp[1], env, shiftStmtInfo)
     [rangeStmt, rangeValue] = transformExpression(exp[2], env, shiftStmtInfo)
     [bodyStmt, bodyValue] = transformExpression(exp[3], env, shiftStmtInfo)
     # exp[0]: forIn! or forOf!
-    forInStmt = ['forIn!', exp[1], rangeValue,
+    forInStmt = ['jsForIn!', exp[1], rangeValue,
                  begin([bodyStmt, pushExp(lst, bodyValue)])]
     [begin([['var', lst], ['=', lst, ['list!']], rangeStmt, forInStmt]), lst]
 
@@ -491,11 +496,11 @@ transformFnMap =
 
   # for key in hash {...}
   # [forIn! key hash body]
-  'forIn!': (exp, env) ->
+  'jsForIn!': (exp, env) ->
     [stmt, hashExp] = transformExpression(exp[2], env, new ShiftAheadStatementInfo({}))
     # do not transform exp[1], because it must be [var name] or name
-    if stmt then ['begin!', stmt, ['forIn!', exp[1], hashExp, transform(exp[3], env)]]
-    else ['forIn!', exp[1], hashExp, transform(exp[3], env)]
+    if stmt then ['begin!', stmt, ['jsForIn!', exp[1], hashExp, transform(exp[3], env)]]
+    else ['jsForIn!', exp[1], hashExp, transform(exp[3], env)]
 
   # javascript has no for key of hash {...}
   #'forOf!': transformForInExpression

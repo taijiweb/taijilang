@@ -624,8 +624,8 @@ describe("compile: ", function() {
     });
   });
   describe("class : ", function() {
-    it('should parse A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)', function() {
-      return expect(parse('A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)')).to.have.string("[= A [class B [= :: [-> [a [attribute! @ b]] [super]]] [= [attribute! :: f] [-> [x] [[call! super [x]]]]]]]");
+    it('should parse class A extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)', function() {
+      return expect(parse('class A extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)')).to.have.string('[#call! class [A B [[= :: [-> [a [attribute! @ b]] [super]]] [= [attribute! :: f] [-> [x] [[call! super [x]]]]]]]]');
     });
     return xit('should compile A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)', function() {
       return expect(compile('A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)')).to.have.string('7');

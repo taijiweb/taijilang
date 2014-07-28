@@ -4,24 +4,46 @@ taiji language 0.1
 
 include! 'types.tj'
 
+__extends  = (child, parent) ->
+  for key of parent then if __hasProp.call(parent, key) then child[key] = parent[key]
+  ctor = -> @constructor = child
+  ctor:: = parent::
+  child:: = new ctor
+  child.__super__ = parent::
+  child
+
 #{
+    var \class
     utils = require('../utils')
     entity = utils.entity
+    error = utils.error
+    begin = utils.begin
+    isDefinition = (item) ->
+      if not item then return
+      if not isArray(item) then return
+      item0 = entity item[0]
+      item0=='|->' or item0=='|=>' or item0=='->' or item0=='=>'
 
-    var \class
-
-    __extends  = (child, parent) ->
-      for key in parent then if __hasProp.call(parent, key) then child[key] = parent[key]
-      ctor = -> @constructor = child
-      ctor:: = parent::
-      child:: = new ctor; child.__super__ = parent::
-      child
+    convertClassConstructor = (item, superClass) ->
+      eItem = entity item
+      if typeof eItem == 'string' then
+        if eItem=='super' then
+          return ['callByThis!', ['attribute!', superClass, 'constructor'], []]
+        else return item
+      else if not isArray(item) then return item
+      else if isDefinition(item) then return item
+      else if not item.length then return
+      else
+        item0 = item[0]
+        if item0=='super' then
+          return ['callByThis!', ['attribute!', superClass, 'constructor'], item.slilce(1)]
+        else for e in item0 then convertClassConstructor(e, superClass)
 
     convertClassItem = (item, className, superClass) ->
       if not array?(item) then return item
       else if item0=item[0] and item0=='class' then return \class item[1] item[2] item[3]
       else if item0=='=' then
-        if array? item[1] then    // ::member = value
+        if array? # item[1] then    // ::member = value
           if item1=item[1] and item1[0]=='attribute!' and item1[1]=='::' then
             \super = (args...) -> superClass::item1[2].call args
             return `{ \= { (^className):: } ^(item1[2]) }
@@ -29,22 +51,33 @@ include! 'types.tj'
         return item
 
     \class = (className, superClass, body) ->
-      result = []
-      if not className then className = newvar! '_class'; result.push `{const ^className}
+      result = ['begin!']
+      // class name must be provided explicitly
+      // if not className then className = newvar! '_class'; result.push `{const ^className}
       // if constructor is provided, then it must be the first statement of the body
+      //console.log entity(className)
+      //print: entity superClass
+      if not isArray(body) then
+        result.push `{ \= ^className -> }
+        if superClass then result.push `{__extends ^className ^superClass}
+        result.push body
+        return result
       if body0=body[0] and entity(body0[0])=='=' and entity(body0[1])=='::' then
         var index = 1
-        if superClass
-          result.push `{ \super = `((^(^superClass)).constructor.call)}
-        result.push `{ \= ^className ^(body0[2]) }
+        body02 = body0[2]
+        if not isDefinition(body02) then error 'wrongly use non function as the constructor of a class '+className
+        if superClass then
+          result.push `{__extends ^className ^superClass}
+          result.push `{ \= ^className ^(convertClassConstructor(body02[2], superClass)) }
+        else result.push `{ \= ^className ^body02 }
       else
         index = 0
         result.push `{ \= ^className -> }
-      if superClass then result.push `{__extends ^className ^superClass}
+        if superClass then result.push `{__extends ^className ^superClass}
       resultBody = []
       for item in body.slice(index) then
         resultBody.push convertClassItem(item, className, superClass)
       result.push resultBody
-      result
+      begin(result)
 }
 undefined
