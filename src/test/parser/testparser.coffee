@@ -232,6 +232,20 @@ describe "parse: ",  ->
         x = parse(':: = 1')
         expect(str x).to.equal "[= :: 1]"
 
+      it 'should parse {a b c} = x', ->
+        x = parse('{a b c} = x')
+        expect(str x).to.equal "[hashAssign! [a b c] x]"
+
+      it 'should parse {a b c\\\ne f} = x', ->
+        x = parse('{a b c\\\n e f} = x')
+        expect(str x).to.equal "[hashAssign! [a b c e f] x]"
+
+      it 'should parse {a} = x', ->
+        x = parse('{a} = x')
+        expect(str x).to.equal "[hashAssign! [a] x]"
+
+
+
     describe 'unquote!', ->
       it 'should parse ^ a', ->
         x = parse('^ a')

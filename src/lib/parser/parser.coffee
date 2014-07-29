@@ -1385,6 +1385,15 @@ exports.Parser = ->
     space = spc()
     if not (token=assignSymbol()) then return rollback start, line1
     right = assignRightSide(space)
+    if left.type==CURVE
+      eLeft = entity(left)
+      if typeof eLeft=='string'
+        if eLeft[0]=='"' then error 'unexpected left side of assign: '+eLeft
+        left = [left]
+      else if eLeft and eLeft.push
+        if eLeft[0]=='begin!' then error 'syntax error: left side of assign should be a list of variable names separated by space'
+      else error 'unexpected left side of assign'
+      return ['hashAssign!', left, right]
     extend [token, left, right], {start:start, cursor:cursor, line1:line1, line:lineno}
 
   @defaultAssignClause = @makeAssignClause @defaultAssignLeftSide, @defaultAssignSymbol, @defaultAssignRightSide

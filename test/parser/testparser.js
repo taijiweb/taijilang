@@ -321,10 +321,25 @@ describe("parse: ", function() {
         x = parse('a = \n b = \n  1');
         return expect(str(x)).to.equal('[= a [= b 1]]');
       });
-      return it('should parse :: = 1', function() {
+      it('should parse :: = 1', function() {
         var x;
         x = parse(':: = 1');
         return expect(str(x)).to.equal("[= :: 1]");
+      });
+      it('should parse {a b c} = x', function() {
+        var x;
+        x = parse('{a b c} = x');
+        return expect(str(x)).to.equal("[hashAssign! [a b c] x]");
+      });
+      it('should parse {a b c\\\ne f} = x', function() {
+        var x;
+        x = parse('{a b c\\\n e f} = x');
+        return expect(str(x)).to.equal("[hashAssign! [a b c e f] x]");
+      });
+      return it('should parse {a} = x', function() {
+        var x;
+        x = parse('{a} = x');
+        return expect(str(x)).to.equal("[hashAssign! [a] x]");
       });
     });
     describe('unquote!', function() {
