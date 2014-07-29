@@ -1,8 +1,5 @@
 todo: embedded meta compilation: #call, by evaluating the embedded meta code while running
 
-todo: class similar to coffee-script
-  # things like super, construcotr(too long name, maybe I'll use init: (...)->)
-  
 todo: range: x = a...b, x = a..b
 todo: ellipsis subscript: x = a[1..3]; x = b[1...4]; x = a[...], x = a[..], x = a[..5]; x = a[...5]
 todo: hash assign
@@ -22,10 +19,6 @@ todo: remove "entity" utility function
   
 todo: assign optimization
   # ssaVar, const var, dummy var, etc
-
-todo: macro for "for", do, try, etc
-  # macro for for/c-style, do(as begin!) do/where, do/When and do/until is not necessary any more.
-  # forIn!! and forOf!! is necessary still.
 
 todo: may be [x y z] should directly produce [x, y, z], no list! is unshift to its front, and item in {} or other blocks should produces ['call!', x, [y, z]]
 
@@ -54,6 +47,13 @@ todo: source map
 todo: document
   todo: tutorial：interactive samples
 
+done: macro for "for", do, etc
+  # macro for for/c-style, do(as begin!) do/where, do/When and do/until is not necessary any more.
+  # forIn!! and forOf!! is necessary still.
+
+done: class similar to coffee-script
+  # things like super, construcotr(too long name, maybe I'll use :: = (...)->)
+  
 ------------------------------------------------------------
 done: (x, @y...) ->, (x, @y...) =>
 done: convert javascript keyword to legal idenentifier (var name)

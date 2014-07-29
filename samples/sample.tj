@@ -65,3 +65,5 @@ print: and 1 2, or 3 4
     let a=[ 1 ] then a[1]
 
 => @a; @, @x([]+@), -> @a; @, @x([]+@)
+
+for x in [ 1, 2 ] then print x

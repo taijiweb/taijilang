@@ -41,4 +41,4 @@ describe "taiji shell command: ",  ->
       expect(x).to.equal "hello taiji\n"
     it 'should run sample.tj', ->
       x = exec('node bin/taiji samples/sample.tj', {silent:true}).output
-      expect(x).to.equal "1\n7\n77\n77\n2\n2 3\n2\n2\n"
+      expect(x).to.equal "1\n7\n77\n77\n2\n2 3\n2\n2\n1\n2\n"

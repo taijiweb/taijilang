@@ -326,7 +326,7 @@ transformExpressionFnMap =
       whileStmt = ['while', expTest,
                    begin([bodyStmt,
                           pushExp(lst, bodyValue)])]
-    [begin([['var', lst], whileStmt]), lst]
+    [begin([['var', lst], ['=', lst, []], whileStmt]), lst]
 
   'doWhile!': (exp, env, shiftStmtInfo) ->
     lst = env.newVar('list')

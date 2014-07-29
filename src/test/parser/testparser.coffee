@@ -133,9 +133,17 @@ describe "parse: ",  ->
         expect(str parse('# ( #(1+2) + #(3+4))')).to.equal "[# [+ [# [+ 1 2]] [# [+ 3 4]]]]"
 
     describe 'class: ', ->
-      it 'should parse class', ->
+      it 'should parse class A', ->
         x = parse('class A')
         expect(str x).to.equal "[#call! class [A undefined undefined]]"
+
+      it 'should parse class A :: = ->', ->
+        x = parse('class A :: = ->')
+        expect(str x).to.equal "[#call! class [A undefined [[= :: [-> [] []]]]]]"
+
+      it 'should parse class B extends A :: = ->', ->
+        x = parse('class B extends A :: = ->')
+        expect(str x).to.equal "[#call! class [B A [[= :: [-> [] []]]]]]"
 
       it 'should parse class B extends A', ->
         x = parse('class B extends A')
@@ -143,7 +151,7 @@ describe "parse: ",  ->
 
       it 'should parse class B extends A  :: = ->', ->
         x = parse('class B extends A  :: = ->')
-        expect(str x).to.equal "[#call! class [B A [[:: = [-> [] []]]]]]"
+        expect(str x).to.equal "[#call! class [B A [[= :: [-> [] []]]]]]"
 
     describe 'for', ->
       it 'should parse for (i=0; i<10; i++) then print i', ->
@@ -152,7 +160,7 @@ describe "parse: ",  ->
 
       it 'should parse for i in x then print i', ->
         x = parse('for i in x then print i')
-        expect(str x).to.equal "[forIn!! i undefined x [print i]]"
+        expect(str x).to.equal "[forIn! i x [print i]]"
 
       it 'should parse for i v in x then print i, print v', ->
         x = parse('for i v in x then print i, print v')
@@ -219,6 +227,10 @@ describe "parse: ",  ->
       it 'should parse a = \n b = \n  1', ->
         x = parse('a = \n b = \n  1')
         expect(str x).to.equal '[= a [= b 1]]'
+
+      it 'should parse :: = 1', ->
+        x = parse(':: = 1')
+        expect(str x).to.equal "[= :: 1]"
 
     describe 'unquote!', ->
       it 'should parse ^ a', ->
@@ -578,7 +590,7 @@ describe "parse: ",  ->
       expect(str parse('# if 0 then 1+2 else 3+4')).to.equal "[# [if 0 [+ 1 2] [+ 3 4]]]"
 
     it '''should parse for x in [\ 1, 2 \] then print x''', ->
-      expect(str parse('''for x in [\ 1 2 \] then print x''')).to.equal "[forIn!! x undefined [list! [1 2]] [print x]]"
+      expect(str parse('''for x in [\ 1 2 \] then print x''')).to.equal "[forIn! x [list! [1 2]] [print x]]"
 
     it 'should parse {(a,b) -=> `( ^a + ^b )}(1,2)', ->
       expect(str parse('{(a,b) -=> `( ^a + ^b )}(1,2)')).to.equal "[call! [-=> [a b] [[quasiquote! [+ [unquote! a] [unquote! b]]]]] [1 2]]"

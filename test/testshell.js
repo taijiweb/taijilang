@@ -77,7 +77,7 @@ describe("taiji shell command: ", function() {
       x = exec('node bin/taiji samples/sample.tj', {
         silent: true
       }).output;
-      return expect(x).to.equal("1\n7\n77\n77\n2\n2 3\n2\n2\n");
+      return expect(x).to.equal("1\n7\n77\n77\n2\n2 3\n2\n2\n1\n2\n");
     });
   });
 });

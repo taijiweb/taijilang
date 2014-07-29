@@ -1,4 +1,3 @@
-"fasd dfsa dsfaj; sadfjk;l";
 var BLOCK_COMMENT, COMPACT_CLAUSE_EXPRESSION, EOI, HALF_DENT, IDENTIFIER, INDENT, NEWLINE, NUMBER, PAREN, PAREN_OPERATOR_EXPRESSION, Parser, SPACE_CLAUSE_EXPRESSION, UNDENT, chai, constant, expect, getOperatorExpression, idescribe, iit, isArray, lib, str, _ref;
 
 chai = require("chai");

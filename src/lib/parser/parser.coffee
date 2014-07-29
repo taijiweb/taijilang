@@ -1365,6 +1365,7 @@ exports.Parser = ->
     x = getOperatorExpression x
     if not x then  rollback start, line1; return
     if x.type==IDENTIFIER or ((e=entity(x)) and (e[0]=='attribute!' or e[0]=='index!')) then x
+    else if x.value=='::' then x
     else if parser.isAssign(x[0]) then rollback x[1].stop, x[1].line; return x[1]
     else  rollback start, line1; return
 

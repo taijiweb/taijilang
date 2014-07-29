@@ -86,6 +86,12 @@ describe('test command:', function() {
       it('compile blockcomment.tj', function() {
         return expect(compile('samples-js', 'samples/blockcomment.tj')).to.deep.equal([void 0]);
       });
+      it('parse block.tj', function() {
+        return expect(parse('samples-js', 'samples/block.tj')).to.deep.equal([void 0]);
+      });
+      it('compile block.tj', function() {
+        return expect(compile('samples-js', 'samples/block.tj')).to.deep.equal([void 0]);
+      });
       it('parse indent-then-else.tj', function() {
         return expect(parse('samples-js/parse', 'samples/indent-then-else.tj')).to.deep.equal([void 0]);
       });
@@ -131,7 +137,7 @@ describe('test command:', function() {
       it('parse democlass.tj', function() {
         return expect(parse('samples-js', 'samples/democlass.tj')).to.deep.equal([void 0]);
       });
-      return iit('compile democlass.tj', function() {
+      return it('compile democlass.tj', function() {
         return expect(compile('samples-js', 'samples/democlass.tj')).to.deep.equal([void 0]);
       });
     });

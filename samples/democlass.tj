@@ -3,6 +3,23 @@ taiji language 0.1
 //import! #\class from 'class.tj'
 include! 'class.tj'
 
-//class A
-//class B extends A
-class C :: = ->
+a = 1
+
+class A
+  ::a = 1
+  a = 1
+
+class B extends A
+
+class C extends A :: = ->  super
+
+class D extends A
+  :: = ->  super
+  ::f = -> super
+
+class E extends A
+  :: = ->  super(1)
+  ::f = -> super
+  a = 1
+  ::a = 2
+  ::g = -> super 3 4

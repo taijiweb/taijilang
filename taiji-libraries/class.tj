@@ -24,31 +24,37 @@ __extends  = (child, parent) ->
       item0 = entity item[0]
       item0=='|->' or item0=='|=>' or item0=='->' or item0=='=>'
 
-    convertClassConstructor = (item, superClass) ->
+    superCall = (className, args, member) -> ['callByThis!', ['attribute!', ['attribute!', className, '__super__'], member], args]
+
+    convertClassMemberBody = (item, className, member) ->
       eItem = entity item
       if typeof eItem == 'string' then
-        if eItem=='super' then
-          return ['callByThis!', ['attribute!', superClass, 'constructor'], []]
+        if eItem=='super' then return superCall(className, [], member)
         else return item
       else if not isArray(item) then return item
       else if isDefinition(item) then return item
       else if not item.length then return
       else
-        item0 = item[0]
-        if item0=='super' then
-          return ['callByThis!', ['attribute!', superClass, 'constructor'], item.slilce(1)]
-        else for e in item0 then convertClassConstructor(e, superClass)
+        item0 = entity item[0]
+        if item0=='super' then return superCall(className, item.slice(1), member)
+        else if item0=='call!' and entity(item[1])=='super' then
+          return superCall(className, item[2], member)
+        else for e in item0 then convertClassMemberBody(e, className, member)
 
-    convertClassItem = (item, className, superClass) ->
-      if not array?(item) then return item
-      else if item0=item[0] and item0=='class' then return \class item[1] item[2] item[3]
+    convertClassStatement = (item, className) ->
+      if not isArray(item) then return item
+      else if item0=entity(item[0]) and item0=='class' then return \class item[1] item[2] item[3]
       else if item0=='=' then
-        if array? # item[1] then    // ::member = value
-          if item1=item[1] and item1[0]=='attribute!' and item1[1]=='::' then
-            \super = (args...) -> superClass::item1[2].call args
-            return `{ \= { (^className):: } ^(item1[2]) }
-      if item0 and (item0[0]=='->' or item0[0]=='=>') then
-        return item
+        if isArray(item[1]) then    // ::member = value
+          if item1=item[1] and item1[0]=='attribute!' and entity(item1[1])=='::' then
+            member = item1[2]; var value = item[2]
+            if isDefinition(value) then
+               body = for e in value[2] then convertClassMemberBody(e, className, member)
+               value = [value[0], value[1], body]
+            return ['=', ['attribute!', ['attribute!', className, 'prototype'], member], value]
+          else value = convertClassStatement(value, className)
+      if isDefinition(item) then return item
+      else return for x in item then convertClassStatement(x, className)
 
     \class = (className, superClass, body) ->
       result = ['begin!']
@@ -67,17 +73,18 @@ __extends  = (child, parent) ->
         body02 = body0[2]
         if not isDefinition(body02) then error 'wrongly use non function as the constructor of a class '+className
         if superClass then
+          ctorBody = for x in body02[2] then convertClassMemberBody(x, className, 'constructor')
+          result.push `{\= ^className ^[body02[0], body02[1], ctorBody]}
           result.push `{__extends ^className ^superClass}
-          result.push `{ \= ^className ^(convertClassConstructor(body02[2], superClass)) }
         else result.push `{ \= ^className ^body02 }
       else
         index = 0
         result.push `{ \= ^className -> }
         if superClass then result.push `{__extends ^className ^superClass}
-      resultBody = []
+      classBody = []
       for item in body.slice(index) then
-        resultBody.push convertClassItem(item, className, superClass)
-      result.push resultBody
-      begin(result)
+        classBody.push convertClassStatement(item, className)
+      result.push ['block!', begin(classBody)]
+      begin result
 }
 undefined

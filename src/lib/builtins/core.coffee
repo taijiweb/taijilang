@@ -56,6 +56,7 @@ exports['const'] = declareVar( (v) -> v.const=true; v )
 
 exports['newvar!'] = (exp, env) -> '"'+env.newVar((x=entity(exp[0])).slice(1, x.length-1)).symbol+'"'
 
+# obj.slice(start, stop)
 makeSlice = (obj, start, stop) ->
   if stop==undefined then ['call!', ['attribute!', '__slice', 'call'], [obj, start]]
   else ['call!', ['attribute!', '__slice', 'call'], [obj, start, stop]]
@@ -68,11 +69,14 @@ convertAssign = (left, right, env) ->
   eLeft = entity(left)
   if typeof eLeft=='string'
     if eLeft[0]=='"' then error 'wrong assign to string left side'
-    else if env.hasFnLocal(eLeft)
+    else if env.hasLocal(eLeft)
       left = env.get(eLeft)
-      if left.outer then error 'outer scope variable "'+eLeft+'" is not permitted to assign to local vaiable with the same identifier'
       if left.const then error 'should not assign value to const variable: '+eLeft
-      ['=', left, convertAssignRight(right, env)]
+      if left.outer
+        env.set(eLeft, left=env.newVar(eLeft))
+        left.const = true # create const by default
+        ['begin!', ['var', left], ['=', left, convertAssignRight(right, env)], left]
+      else ['=', left, convertAssignRight(right, env)]
     else
       env.set(eLeft, left=env.newVar(eLeft))
       left.const = true # create const by default
@@ -152,19 +156,25 @@ exports['#='] = (exp, env) -> ['##', convert(['=', exp[0], exp[1]], env)]
 exports['#/'] = (exp, env) -> ['#/', convert(['=', exp[0], exp[1]], env)]
 
 exports['@@'] = (exp, env) ->
-  name = entity(exp[0]); outerEnv = env.outerVarScopeEnv()
+  name = entity(exp[0])
+  # the outer scope that can define new var in javascript, would be function or the top scope of a file, and the like.
+  outerEnv = env.outerVarScopeEnv()
+  # I've forgotten the effect of the line below ;)
   if Object.prototype.toString.call(name) == '[object Array]' then return ['@@', name]
-  if env!=outerEnv and env.hasFnLocal(name)
+  v = outerEnv.get(name)
+  if not (v=outerEnv.get(name)) then error 'wrongly access to the outside scope variable which is not existed'
+  outerName = v.symbol
+  # prevent name conflict
+  if env!=outerEnv and env.fnLocalNames(name)[outerName]
     error '"'+name+'" is local variable, can not access outer "'+name+'"'
   # the parser should ensure the things below never happen:
   # if typeof name != 'string' then error 'wrong prefix before expression which is not a variable'
-  if not (v=outerEnv.get(name)) then error 'wrongly access to the outside scope variable which is not existed'
   v.outer = true
   env.set(name, v)
   v
 
 # create a block with new scope (i.e. evaluate all exp in new environment
-exports['block'] = (exp, env) -> convertExps exp, env.extend({})
+exports['block!'] = (exp, env) -> convertExps exp, env.extend({})
 
 exports['let'] = (exp, env) ->
   newEnv = env.extend(scope={})

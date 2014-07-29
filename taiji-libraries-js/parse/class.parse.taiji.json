@@ -1,0 +1,144 @@
+["begin!",
+  ["include!","\"types.tj\"",null],
+  ["=", "__extends",
+    ["->", ["child","parent"],
+      [["forOf!","key","parent",["if", ["call!",["attribute!","__hasProp","call"],["parent","key"]],
+        ["=",["index!","child","key"],["index!","parent","key"]]]]
+        ["=", "ctor",
+          ["->",[],[["=",["attribute!","@","constructor"],"child"]]]]
+        ["=",["attribute!","ctor","::"],["attribute!","parent","::"]]
+        ["=",["attribute!","child","::"],["new","ctor"]]
+        ["=", ["attribute!","child","__super__"],
+          ["attribute!","parent","::"]]
+        "child"]]],
+  ["#",["begin!",
+    ["var","class"],
+    ["=","utils",["call!","require",["\"../utils\""]]],
+    ["=","entity",["attribute!","utils","entity"]],
+    ["=","error",["attribute!","utils","error"]],
+    ["=","begin",["attribute!","utils","begin"]],
+    ["=", "isDefinition",
+      ["->", ["item"],
+        [["if",["not","item"],["return"]]
+          ["if",["not",["call!","isArray",["item"]]],["return"]]
+          ["=","item0",["entity",["index!","item",0]]]
+          ["||",["||",["||",["==","item0","\"|->\""],["==","item0","\"|=>\""]]
+            ["==","item0","\"->\""]]
+            ["==","item0","\"=>\""]]]]],
+    ["=", "superCall",
+      ["->", ["className","args","member"],
+        [["list!","\"callByThis!\"",["list!","\"attribute!\"",["list!","\"attribute!\"","className","\"__super__\""]
+          "member"]
+          "args"]]]],
+    ["=", "convertClassMemberBody",
+      ["->", ["item","className","member"],
+        [["=","eItem",["entity","item"]],["if", ["==",["typeof","eItem"],"\"string\""],
+          ["if", ["==","eItem","\"super\""],
+            ["return",["call!","superCall",["className",[],"member"]]],
+            ["return","item"]],
+          ["if", ["not",["call!","isArray",["item"]]],
+            ["return","item"],
+            ["if", ["call!","isDefinition",["item"]],
+              ["return","item"],
+              ["if", ["not",["attribute!","item","length"]],
+                ["return"],
+                ["begin!",
+                  ["=","item0",["entity",["index!","item",0]]],
+                  ["if", ["==","item0","\"super\""],
+                    ["return",["call!","superCall",["className",["call!",["attribute!","item","slice"],[1]]
+                      "member"]]],
+                    ["if", ["&&",["==","item0","\"call!\""],["==", ["call!","entity",[["index!","item",1]]],
+                      "\"super\""]],
+                      ["return",["call!","superCall",["className",["index!","item",2],"member"]]],
+                      ["forIn!","e","item0"
+                        ["call!","convertClassMemberBody"
+                          ["e","className","member"]]]]]]]]]]]]],
+    ["=", "convertClassStatement",
+      ["->", ["item","className"],
+        [["if", ["not",["call!","isArray",["item"]]],
+          ["return","item"],
+          ["if", ["&&",["=","item0",["call!","entity",[["index!","item",0]]]]
+            ["==","item0","\"class\""]],
+            ["return",["class",["index!","item",1],["index!","item",2]
+              ["index!","item",3]]],
+            ["if", ["==","item0","\"=\""],
+              ["if", ["call!","isArray",[["index!","item",1]]],
+                ["if", ["&&",["&&",["=","item1",["index!","item",1]],["==", ["index!","item1",0],
+                  "\"attribute!\""]]
+                  ["==", ["call!","entity",[["index!","item1",1]]],
+                    "\"::\""]],
+                  ["begin!",
+                    ["=","member",["index!","item1",2]],
+                    ["var",["value","=",["index!","item",2]]],
+                    ["if", ["call!","isDefinition",["value"]],
+                      ["begin!",
+                        ["=", "body",
+                          ["forIn!","e",["index!","value",2]
+                            ["call!","convertClassMemberBody"
+                              ["e","className","member"]]]],
+                        ["=", "value",
+                          ["list!",["index!","value",0]
+                            ["index!","value",1]
+                            "body"]]]],
+                    ["return",["list!","\"=\"",["list!","\"attribute!\"",["list!","\"attribute!\"","className","\"prototype\""]
+                      "member"]
+                      "value"]]],
+                  ["=", "value",
+                    ["call!","convertClassStatement"
+                      ["value","className"]]]]]]]]
+          ["if", ["call!","isDefinition",["item"]],
+            ["return","item"],
+            ["return",["forIn!","x","item",["call!","convertClassStatement",["x","className"]]]]]]]],
+    ["=", "class",
+      ["->", ["className","superClass","body"],
+        [["=","result",["list!","\"begin!\""]]
+          ["if", ["not",["call!","isArray",["body"]]],
+            ["begin!",
+              [["attribute!","result","push"]
+                ["quasiquote!",["=", ["unquote!","className"],
+                  ["->",[],[]]]]],
+              ["if", "superClass",
+                [["attribute!","result","push"]
+                  ["quasiquote!",["__extends",["unquote!","className"],["unquote!","superClass"]]]]],
+              [["attribute!","result","push"],"body"],
+              ["return","result"]]]
+          ["if", ["&&",["&&",["=","body0",["index!","body",0]],["==", ["call!","entity",[["index!","body0",0]]],
+            "\"=\""]]
+            ["==",["call!","entity",[["index!","body0",1]]],"\"::\""]],
+            ["begin!",
+              ["var",["index","=",1]],
+              ["=","body02",["index!","body0",2]],
+              ["if", ["not",["call!","isDefinition",["body02"]]],
+                ["error",["+","\"wrongly use non function as the constructor of a class \""
+                  "className"]]],
+              ["if", "superClass",
+                ["begin!",
+                  ["=", "ctorBody",
+                    ["forIn!","x",["index!","body02",2]
+                      ["call!","convertClassMemberBody"
+                        ["x","className","\"constructor\""]]]],
+                  [["attribute!","result","push"]
+                    ["quasiquote!",["=", ["unquote!","className"],
+                      ["unquote!",["list!",["index!","body02",0],["index!","body02",1]
+                        "ctorBody"]]]]],
+                  [["attribute!","result","push"]
+                    ["quasiquote!",["__extends",["unquote!","className"],["unquote!","superClass"]]]]],
+                [["attribute!","result","push"]
+                  ["quasiquote!",["=", ["unquote!","className"],
+                    ["unquote!","body02"]]]]]],
+            ["begin!",
+              ["=","index",0],
+              [["attribute!","result","push"]
+                ["quasiquote!",["=", ["unquote!","className"],
+                  ["->",[],[]]]]],
+              ["if", "superClass",
+                [["attribute!","result","push"]
+                  ["quasiquote!",["__extends",["unquote!","className"],["unquote!","superClass"]]]]]]]
+          ["=","classBody",[]]
+          ["forIn!","item",["call!",["attribute!","body","slice"],["index"]]
+            [["attribute!","classBody","push"]
+              ["call!","convertClassStatement",["item","className"]]]]
+          [["attribute!","result","push"]
+            ["list!","\"block!\"",["call!","begin",["classBody"]]]]
+          ["begin","result"]]]]]],
+  "undefined"]

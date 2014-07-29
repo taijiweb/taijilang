@@ -200,10 +200,20 @@ describe("parse: ", function() {
       });
     });
     describe('class: ', function() {
-      it('should parse class', function() {
+      it('should parse class A', function() {
         var x;
         x = parse('class A');
         return expect(str(x)).to.equal("[#call! class [A undefined undefined]]");
+      });
+      it('should parse class A :: = ->', function() {
+        var x;
+        x = parse('class A :: = ->');
+        return expect(str(x)).to.equal("[#call! class [A undefined [[= :: [-> [] []]]]]]");
+      });
+      it('should parse class B extends A :: = ->', function() {
+        var x;
+        x = parse('class B extends A :: = ->');
+        return expect(str(x)).to.equal("[#call! class [B A [[= :: [-> [] []]]]]]");
       });
       it('should parse class B extends A', function() {
         var x;
@@ -213,7 +223,7 @@ describe("parse: ", function() {
       return it('should parse class B extends A  :: = ->', function() {
         var x;
         x = parse('class B extends A  :: = ->');
-        return expect(str(x)).to.equal("[#call! class [B A [[:: = [-> [] []]]]]]");
+        return expect(str(x)).to.equal("[#call! class [B A [[= :: [-> [] []]]]]]");
       });
     });
     describe('for', function() {
@@ -225,7 +235,7 @@ describe("parse: ", function() {
       it('should parse for i in x then print i', function() {
         var x;
         x = parse('for i in x then print i');
-        return expect(str(x)).to.equal("[forIn!! i undefined x [print i]]");
+        return expect(str(x)).to.equal("[forIn! i x [print i]]");
       });
       it('should parse for i v in x then print i, print v', function() {
         var x;
@@ -306,10 +316,15 @@ describe("parse: ", function() {
         x = parse('a = \n b = 1');
         return expect(str(x)).to.equal('[= a [= b 1]]');
       });
-      return it('should parse a = \n b = \n  1', function() {
+      it('should parse a = \n b = \n  1', function() {
         var x;
         x = parse('a = \n b = \n  1');
         return expect(str(x)).to.equal('[= a [= b 1]]');
+      });
+      return it('should parse :: = 1', function() {
+        var x;
+        x = parse(':: = 1');
+        return expect(str(x)).to.equal("[= :: 1]");
       });
     });
     describe('unquote!', function() {
@@ -867,7 +882,7 @@ describe("parse: ", function() {
       return expect(str(parse('# if 0 then 1+2 else 3+4'))).to.equal("[# [if 0 [+ 1 2] [+ 3 4]]]");
     });
     it('should parse for x in [\ 1, 2 \] then print x', function() {
-      return expect(str(parse('for x in [\ 1 2 \] then print x'))).to.equal("[forIn!! x undefined [list! [1 2]] [print x]]");
+      return expect(str(parse('for x in [\ 1 2 \] then print x'))).to.equal("[forIn! x [list! [1 2]] [print x]]");
     });
     it('should parse {(a,b) -=> `( ^a + ^b )}(1,2)', function() {
       return expect(str(parse('{(a,b) -=> `( ^a + ^b )}(1,2)'))).to.equal("[call! [-=> [a b] [[quasiquote! [+ [unquote! a] [unquote! b]]]]] [1 2]]");

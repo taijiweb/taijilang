@@ -201,8 +201,10 @@ describe "compile: ",  ->
       expect(compile("let a=1 then let a = 2 then a+a")).to.have.string "var a = 1, \n    a2 = 2;\na2 + a2"
 
   describe "for in: ",  ->
-    xit '''should compile for x in [\ 1, 2 \] then print x''', ->
-      expect(compile('''for x in [\ 1 2 \] then print x''')).to.have.string "var a;\na=1;\nvar a2;\na2=2;\na2+a2"
+    it '''should compile for x in [ 1, 2 ] then print x''', ->
+      expect(compile('''for x in [ 1 2 ] then print x''')).to.have.string 'var range = [1, 2], \n    length = range.length, \n    i = 0;\n\nwhile (i < length){ \n  var x = range[i++];\n  console.log(x);\n}'
+    it '''should compile for x j in [ 1, 2 ] then print x''', ->
+      expect(compile('''for x j in [ 1 2 ] then print x''')).to.have.string 'var length, range = [1, 2], \n    length22 = range.length, \n    j = 0;\n\nwhile (j < length22){ \n  var x = range[j++];\n  console.log(x);\n}'
 
   describe "function: ",  ->
     it 'should compile -> 1', ->

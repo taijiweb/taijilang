@@ -114,8 +114,12 @@ exports['forOf!!'] = (exp, env) ->
   if key[0]!='metaConvertVar!' and not env.hasFnLocal(key.value)
     env.set(key.value, key); key1 = ['var', key]
   else key1 = convert(key, env)
-  body = begin(['=', value, ['index!', obj, key]])
-  ['jsForIn!', key1, convert(obj, env), convert(body, env)]
+  vObj = env.newVar('obj')
+  result.push ['direct!', ['var', vObj]]
+  result.push ['=', vObj, obj]
+  length = env.newVar('length')
+  body = begin(['=', value, ['index!', vObj, key]])
+  ['jsForIn!', key1, convert(vObj, env), convert(body, env)]
 
 exports['forOf!'] = (exp, env) ->
   [key, obj, body] = exp
@@ -127,26 +131,37 @@ exports['forOf!'] = (exp, env) ->
 exports['forIn!!'] = (exp, env) ->
   [item, index, range, body] = exp
   result = []
+  vRange = env.newVar('range')
+  result.push ['direct!', ['var', vRange]]
+  env.set(vRange.symbol, vRange)
+  result.push ['=', vRange, range]
   length = env.newVar('length')
   result.push ['direct!', ['var', length]]
-  result.push ['=', length, ['attribute!', range, 'length']]
+  length = env.newVar('length')
+  result.push ['=', length, ['attribute!', vRange, 'length']]
   result.push ['=', index, 0]
-  result.push ['while', ['<', ['x++', index], length], ['=', item, ['index!', range, index]], body]
+  result.push ['while', ['<', index, length], begin([['=', item, ['index!', vRange, ['x++', index]]], body])]
   convert begin(result), env
 
 exports['forIn!'] = (exp, env) ->
   [item, range, body] = exp
   result = []
+  vRange = env.newVar('range')
+  result.push ['direct!', ['var', vRange]]
+  env.set(vRange.symbol, vRange)
+  result.push ['=', vRange, range]
   length = env.newVar('length')
+  env.set(length.symbol, length)
   result.push ['direct!', ['var', length]]
+  result.push ['=', length, ['attribute!', vRange, 'length']]
   i = env.newVar('i')
   result.push ['direct!', ['var', i]]
-  result.push ['=', length, ['attribute!', range, 'length']]
+  env.set(i.symbol, i)
   result.push ['=', i, 0]
-  result.push ['while', ['<', ['x++', i], length], ['=', item, ['index!', range, i]], body]
+  result.push ['while', ['<', i, length], begin([['=', item, ['index!', vRange, ['x++', i]]], body])]
   convert begin(result), env
 
 # caller.call(this, args)
-exports['callByThis'] = (exp, env) ->
+exports['callByThis!'] = (exp, env) ->
   [caller, args] = exp
-  convert([['attribute!', caller, 'call'], ['this'].concat(args)], env)
+  convert(['call!', ['attribute!', caller, 'call'], ['this'].concat(args)], env)

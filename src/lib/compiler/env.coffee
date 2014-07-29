@@ -66,16 +66,29 @@ exports.Environment = class Environment
         if not hasOwnProperty.call(functionInfo, symbolIndex) then break
       functionInfo[symbolIndex] = 1
       {symbol: symbolIndex}
+
   getSymbolIndex: (symbol) ->
     functionInfo = @getFunctionInfo()
     if not hasOwnProperty.call(functionInfo, symbol) then return 0
     else return functionInfo[symbol]
+
   hasLocal: (symbol) ->  hasOwnProperty.call(@scope, symbol)
 
   hasFnLocal: (symbol) ->
     if hasOwnProperty.call(@scope, symbol) then return true
     if @functionInfo then return
     else if @parent then return @parent.hasFnLocal(symbol)
+
+  # all variables name relating to symbol
+  fnLocalNames: (symbol) ->
+    names = {}
+    env = @
+    while 1
+      if env.scope and hasOwnProperty.call(env.scope, symbol)
+        names[env.scope[symbol].symbol] = 1
+      if env.functionInfo then return names
+      else if env.parent then env = env.parent
+      else return names
 
   # use @@x to get variable x in outer var scope( outer function or module variable)
   outerVarScopeEnv: ->
@@ -91,6 +104,8 @@ exports.Environment = class Environment
     if typeof(value) == 'object' then value.value = name = toIdentifier(entity(value))
     else value = name = toIdentifier(value)
     if not functionInfo[name] then functionInfo[name] = 1
+    eValue = entity(value)
+    if not functionInfo[eValue] then functionInfo[eValue] = 1
     @scope[symbol] = value
 
   get: (symbol) ->

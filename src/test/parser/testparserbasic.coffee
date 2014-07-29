@@ -1,8 +1,3 @@
-"fasd
-dfsa
-dsfaj;
-sadfjk;l"
-
 chai = require("chai")
 expect = chai.expect
 iit = it.only

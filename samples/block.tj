@@ -1,0 +1,4 @@
+taiji language 0.1
+
+a = 1
+block! a = 1
