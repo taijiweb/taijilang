@@ -22,6 +22,9 @@ exports.prefixOperatorDict = prefixOperatorDict =
   'void': {priority: 140}
   'delete': {priority: 140}
 
+  '..': {symbol: '..x', priority: 150}  # arr[..5]
+  '...': {symbol: '...x', priority: 150} #arr[..5]
+
   '^': {symbol: 'unquote!', priority: 160}
   '^&': {symbol: 'unquote-splice', priority: 160}
 
@@ -45,7 +48,7 @@ exports.suffixOperatorDict = suffixOperatorDict =
   '++': {symbol: 'x++', priority: 180}
   '--': {symbol: 'x--', priority: 180}
   # implemented as custom parameterEllipsisSuffix originally, but now I want it more general
-  '...': {symbol: 'x...', priority: 180}
+  #'...': {symbol: 'x...', priority: 180}
 
 do -> for op, result of exports.suffixOperatorDict
   result.value = op
@@ -68,9 +71,11 @@ exports.binaryOperatorDict =
   '==': {priority: 90}, '!=': {priority: 90}, '===': {priority: 90}, '!==': {priority: 90},
   # because ! can be in identifier, so we use <> and <*> make a.!=b and a.!==b can be a<>b and a<*>b
   '<>': {symbol: '!==', priority: 90},  '<*>': {symbol: '!=', priority: 90}
-
   '<': {priority: 100}, '<=': {priority: 100}, '>': {priority: 100}, '>=': {priority: 100}
   'in': {priority: 100}, 'instanceof': {priority: 100}
+
+  # a..b, a...b, [a..b], [a...b]
+  '..': {priority: 105}, '...': {priority: 105},
 
   '<<': {priority: 110}, '>>': {priority: 110}, '>>>': {priority: 110}
   '+': {priority: 120}, '-': {priority: 120}

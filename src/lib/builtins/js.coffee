@@ -1,8 +1,31 @@
-{isArray, error, entity, begin, undefinedExp} = require '../utils'
+{isArray, error, entity, begin, undefinedExp, pushExp} = require '../utils'
 {identifierCharSet} = require '../parser/base'
 {convertList, convert} = require '../compiler'
 
-exports['index!'] = (exp, env) -> ['index!', convert(exp[0], env), convert exp[1], env]
+ellipsisIndex = (kind, list, start, stop, env) ->
+  if start==undefined then start = 0
+  if kind=='...'
+    if stop==undefined then ['call!', ['attribute!', list, 'slice'], [start]]
+    else ['call!', ['attribute!', list, 'slice'], [start, stop]]
+  else # if kind=='..'
+    if stop==undefined then ['call!', ['attribute!', list, 'slice'], [start]]
+    else ['call!', ['attribute!', list, 'slice'], [start, ['+', stop, 1]]]
+
+exports['index!'] = (exp, env) ->
+  exp1 = exp[1]; exp10 = entity(exp1[0])
+  if Object::toString.call(exp1) == '[object Array]'
+    if exp10=='...' or exp10=='..'
+      return convert ellipsisIndex(exp10, exp[0], exp1[1], exp1[2]), env
+    else if exp10=='x...'
+      return convert ellipsisIndex('...', exp[0], exp1[1], undefined), env
+    else if exp10=='...x'
+      return convert ellipsisIndex('...', exp[0], undefined, exp1[1]), env
+    else if exp10=='..x'
+      return convert ellipsisIndex('..', exp[0], undefined, exp1[1]), env
+    else return ['index!', convert(exp[0], env), convert exp[1], env]
+  else if (eExp1=entity(exp1))=='..'or eExp1=='...'
+    return  convert ['call!', ['attribute!', exp[0], 'slice'], []], env
+  ['index!', convert(exp[0], env), convert exp[1], env]
 
 exports['::'] = ['attribute!', 'this', 'prototype']
 
@@ -165,3 +188,28 @@ exports['forIn!'] = (exp, env) ->
 exports['callByThis!'] = (exp, env) ->
   [caller, args] = exp
   convert(['call!', ['attribute!', caller, 'call'], ['this'].concat(args)], env)
+
+ellipsisStopOp = {'...':'<', '..': '<='}
+
+convertEllipsisRange = (kind) -> (exp, env) ->
+  [start, stop] = exp
+  result = []
+  list = env.newVar('list')
+  result.push ['direct!', ['var', list]]
+  env.set(list.symbol, list)
+  result.push ['=', list, []]
+  vStop = env.newVar('stop')
+  result.push ['direct!', ['var', vStop]]
+  env.set(vStop.symbol, vStop)
+  result.push ['=', vStop, stop]
+  i = env.newVar('i')
+  result.push ['direct!', ['var', i]]
+  env.set(i.symbol, i)
+  result.push ['=', i, start]
+  result.push ['while', [ellipsisStopOp[kind], i, vStop], begin([pushExp(list, ['x++', i])])]
+  result.push(list)
+  convert begin(result), env
+
+exports['..'] = convertEllipsisRange('..')
+exports['...'] = convertEllipsisRange('...')
+

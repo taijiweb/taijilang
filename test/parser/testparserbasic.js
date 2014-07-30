@@ -822,7 +822,7 @@ describe("parser basic: ", function() {
       return x;
     };
     return it('should parse -> 1', function() {
-      return expect(str(parse('-> 1'))).to.equal("[-> [] [1]]");
+      return expect(str(parse('-> 1'))).to.equal("[-> [] 1]");
     });
   });
   describe(":: as prototype", function() {

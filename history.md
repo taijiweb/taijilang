@@ -1,5 +1,13 @@
 2014
 2014-7
+7-30
+  refactor definition ->, =>, etc,  now they produces [->, [params], oneStatement], instead of statement list
+  ellipsis subscript: a[1..3]; b[1...4]; a[...], a[..], x = a[..5]; x = a[...5]
+  \ lead symbol to escape it, e.g. \=, \+=, \>>, \/, etc, useful to write macros.
+  1...5, 1..5
+7-29
+  {x, y, z} = object
+  class is implemented
 7-28
   forIn!, forOf!, forIn!!, forOf!!, jsForIn!
 7-27
@@ -18,7 +26,7 @@
   refactor meta compilation; no -=>, ==> or macro, macro is just meta compilation
   fix a bug in default parameter, should assign based on whether the paramerter is undefined
 7-15
-  do some marketing for taijilang, https://github.com/taijiweb/taijilang got 15 starts.
+  do some marketing for taijilang, https://github.com/taijiweb/taijilang got 15 stars.
 ------------------------------------------------------------------------------------------  
 7-14
   taijilang 0.1.0 is released

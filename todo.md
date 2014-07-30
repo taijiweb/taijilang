@@ -1,11 +1,6 @@
 todo: embedded meta compilation: #call, by evaluating the embedded meta code while running
 
-todo: range: x = a...b, x = a..b
-todo: ellipsis subscript: x = a[1..3]; x = b[1...4]; x = a[...], x = a[..], x = a[..5]; x = a[...5]
-todo: hash assign
-  {a, b, c} = x # {} of the left side of = is treated as hash
-
-todo: \ lead symbol to escape it, e.g. \=, \+=, \>>, \/, etc, useful to write macros.
+todo: better parser builtins ?!, ?/, etc
 
 todo: ":" at the end of line can replace 'then'
 
@@ -19,8 +14,6 @@ todo: remove "entity" utility function
   
 todo: assign optimization
   # ssaVar, const var, dummy var, etc
-
-todo: may be [x y z] should directly produce [x, y, z], no list! is unshift to its front, and item in {} or other blocks should produces ['call!', x, [y, z]]
 
 todo: [x, y, z] @= value # all= at --> all?
 
@@ -36,26 +29,24 @@ todo: pattern match, e.g.
     (1) -> 1
     (n) -> n+f(n-1)
 
-todo: implement {assign! left right} and {augmentAssign! left op right} so that programmer can define macros more easily.
-  # hack for =, += in the parser is error-prone.
-  # after implementing escape symbol with \, this todo may be unnessary.
-
 todo: source map
   # a complicateful, hard and task with too much work to do
   # coffee-script is my friend.
 
 todo: document
   todo: tutorial：interactive samples
-
+  
+------------------------------------------------------------
+done: refactor definition ->, =>, etc,  now they produces [->, [params], oneStatement], instead of statement list
+done: \ lead symbol to escape it, e.g. \=, \+=, \>>, \/, etc, useful to write macros.
+done: ellipsis subscript: a[1..3]; b[1...4]; a[...], a[..], x = a[..5]; x = a[...5]
+done: range: a...b, a..b
+done: hash assign: {a, b, c} = x # {} of the left side of = is treated as hash
 done: macro for "for", do, etc
   # macro for for/c-style, do(as begin!) do/where, do/When and do/until is not necessary any more.
   # forIn!! and forOf!! is necessary still.
-
 done: class similar to coffee-script
-  # things like super, construcotr(too long name, maybe I'll use :: = (...)->)
-  
-------------------------------------------------------------
-done: (x, @y...) ->, (x, @y...) =>
+  # things like super, construcotr(too long name, maybe I'll use :: = (...)->)done: (x, @y...) ->, (x, @y...) =>
 done: convert javascript keyword to legal idenentifier (var name)
 done: refactor meta compilation; no -=>, ==> or macro, macro is just meta compilation 
 --------------------------------------------------------------------------
@@ -101,3 +92,12 @@ done: parser: class extends (x, y)
 done: var
 done: cFor!, forIn!, forOf!
 done: let-then
+
+-----------------------------------------------------------------
+cancel: implement {assign! left right} and {augmentAssign! left op right} so that programmer can define macros more easily.
+  # hack for =, += in the parser is error-prone.
+  # after implementing escape symbol with \, this todo may be unnessary.
+
+cancel: may be [x y z] should directly produce [x, y, z], no list! is unshift to its front, and item in {} or other blocks should produces ['call!', x, [y, z]]
+  # now -> ... produces [-> [] statement], instead of [-> [] [statement list]]
+

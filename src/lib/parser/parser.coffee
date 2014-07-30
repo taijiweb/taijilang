@@ -283,11 +283,15 @@ exports.Parser = ->
   # parser.conjunction uses private var taijiIdentifier
   @taijiIdentifier = taijiIdentifier = memo @makeIdentifierFn(taijiIdentifierCharSet, firstIdentifierCharSet)
   @identifier = memo ->
+    start = cursor; line1 = lineno
     if (token=parser.taijiIdentifier())
       if not isKeyword(token) and not isConj(token) then token
-      else rollbackToken(token)
-    else if text[cursor]=='\\' and ++cursor and (token=parser.taijiIdentifier())
-      token.escaped = true; return token
+      else return rollback(start, line1)
+    else if text[cursor]=='\\' and  ++cursor
+      if (token=parser.taijiIdentifier())
+        token.escaped = true; token.start = start; return token
+      else return rollback(start, line1)
+    else return
 
   # binary, hexidecimal, decimal, scientic float
   @number = number = memo ->
@@ -568,6 +572,13 @@ exports.Parser = ->
     if cursor==start then return
     if cursor!=start then return {value: text.slice(start, cursor), start:start, stop:cursor, line: lineno}
 
+  @escapeSymbol = escapeSymbol = ->
+    start = cursor; line1 = lineno
+    if text[cursor]!='\\' then return
+    cursor++; sym = parser.symbol()
+    if not sym then return rollback(start, line1)
+    else sym.start = start; sym.escape = true; return sym
+
   @delimiterCharset = charset('|\\//:')
 
   @rightDelimiter = (delimiter) ->
@@ -585,15 +596,18 @@ exports.Parser = ->
 
   @atom = (mode) ->
     start = cursor
+    # memorize the result witt tag mode+':atom'
     tag = mode+':atom'
     if not (m=memoMap[tag]) then m = memoMap[tag] = {}
     else if result=m[start] then cursor = result.stop; lineno = result.line; return result
+    # if not found in memoMap, then parse
     if mode!='inStrExp' and x=parser.string()  then x.priority = 1000
-    else if x = (parser.identifier() or parser.number() or parser.regexp() or parser.delimiterExpression())
+    else if x = (parser.identifier() or parser.number() or parser.regexp() or parser.delimiterExpression() or parser.escapeSymbol())
       x.priority = 1000
     else if parser.defaultSymbolOfDefinition() then cursor = start; x = null
     else if x=parser.symbol() then x.priority = 1000
     else x = null
+    # memorize the result
     m[start] = x
     if x then return x
 
@@ -636,18 +650,16 @@ exports.Parser = ->
   # ellipsis becomes more general
   @parameterEllipsisSuffix = (mode, x, priority) ->
     start = cursor
-    if not (x=parser.symbol()) or (x.value!='...')  then cursor = start; return
-    if (c=text[cursor])==',' or c==')'
-      return {priority: 780, symbol:'x...'}
-    else
-      spc()
-      if (c=text[cursor])==','
-        rollback start, line1
-        return extend {}, tkn0, {priority: 780, symbol:'x...'}
-      else if c==')'
-        return extend {}, tkn0, {priority: 780, symbol:'x...'}
+    if not (op=parser.symbol()) then return
+    else if (op.value!='...')  then cursor = start; return
+    spc()
+    if (c=text[cursor])==',' or c==')' or c==']'
+      #if x.priority>780 then cursor = start; return
+      if priority>600 then cursor = start; return
+      else return {priority: 780, symbol:'x...'}
+    else cursor = start; return
 
-  @customSuffixOperators = []   #@parameterEllipsisSuffix
+  @customSuffixOperators = [@parameterEllipsisSuffix]
   @customSuffixOperator = (mode, x, priority) ->
     for fn in parser.customSuffixOperators then if op = fn(mode, x, priority) then return op
     return
@@ -707,7 +719,7 @@ exports.Parser = ->
     opToken = parser.operatorLiteral()
     if not opToken or not (op=(hasOwnProperty.call(binaryOperatorDict, opToken.value) and binaryOperatorDict[opToken.value]))
       return rollback start, line1
-    if text[cursor]=='.'and text[cursor+1]!='.' and text[cursor+1]!='}'
+    if (c=text[cursor])=='.'and text[cursor+1]!='.' and text[cursor+1]!='}'
       if priInc==300
         error 'unexpected "." after binary operator '+opToken.value+'which follow something like space, comment or newline'
       else cursor++
@@ -715,8 +727,10 @@ exports.Parser = ->
 #        error 'unexpected "." after "'+opToken.value+'" which doese not follow "."'
     if parser.expressionEnd(mode, space2=bigSpc()) then return rollback start, line1
     if space2.undent then error 'unexpected undent after binary operator "'+opToken.value+'"'
-    if not text[cursor] then error 'unexpected end of input, expect right operand after binary operator'
-    if text[cursor]==')' then error 'unexpected ")"'
+    if not c then error 'unexpected end of input, expect right operand after binary operator'
+    if c==')' or c==']' or c==','
+      if op.value!='...' then error 'unexpected ")"'
+      else return rollback start, line1
     if priInc==600
       if space2.value
         if op.value==',' then priInc = 300
@@ -803,6 +817,7 @@ exports.Parser = ->
       return {symbol:'index[]', type: SYMBOL, priority: 800, start:cursor, stop:cursor, line:lineno}
     rollback start, line1;  return
 
+  # a.b, fn(x, y).b
   @binaryAttributeOperator = (mode, x, priority, leftAssoc) ->
     start = cursor; line1 = lineno
     if (space=bigSpc()) and space.value
@@ -821,6 +836,7 @@ exports.Parser = ->
       else return {symbol:'attribute!', type: SYMBOL, priority: 800}
     return rollback start, line1
 
+  # @attr, @[1], @['ads']
   @binaryAtThisAttributeIndexOperator = (mode, x, priority, leftAssoc) ->
     if 800<=priority or x.value!='@' then return
     if x.stop!=cursor then return
@@ -829,6 +845,7 @@ exports.Parser = ->
     else if follow 'bracket'
       {symbol:'index!', type: SYMBOL, start: cursor, stop:cursor, line: lineno, priority: 800}
 
+  # @::, obj::, obj::y
   @binaryPrototypeAttributeOperator = (mode, x, priority, leftAssoc) ->
     if 800<=priority then return
     if (x.type==IDENTIFIER or x.value=='@') and text[cursor...cursor+2]=='::' and text[cursor+2]!=':'
@@ -1467,7 +1484,7 @@ exports.Parser = ->
       else rollbackToken(x)
 
   # a = -> x; b = -> y should be [= a [-> x [= b [-> y]]]]
-  @defaultDefinitionBody = -> parser.lineBlock() or []
+  @defaultDefinitionBody = -> begin(parser.lineBlock()) or 'undefined'
 
   @makeDefinition = (parameterList, symbolOfDefinition, definitionBody) -> memo ->
     start = cursor; line1 = lineno

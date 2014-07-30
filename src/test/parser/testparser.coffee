@@ -51,11 +51,11 @@ describe "parse: ",  ->
       it 'should parse require.extensions[".tj"] = 1', ->
         expect(str parse('require.extensions[".tj"] = 1')).to.equal "[= [index! [attribute! require extensions] [string! \".tj\"]] 1]"
       it 'should parse require.extensions[".tj"] = ->', ->
-        expect(str parse('require.extensions[".tj"] = ->')).to.equal "[= [index! [attribute! require extensions] [string! \".tj\"]] [-> [] []]]"
+        expect(str parse('require.extensions[".tj"] = ->')).to.equal "[= [index! [attribute! require extensions] [string! \".tj\"]] [-> [] undefined]]"
       it 'should parse require.extensions[".tj"] = (module, filename) ->', ->
-        expect(str parse('require.extensions[".tj"] = (module, filename)  ->')).to.equal "[= [index! [attribute! require extensions] [string! \".tj\"]] [-> [module filename] []]]"
+        expect(str parse('require.extensions[".tj"] = (module, filename)  ->')).to.equal "[= [index! [attribute! require extensions] [string! \".tj\"]] [-> [module filename] undefined]]"
       it 'should parse x = ->', ->
-        expect(str parse('x = ->')).to.equal "[= x [-> [] []]]"
+        expect(str parse('x = ->')).to.equal "[= x [-> [] undefined]]"
 
     describe "concatenated line clauses: ",  ->
       it 'should parse print 1 \\\n 2 3', ->
@@ -84,35 +84,35 @@ describe "parse: ",  ->
     describe "function:",  ->
       it 'should parse ->', ->
         x = parse('->')
-        expect(str x).to.equal '[-> [] []]'
+        expect(str x).to.equal '[-> [] undefined]'
       it 'should parse () -> 1', ->
         x = parse('() -> 1')
-        expect(str x).to.equal '[-> [] [1]]'
+        expect(str x).to.equal '[-> [] 1]'
       it 'should parse (a) -> 1', ->
         x = parse('(a) -> 1')
-        expect(str x).to.equal '[-> [a] [1]]'
+        expect(str x).to.equal '[-> [a] 1]'
       it 'should parse (a, b) -> 1', ->
         x = parse('(a , b) -> 1')
-        expect(str x).to.equal '[-> [a b] [1]]'
+        expect(str x).to.equal '[-> [a b] 1]'
       it 'should parse (a , b , c) -> 1', ->
         x = parse('(a , b , c) -> 1')
-        expect(str x).to.equal '[-> [a b c] [1]]'
+        expect(str x).to.equal '[-> [a b c] 1]'
       it 'should parse (a , b , c) -> -> 1', ->
         x = parse('(a , b , c) -> -> 1')
-        expect(str x).to.equal '[-> [a b c] [[-> [] [1]]]]'
+        expect(str x).to.equal '[-> [a b c] [-> [] 1]]'
       it 'should parse (a , b , 1) -> 1', ->
         expect(-> parse('(a , b , 1) -> 1')).to.throw  /illegal parameters list for function definition/
       it 'should parse (a , b + 1) -> 1', ->
         expect(-> parse('(a , b + 1) -> 1')).to.throw  /illegal parameters list for function definition/
       it 'should parse -> and 1 2 ; and 3 4', ->
         x = parse('-> and 1 2 ; and 3 4')
-        expect(str x).to.equal "[-> [] [[and 1 2] [and 3 4]]]"
+        expect(str x).to.equal "[-> [] [begin! [and 1 2] [and 3 4]]]"
       it 'should parse -> and 1 2 , and 3 4', ->
         x = parse('-> and 1 2 , and 3 4')
-        expect(str x).to.equal "[-> [] [[and 1 2] [and 3 4]]]"
+        expect(str x).to.equal "[-> [] [begin! [and 1 2] [and 3 4]]]"
       it 'should parse -> and 1 2 , and 3 4 -> print x ; print 5 6', ->
         x = parse('-> and 1 2 , and 3 4 -> print x ; print 5 6')
-        expect(str x).to.equal "[-> [] [[and 1 2] [and 3 4 [-> [] [[print x] [print 5 6]]]]]]"
+        expect(str x).to.equal "[-> [] [begin! [and 1 2] [and 3 4 [-> [] [begin! [print x] [print 5 6]]]]]]"
 
     describe 'meta: ', ->
       it 'should parse # if 1 then 1+2 else 3+4', ->
@@ -139,11 +139,11 @@ describe "parse: ",  ->
 
       it 'should parse class A :: = ->', ->
         x = parse('class A :: = ->')
-        expect(str x).to.equal "[#call! class [A undefined [[= :: [-> [] []]]]]]"
+        expect(str x).to.equal "[#call! class [A undefined [[= :: [-> [] undefined]]]]]"
 
       it 'should parse class B extends A :: = ->', ->
         x = parse('class B extends A :: = ->')
-        expect(str x).to.equal "[#call! class [B A [[= :: [-> [] []]]]]]"
+        expect(str x).to.equal "[#call! class [B A [[= :: [-> [] undefined]]]]]"
 
       it 'should parse class B extends A', ->
         x = parse('class B extends A')
@@ -151,7 +151,7 @@ describe "parse: ",  ->
 
       it 'should parse class B extends A  :: = ->', ->
         x = parse('class B extends A  :: = ->')
-        expect(str x).to.equal "[#call! class [B A [[= :: [-> [] []]]]]]"
+        expect(str x).to.equal "[#call! class [B A [[= :: [-> [] undefined]]]]]"
 
     describe 'for', ->
       it 'should parse for (i=0; i<10; i++) then print i', ->
@@ -243,8 +243,6 @@ describe "parse: ",  ->
       it 'should parse {a} = x', ->
         x = parse('{a} = x')
         expect(str x).to.equal "[hashAssign! [a] x]"
-
-
 
     describe 'unquote!', ->
       it 'should parse ^ a', ->
@@ -481,9 +479,9 @@ describe "parse: ",  ->
         x = parse('let a = abs \n    1, \n  b = 3 \nthen 2')
         expect(str x).to.equal "[[let [[a = [abs 1]] [b = 3]] 2]]"
       it 'should parse letrec! f = (x) -> if! x==1 1 f(x-1) then f(3)', ->
-        expect(str parse('letrec! f = (x) -> if! x==1 1 f(x-1) then f(3)')).to.equal "[[letrec! [[f = [-> [x] [[if! [== x 1] 1 [call! f [[- x 1]]]]]]]] [call! f [3]]]]"
+        expect(str parse('letrec! f = (x) -> if! x==1 1 f(x-1) then f(3)')).to.equal "[[letrec! [[f = [-> [x] [if! [== x 1] 1 [call! f [[- x 1]]]]]]] [call! f [3]]]]"
       it 'should parse letloop! f = (x) -> if! x==1 1 x+f(x-1)', ->
-        expect(str parse('letloop! f = (x) -> if! x==1 1 x+f(x-1) then f(3)')).to.equal "[[letloop! [[f = [-> [x] [[if! [== x 1] 1 [+ x [call! f [[- x 1]]]]]]]]] [call! f [3]]]]"
+        expect(str parse('letloop! f = (x) -> if! x==1 1 x+f(x-1) then f(3)')).to.equal "[[letloop! [[f = [-> [x] [if! [== x 1] 1 [+ x [call! f [[- x 1]]]]]]]] [call! f [3]]]]"
       # single \ is invalid escape, will lost
       it '''should parse let a=[\ 1 \] then a[1]''', ->
         x = parse('''let a=[\ 1 \] then a[1]''')
@@ -606,12 +604,12 @@ describe "parse: ",  ->
     it '''should parse for x in [\ 1, 2 \] then print x''', ->
       expect(str parse('''for x in [\ 1 2 \] then print x''')).to.equal "[forIn! x [list! [1 2]] [print x]]"
 
-    it 'should parse {(a,b) -=> `( ^a + ^b )}(1,2)', ->
-      expect(str parse('{(a,b) -=> `( ^a + ^b )}(1,2)')).to.equal "[call! [-=> [a b] [[quasiquote! [+ [unquote! a] [unquote! b]]]]] [1 2]]"
-    it 'should parse { -=> ( a )}()', ->
-      expect(str parse('{ -=> ( a )}()')).to.equal "[call! [-=> [] [a]] []]"
-    it 'should parse m = (a,b) -=> `( ^a + ^b); m(1,2)', ->
-      expect(str parse('m = (a,b) -=> `( ^a + ^b ); m(1,2)')).to.equal "[= m [-=> [a b] [[quasiquote! [+ [unquote! a] [unquote! b]]] [call! m [1 2]]]]]"
+    it 'should parse {(a,b) -> `( ^a + ^b )}(1,2)', ->
+      expect(str parse('{(a,b) -> `( ^a + ^b )}(1,2)')).to.equal "[call! [-> [a b] [quasiquote! [+ [unquote! a] [unquote! b]]]] [1 2]]"
+    it 'should parse { -> ( a )}()', ->
+      expect(str parse('{ -> ( a )}()')).to.equal "[call! [-> [] a] []]"
+    it 'should parse m #= (a,b) -> `( ^a + ^b); m(1,2)', ->
+      expect(str parse('m #= (a,b) -> `( ^a + ^b ); m(1,2)')).to.equal "[#= m [-> [a b] [begin! [quasiquote! [+ [unquote! a] [unquote! b]]] [call! m [1 2]]]]]"
 
     it 'should parse switch! 1 {{[2] 3}} 4', ->
       expect(str parse("switch! 1 { {[2] 3} } 4")).to.equal "[switch! 1 [[list! 2] 3] 4]"
@@ -654,7 +652,7 @@ describe "parse: ",  ->
         expect(str parse('`{ ^1 { ^2 ^&{3 4}}}')).to.equal "[quasiquote! [[unquote! 1] [[unquote! 2] [unquote-splice [3 4]]]]]"
 
     it 'should parse letloop! \n  odd = (x) -> if! x==0 0 even(x-1)\n  even = (x) -> if! x==0 1 odd(x-1) \nthen odd(3)', ->
-      expect(str parse('letloop! \n  odd = (x) -> if! x==0 0 even(x-1)\n  even = (x) -> if! x==0 1 odd(x-1) \nthen odd(3)')).to.equal "[letloop! [[odd = [-> [x] [[if! [== x 0] 0 [call! even [[- x 1]]]]]]] [even = [-> [x] [[if! [== x 0] 1 [call! odd [[- x 1]]]]]]]] [call! odd [3]]]"
+      expect(str parse('letloop! \n  odd = (x) -> if! x==0 0 even(x-1)\n  even = (x) -> if! x==0 1 odd(x-1) \nthen odd(3)')).to.equal "[letloop! [[odd = [-> [x] [if! [== x 0] 0 [call! even [[- x 1]]]]]] [even = [-> [x] [if! [== x 0] 1 [call! odd [[- x 1]]]]]]] [call! odd [3]]]"
 
     describe "new parser tests from samples: ",  ->
       it "parse while! 2 if 1 then console.log 1 else console.log 2", ->
@@ -689,7 +687,7 @@ describe "parse: ",  ->
 
       it 'should parse x = ->\n 1\n/* comment */', ->
         x = str parse('x = ->\n 1\n/* comment */')
-        expect(x).to.deep.equal "[= x [-> [] [1]]]"
+        expect(x).to.deep.equal "[= x [-> [] 1]]"
 
       it 'should parse x = /-h\b|-r\b|-v\b|-b\b/', ->
         x = str parse('x = /-h\b|-r\b|-v\b|-b\b/')
@@ -770,7 +768,7 @@ describe "parse: ",  ->
       it "should parse @@a+1", ->
         expect(str parse('@@a+1')).to.equal "[+ [@@ a] 1]"
       it "should parse a=1; -> @@a=1", ->
-        expect(str parse('a=1; -> @@a=1')).to.equal "[begin! [= a 1] [-> [] [[= [@@ a] 1]]]]"
+        expect(str parse('a=1; -> @@a=1')).to.equal "[begin! [= a 1] [-> [] [= [@@ a] 1]]]"
 
     it 'should parse if! 1 {break} {continue}', ->
       expect(str parse("if! 1 {break} {continue}")).to.equal "[if! 1 [break] [continue]]"

@@ -570,7 +570,7 @@ describe "parser basic: ",  ->
       x = parser.parse(text, parser.definition, 0)
       x
     it 'should parse -> 1', ->
-      expect(str parse('-> 1')).to.equal "[-> [] [1]]"
+      expect(str parse('-> 1')).to.equal "[-> [] 1]"
 
   describe ":: as prototype", ->
     parse = (text) ->

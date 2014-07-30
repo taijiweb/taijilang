@@ -77,6 +77,12 @@ describe('test command:', function() {
       it('compile hello.tj', function() {
         return expect(compile('samples-js', 'samples/hello.tj')).to.deep.equal([void 0]);
       });
+      it('parse demo.tj', function() {
+        return expect(parse('samples-js/parse', 'samples/demo.tj')).to.deep.equal([void 0]);
+      });
+      it('compile demo.tj', function() {
+        return expect(compile('samples-js', 'samples/demo.tj')).to.deep.equal([void 0]);
+      });
       it('parse sample.tj', function() {
         return expect(parse('samples-js/parse', 'samples/sample.tj')).to.deep.equal([void 0]);
       });

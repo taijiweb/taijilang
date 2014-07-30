@@ -79,13 +79,13 @@ describe("parse: ", function() {
         return expect(str(parse('require.extensions[".tj"] = 1'))).to.equal("[= [index! [attribute! require extensions] [string! \".tj\"]] 1]");
       });
       it('should parse require.extensions[".tj"] = ->', function() {
-        return expect(str(parse('require.extensions[".tj"] = ->'))).to.equal("[= [index! [attribute! require extensions] [string! \".tj\"]] [-> [] []]]");
+        return expect(str(parse('require.extensions[".tj"] = ->'))).to.equal("[= [index! [attribute! require extensions] [string! \".tj\"]] [-> [] undefined]]");
       });
       it('should parse require.extensions[".tj"] = (module, filename) ->', function() {
-        return expect(str(parse('require.extensions[".tj"] = (module, filename)  ->'))).to.equal("[= [index! [attribute! require extensions] [string! \".tj\"]] [-> [module filename] []]]");
+        return expect(str(parse('require.extensions[".tj"] = (module, filename)  ->'))).to.equal("[= [index! [attribute! require extensions] [string! \".tj\"]] [-> [module filename] undefined]]");
       });
       return it('should parse x = ->', function() {
-        return expect(str(parse('x = ->'))).to.equal("[= x [-> [] []]]");
+        return expect(str(parse('x = ->'))).to.equal("[= x [-> [] undefined]]");
       });
     });
     describe("concatenated line clauses: ", function() {
@@ -126,32 +126,32 @@ describe("parse: ", function() {
       it('should parse ->', function() {
         var x;
         x = parse('->');
-        return expect(str(x)).to.equal('[-> [] []]');
+        return expect(str(x)).to.equal('[-> [] undefined]');
       });
       it('should parse () -> 1', function() {
         var x;
         x = parse('() -> 1');
-        return expect(str(x)).to.equal('[-> [] [1]]');
+        return expect(str(x)).to.equal('[-> [] 1]');
       });
       it('should parse (a) -> 1', function() {
         var x;
         x = parse('(a) -> 1');
-        return expect(str(x)).to.equal('[-> [a] [1]]');
+        return expect(str(x)).to.equal('[-> [a] 1]');
       });
       it('should parse (a, b) -> 1', function() {
         var x;
         x = parse('(a , b) -> 1');
-        return expect(str(x)).to.equal('[-> [a b] [1]]');
+        return expect(str(x)).to.equal('[-> [a b] 1]');
       });
       it('should parse (a , b , c) -> 1', function() {
         var x;
         x = parse('(a , b , c) -> 1');
-        return expect(str(x)).to.equal('[-> [a b c] [1]]');
+        return expect(str(x)).to.equal('[-> [a b c] 1]');
       });
       it('should parse (a , b , c) -> -> 1', function() {
         var x;
         x = parse('(a , b , c) -> -> 1');
-        return expect(str(x)).to.equal('[-> [a b c] [[-> [] [1]]]]');
+        return expect(str(x)).to.equal('[-> [a b c] [-> [] 1]]');
       });
       it('should parse (a , b , 1) -> 1', function() {
         return expect(function() {
@@ -166,17 +166,17 @@ describe("parse: ", function() {
       it('should parse -> and 1 2 ; and 3 4', function() {
         var x;
         x = parse('-> and 1 2 ; and 3 4');
-        return expect(str(x)).to.equal("[-> [] [[and 1 2] [and 3 4]]]");
+        return expect(str(x)).to.equal("[-> [] [begin! [and 1 2] [and 3 4]]]");
       });
       it('should parse -> and 1 2 , and 3 4', function() {
         var x;
         x = parse('-> and 1 2 , and 3 4');
-        return expect(str(x)).to.equal("[-> [] [[and 1 2] [and 3 4]]]");
+        return expect(str(x)).to.equal("[-> [] [begin! [and 1 2] [and 3 4]]]");
       });
       return it('should parse -> and 1 2 , and 3 4 -> print x ; print 5 6', function() {
         var x;
         x = parse('-> and 1 2 , and 3 4 -> print x ; print 5 6');
-        return expect(str(x)).to.equal("[-> [] [[and 1 2] [and 3 4 [-> [] [[print x] [print 5 6]]]]]]");
+        return expect(str(x)).to.equal("[-> [] [begin! [and 1 2] [and 3 4 [-> [] [begin! [print x] [print 5 6]]]]]]");
       });
     });
     describe('meta: ', function() {
@@ -208,12 +208,12 @@ describe("parse: ", function() {
       it('should parse class A :: = ->', function() {
         var x;
         x = parse('class A :: = ->');
-        return expect(str(x)).to.equal("[#call! class [A undefined [[= :: [-> [] []]]]]]");
+        return expect(str(x)).to.equal("[#call! class [A undefined [[= :: [-> [] undefined]]]]]");
       });
       it('should parse class B extends A :: = ->', function() {
         var x;
         x = parse('class B extends A :: = ->');
-        return expect(str(x)).to.equal("[#call! class [B A [[= :: [-> [] []]]]]]");
+        return expect(str(x)).to.equal("[#call! class [B A [[= :: [-> [] undefined]]]]]");
       });
       it('should parse class B extends A', function() {
         var x;
@@ -223,7 +223,7 @@ describe("parse: ", function() {
       return it('should parse class B extends A  :: = ->', function() {
         var x;
         x = parse('class B extends A  :: = ->');
-        return expect(str(x)).to.equal("[#call! class [B A [[= :: [-> [] []]]]]]");
+        return expect(str(x)).to.equal("[#call! class [B A [[= :: [-> [] undefined]]]]]");
       });
     });
     describe('for', function() {
@@ -723,10 +723,10 @@ describe("parse: ", function() {
         return expect(str(x)).to.equal("[[let [[a = [abs 1]] [b = 3]] 2]]");
       });
       it('should parse letrec! f = (x) -> if! x==1 1 f(x-1) then f(3)', function() {
-        return expect(str(parse('letrec! f = (x) -> if! x==1 1 f(x-1) then f(3)'))).to.equal("[[letrec! [[f = [-> [x] [[if! [== x 1] 1 [call! f [[- x 1]]]]]]]] [call! f [3]]]]");
+        return expect(str(parse('letrec! f = (x) -> if! x==1 1 f(x-1) then f(3)'))).to.equal("[[letrec! [[f = [-> [x] [if! [== x 1] 1 [call! f [[- x 1]]]]]]] [call! f [3]]]]");
       });
       it('should parse letloop! f = (x) -> if! x==1 1 x+f(x-1)', function() {
-        return expect(str(parse('letloop! f = (x) -> if! x==1 1 x+f(x-1) then f(3)'))).to.equal("[[letloop! [[f = [-> [x] [[if! [== x 1] 1 [+ x [call! f [[- x 1]]]]]]]]] [call! f [3]]]]");
+        return expect(str(parse('letloop! f = (x) -> if! x==1 1 x+f(x-1) then f(3)'))).to.equal("[[letloop! [[f = [-> [x] [if! [== x 1] 1 [+ x [call! f [[- x 1]]]]]]]] [call! f [3]]]]");
       });
       it('should parse let a=[\ 1 \] then a[1]', function() {
         var x;
@@ -899,14 +899,14 @@ describe("parse: ", function() {
     it('should parse for x in [\ 1, 2 \] then print x', function() {
       return expect(str(parse('for x in [\ 1 2 \] then print x'))).to.equal("[forIn! x [list! [1 2]] [print x]]");
     });
-    it('should parse {(a,b) -=> `( ^a + ^b )}(1,2)', function() {
-      return expect(str(parse('{(a,b) -=> `( ^a + ^b )}(1,2)'))).to.equal("[call! [-=> [a b] [[quasiquote! [+ [unquote! a] [unquote! b]]]]] [1 2]]");
+    it('should parse {(a,b) -> `( ^a + ^b )}(1,2)', function() {
+      return expect(str(parse('{(a,b) -> `( ^a + ^b )}(1,2)'))).to.equal("[call! [-> [a b] [quasiquote! [+ [unquote! a] [unquote! b]]]] [1 2]]");
     });
-    it('should parse { -=> ( a )}()', function() {
-      return expect(str(parse('{ -=> ( a )}()'))).to.equal("[call! [-=> [] [a]] []]");
+    it('should parse { -> ( a )}()', function() {
+      return expect(str(parse('{ -> ( a )}()'))).to.equal("[call! [-> [] a] []]");
     });
-    it('should parse m = (a,b) -=> `( ^a + ^b); m(1,2)', function() {
-      return expect(str(parse('m = (a,b) -=> `( ^a + ^b ); m(1,2)'))).to.equal("[= m [-=> [a b] [[quasiquote! [+ [unquote! a] [unquote! b]]] [call! m [1 2]]]]]");
+    it('should parse m #= (a,b) -> `( ^a + ^b); m(1,2)', function() {
+      return expect(str(parse('m #= (a,b) -> `( ^a + ^b ); m(1,2)'))).to.equal("[#= m [-> [a b] [begin! [quasiquote! [+ [unquote! a] [unquote! b]]] [call! m [1 2]]]]]");
     });
     it('should parse switch! 1 {{[2] 3}} 4', function() {
       return expect(str(parse("switch! 1 { {[2] 3} } 4"))).to.equal("[switch! 1 [[list! 2] 3] 4]");
@@ -957,7 +957,7 @@ describe("parse: ", function() {
       });
     });
     it('should parse letloop! \n  odd = (x) -> if! x==0 0 even(x-1)\n  even = (x) -> if! x==0 1 odd(x-1) \nthen odd(3)', function() {
-      return expect(str(parse('letloop! \n  odd = (x) -> if! x==0 0 even(x-1)\n  even = (x) -> if! x==0 1 odd(x-1) \nthen odd(3)'))).to.equal("[letloop! [[odd = [-> [x] [[if! [== x 0] 0 [call! even [[- x 1]]]]]]] [even = [-> [x] [[if! [== x 0] 1 [call! odd [[- x 1]]]]]]]] [call! odd [3]]]");
+      return expect(str(parse('letloop! \n  odd = (x) -> if! x==0 0 even(x-1)\n  even = (x) -> if! x==0 1 odd(x-1) \nthen odd(3)'))).to.equal("[letloop! [[odd = [-> [x] [if! [== x 0] 0 [call! even [[- x 1]]]]]] [even = [-> [x] [if! [== x 0] 1 [call! odd [[- x 1]]]]]]] [call! odd [3]]]");
     });
     describe("new parser tests from samples: ", function() {
       it("parse while! 2 if 1 then console.log 1 else console.log 2", function() {
@@ -1000,7 +1000,7 @@ describe("parse: ", function() {
       it('should parse x = ->\n 1\n/* comment */', function() {
         var x;
         x = str(parse('x = ->\n 1\n/* comment */'));
-        return expect(x).to.deep.equal("[= x [-> [] [1]]]");
+        return expect(x).to.deep.equal("[= x [-> [] 1]]");
       });
       it('should parse x = /-h\b|-r\b|-v\b|-b\b/', function() {
         var x;
@@ -1101,7 +1101,7 @@ describe("parse: ", function() {
         return expect(str(parse('@@a+1'))).to.equal("[+ [@@ a] 1]");
       });
       return it("should parse a=1; -> @@a=1", function() {
-        return expect(str(parse('a=1; -> @@a=1'))).to.equal("[begin! [= a 1] [-> [] [[= [@@ a] 1]]]]");
+        return expect(str(parse('a=1; -> @@a=1'))).to.equal("[begin! [= a 1] [-> [] [= [@@ a] 1]]]");
       });
     });
     it('should parse if! 1 {break} {continue}', function() {

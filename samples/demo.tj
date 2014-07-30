@@ -1,0 +1,4 @@
+taiji language 0.1
+
+var x, y; [x...y]
+[x..y]

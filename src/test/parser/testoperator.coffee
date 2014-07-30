@@ -202,8 +202,8 @@ describe "parse operator expression: ", ->
       expect(str parse('a(1 , 2 , 3)')).to.deep.equal  '[call! a [1 2 3]]'
 
   describe "ellipsis: ", ->
-    xit "parse 1...5", ->
-      expect(str parse('1...5')).to.deep.equal '[call! a [1]]'
+    it "parse 1...5", ->
+      expect(str parse('1...5')).to.deep.equal "[... 1 5]"
 
   describe "unquote: ", ->
     it "parse ^a", ->

@@ -49,7 +49,7 @@ __extends  = (child, parent) ->
           if item1=item[1] and item1[0]=='attribute!' and entity(item1[1])=='::' then
             member = item1[2]; var value = item[2]
             if isDefinition(value) then
-               body = for e in value[2] then convertClassMemberBody(e, className, member)
+               body = convertClassMemberBody(value[2], className, member)
                value = [value[0], value[1], body]
             return ['=', ['attribute!', ['attribute!', className, 'prototype'], member], value]
           else value = convertClassStatement(value, className)
@@ -73,7 +73,7 @@ __extends  = (child, parent) ->
         body02 = body0[2]
         if not isDefinition(body02) then error 'wrongly use non function as the constructor of a class '+className
         if superClass then
-          ctorBody = for x in body02[2] then convertClassMemberBody(x, className, 'constructor')
+          ctorBody = convertClassMemberBody(body02[2], className, 'constructor')
           result.push `{\= ^className ^[body02[0], body02[1], ctorBody]}
           result.push `{__extends ^className ^superClass}
         else result.push `{ \= ^className ^body02 }

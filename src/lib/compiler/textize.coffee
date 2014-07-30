@@ -121,7 +121,13 @@ tokenFnMap =
   'throw': (exp) ->  ['throw ', token(exp[1])]
   'new': (exp) ->  priority(['new ', token(exp[1])], 1)
   'function': (exp) ->
-    if entity(exp[2]) then body = wrapBlock(statement(exp[2])) else body = '{}'
+    exp2 = entity(exp[2])
+    if exp2[0]=='return'
+      if not (exp21=exp2[1]) then body = '{}'
+      else if exp21[0]=='jsvar!' and exp21[1]=='undefined' then body = '{}'
+      else body = wrapBlock(statement(exp2))
+    else if exp2 then body = wrapBlock(statement(exp2))
+    else body = '{}'
     func('function ', paren(list(exp[1])), ' ',body)
   'if': (exp) ->
     if exp[3]

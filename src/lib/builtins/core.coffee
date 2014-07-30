@@ -151,6 +151,20 @@ convertAssign = (left, right, env) ->
 # normal assign in object language
 exports['='] = (exp, env) -> convertAssign(exp[0], exp[1], env)
 
+exports['hashAssign!'] = (exp, env) ->
+  [exp0, exp1] = exp
+  if exp0.length>1
+    result = []
+    if typeof entity(exp1)!='string'
+      vObj = env.newVar('obj')
+      result.push ['direct!', ['var', vObj]]
+      env.set(vObj.symbol, vObj)
+      result.push ['=', vObj, exp1]
+    else vObj = exp1
+    for x in exp0 then result.push ['=', x, ['attribute!', vObj, x]]
+    convert(begin(result), env)
+  else convert(['=', exp0[0], ['attribute!', exp1, exp0[0]]], env)
+
 # meta assign, macro assign
 exports['#='] = (exp, env) -> ['##', convert(['=', exp[0], exp[1]], env)]
 exports['#/'] = (exp, env) -> ['#/', convert(['=', exp[0], exp[1]], env)]
@@ -227,7 +241,7 @@ exports['letloop!'] = (exp, env) ->
         else if p1!=params[i] then error 'different parameter list for functions in letloop bindings is not allowed', p
     if not fnBodyEnv then fnBodyEnv = newEnv.extend(fnScope={})
     for p in params then fnScope[p] = {symbol: p}
-    [scope[entity(x[0])], return_(convert(begin(value[2]), fnBodyEnv))]
+    [scope[entity(x[0])], return_(convert(value[2], fnBodyEnv))]
   exp = ['letloop!', params, bindings, convert(exp[1], newEnv)]
   exp.env = newEnv
   result.push exp
@@ -337,7 +351,7 @@ convertDefinition =  (exp, env, mode) ->
     for param in params then param = entity(param); scope[param] = param
   body.push.apply body, defaultList
   body.push.apply body, thisParams
-  body.push.apply body, exp1
+  body.push exp1
   if mode[0]=='|' then body =  convert(begin(body), newEnv)
   else body =  return_(convert(begin(body), newEnv))
   functionExp = ['function', params, body]

@@ -261,8 +261,8 @@ describe("parse operator expression: ", function() {
     });
   });
   describe("ellipsis: ", function() {
-    return xit("parse 1...5", function() {
-      return expect(str(parse('1...5'))).to.deep.equal('[call! a [1]]');
+    return it("parse 1...5", function() {
+      return expect(str(parse('1...5'))).to.deep.equal("[... 1 5]");
     });
   });
   describe("unquote: ", function() {

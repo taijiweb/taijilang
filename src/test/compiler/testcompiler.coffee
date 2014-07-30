@@ -118,11 +118,54 @@ describe "compile: ",  ->
       expect(compile('var x, y, z; a = [x, [1,2]..., z]')).to.have.string "var x, y, z, a = [x, 1, 2, z];\na"
 
     it "should parse x #= -=> a=1", ->
-      expect(parse('x #= -=> a=1')).to.have.string "[#= x [-=> [] [[= a 1]]]]"
+      expect(parse('x #= -=> a=1')).to.have.string "[#= x [-=> [] [= a 1]]]"
 
     it "should comile {x #= -> a=1}; 1", ->
       expect(compile('{x #= -> a=1}; 1')).to.have.string "1"
 
+    it 'should compile {a b c} = x', ->
+      expect(compile('var x; {a b c} = x')).to.equal "var x, a = x.a, \n    b = x.b, \n    c = x.c;\nc"
+
+    it 'should comile {a} = x', ->
+      expect(compile('var x; {a} = x')).to.equal "var x, a = x.a;\na"
+
+  describe "ellipsis range: ",  ->
+    it "should parse 1...5", ->
+      expect(parse('1...5')).to.equal "[... 1 5]"
+    it "should compile 1...5", ->
+      expect(compile('1...5')).to.have.string 'var list = [], \n    stop = 5, \n    i = 1;\n\nwhile (i < stop)\n  list.push(i++);\nlist'
+    it "should parse [x...y]", ->
+      expect(parse('[x...y]')).to.equal "[list! [... x y]]"
+    it "should compile [x...y]", ->
+      expect(compile('var x, y; [x...y]')).to.have.string 'var x, y, list = [], \n    stop = y, \n    i = x, \n    list2 = [];\n\nwhile (i < stop)\n  list2.push(list.push(i++));\n[list]'
+    it "should parse 1..5", ->
+      expect(parse('1..5')).to.equal "[.. 1 5]"
+    it "should compile 1..5", ->
+      expect(compile('1..5')).to.have.string 'var list = [], \n    stop = 5, \n    i = 1;\n\nwhile (i <= stop)\n  list.push(i++);\nlist'
+    it "should parse [x..y]", ->
+      expect(parse('[x..y]')).to.equal "[list! [.. x y]]"
+    it "should compile [x..y]", ->
+      expect(compile('var x, y; [x..y]')).to.have.string 'var x, y, list = [], \n    stop = y, \n    i = x, \n    list2 = [];\n\nwhile (i <= stop)\n  list2.push(list.push(i++));\n[list]'
+    it "should parse a[1..5]", ->
+      expect(parse('a[1..5]')).to.equal "[index! a [.. 1 5]]"
+    it "should compile a[1..5]", ->
+      expect(compile('var a; a[1..5]')).to.equal "var a;\na.slice(1, 6)"
+    it "should compile a[1...5]", ->
+      expect(compile('var a; a[1...5]')).to.equal "var a;\na.slice(1, 5)"
+    it "should compile a[..]", ->
+      expect(compile('var a; a[..]')).to.equal "var a;\na.slice()"
+    it "should compile a[...]", ->
+      expect(compile('var a; a[...]')).to.equal "var a;\na.slice()"
+    it "should compile a[1...]", ->
+      expect(compile('var a; a[1...]')).to.equal "var a;\na.slice(1)"
+    it "should parse a[...y]", ->
+      expect(parse('a[...y]')).to.equal "[index! a [...x y]]"
+    it "should compile a[...5]", ->
+      expect(compile('var a; a[...5]')).to.equal "var a;\na.slice(0, 5)"
+    it "should parse a[..y]", ->
+      expect(parse('a[..y]')).to.equal "[index! a [..x y]]"
+    it "should compile a[..5]", ->
+      expect(compile('var a; a[..5]')).to.equal "var a;\na.slice(0, 6)"
 
   describe "attribute and index: ",  ->
     it 'should compile print : and 1 2', ->
@@ -217,36 +260,40 @@ describe "compile: ",  ->
       expect(compile('->')).to.have.string "(function () {})"
     it 'should compile ->1,2', ->
       expect(compile('->1,2')).to.have.string  "(function () {\n  return 2;\n})"
-    it 'should compile |->1,2', ->
-      expect(compile('|->1,2')).to.have.string  "(function () {\n  2;\n})"
-    xit 'should compile \\|-> [] {1, 2}', ->
+    it 'should compile |-> 1,2', ->
+      expect(compile('|-> 1,2')).to.have.string  "(function () {\n  2;\n})"
+    it 'should parse |-> {1, 2}', ->
+      expect(parse('|-> {1, 2}')).to.have.string '[|-> [] [begin! 1 2]]'
+    it 'should compile |-> {1, 2}', ->
+      expect(compile('|-> {1, 2}')).to.have.string "(function () {\n  2;\n})"
+    it 'should parse \\|-> [] {1, 2}', ->
+      expect(parse('\\|-> [] {1, 2}')).to.have.string '[|-> [] [begin! 1 2]]'
+    it 'should compile \\|-> [] {1, 2}', ->
       expect(compile('\\|-> [] {1, 2}')).to.have.string "(function () {\n  2;\n})"
-    xit 'should parse \\|-> [] {1, 2}', ->
-      expect(parse('\\|-> [] {1, 2}')).to.have.string "(function () {\n  2;\n})"
     it 'should parse => @a', ->
-      expect(parse('=> @a')).to.have.string  "[=> [] [[attribute! @ a]]]"
+      expect(parse('=> @a')).to.have.string  "[=> [] [attribute! @ a]]"
     it 'should compile => @a; @, @x([]+@)', ->
       expect(compile('=> @a; @, @x([]+@)')).to.have.string  "var _this = this;\n\n(function () {\n  _this.a;\n  return _this.x([] + _this);\n})"
     it 'should parse |=> @a; @, @x([]+@)', ->
-      expect(parse('|=> @a; @, @x([]+@)')).to.have.string  "[|=> [] [[attribute! @ a] @ [call! [attribute! @ x] [[+ [] @]]]]]"
+      expect(parse('|=> @a; @, @x([]+@)')).to.have.string  "[|=> [] [begin! [attribute! @ a] @ [call! [attribute! @ x] [[+ [] @]]]]]"
     it 'should compile |=> @a; @, @x([]+@)', ->
       expect(compile('|=> @a; @, @x([]+@)')).to.have.string  "var _this = this;\n\n(function () {\n  _this.a;\n  _this.x([] + _this);\n})"
     it 'should compile => @a; @, @x([]+@), -> @a; @, @x([]+@)', ->
       expect(compile('=> @a; @, @x([]+@), -> @a; @, @x([]+@)')).to.have.string  "var _this = this;\n\n(function () {\n  _this.a;\n  _this.x([] + _this);\n  return function () {\n    this.a;\n    return this.x([] + this);\n  };\n})"
     it 'should parse (@a) -> 1', ->
-      expect(parse('(@a) -> 1')).to.have.string  "[-> [[attribute! @ a]] [1]]"
+      expect(parse('(@a) -> 1')).to.have.string  "[-> [[attribute! @ a]] 1]"
     it 'should compile (@a) -> 1', ->
       expect(compile('(@a) -> 1')).to.have.string  "(function (a) {\n  this.a = a;\n  return 1;\n})"
     it 'should parse (@a=1) -> 1', ->
-      expect(parse('(@a=1) -> 1')).to.have.string  "[-> [[= [attribute! @ a] 1]] [1]]"
+      expect(parse('(@a=1) -> 1')).to.have.string  "[-> [[= [attribute! @ a] 1]] 1]"
     it 'should compile (@a=1) -> 1', ->
       expect(compile('(@a=1) -> 1')).to.have.string  "(function (a) {\n  if (a === void 0)\n    a = 1;\n  this.a = a;\n  return 1;\n})"
     it 'should parse (@a...) -> 1', ->
-      expect(parse('(@a...) -> 1')).to.have.string  "[-> [[x... [attribute! @ a]]] [1]]"
+      expect(parse('(@a...) -> 1')).to.have.string  "[-> [[x... [attribute! @ a]]] 1]"
     it 'should compile (@a...) -> 1', ->
       expect(compile('(@a...) -> 1')).to.have.string  "(function () {\n  var a = arguments.length >= 1? __slice.call(arguments, 0): [];\n  this.a = a;\n  return 1;\n})"
     it 'should parse (a=1) -> 1', ->
-      expect(parse('(a=1) -> 1')).to.have.string  "[-> [[= a 1]] [1]]"
+      expect(parse('(a=1) -> 1')).to.have.string  "[-> [[= a 1]] 1]"
     it 'should compile (a=1) -> 1,2', ->
       expect(compile('(a=1) -> 1')).to.have.string  "(function (a) {\n  if (a === void 0)\n    a = 1;\n  return 1;\n})"
     it 'should compile (a=1, b=a, c={. .}) ->1,2', ->
@@ -391,7 +438,7 @@ describe "compile: ",  ->
     it 'should compileNoOptimize m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; ##m(x+y,y+z)', ->
       expect(-> compileNoOptimize('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; ##m(x+y,y+z)')).to.throw /fail to look up symbol from environment:x/
     it 'should parse m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; m#(x+y,y+z)', ->
-      expect(parse('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; m#(x+y,y+z)')).to.have.string "[begin! [#= m [-> [a b] [[quasiquote! [+ [unquote! a] [unquote! b]]]]]] [var x y z] [#call! m [[+ x y] [+ y z]]]]"
+      expect(parse('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; m#(x+y,y+z)')).to.equal "[begin! [#= m [-> [a b] [quasiquote! [+ [unquote! a] [unquote! b]]]]] [var x y z] [#call! m [[+ x y] [+ y z]]]]"
     it 'should compileNoOptimize m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; m#(x+y,y+z)', ->
       expect(compileNoOptimize('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; m#(x+y,y+z)')).to.have.string 'var x, y, z;\nx + y + y + z'
     it 'should compileNoOptimize m #= {(a,b) -> `( ^a * ^b)}; var x, y, z; m#(x+y,y*z)', ->
@@ -399,7 +446,7 @@ describe "compile: ",  ->
     it 'should compileNoOptimize m #= {(a,b) -> `( ^a * ^b)}; var x, y, z; m#(x+y,y+z)', ->
       expect(compileNoOptimize('m #= {(a,b) -> `( ^a * ^b)}; var x, y, z; m#(x+y,y+z)')).to.have.string "var x, y, z;\n(x + y) * (y + z)"
     it 'should parse m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)', ->
-      expect(parse('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)')).to.have.string "[begin! [#= m [-> [a b] [[quasiquote! [+ [unquote! a] [unquote! b]]]]]] [var x y z] [call! [# m] [[+ x y] [+ y z]]]]"
+      expect(parse('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)')).to.equal "[begin! [#= m [-> [a b] [quasiquote! [+ [unquote! a] [unquote! b]]]]] [var x y z] [call! [# m] [[+ x y] [+ y z]]]]"
     it 'should compileNoOptimize m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)', ->
       expect(compileNoOptimize('m #= {(a,b) -> `( ^a + ^b)}; var x, y, z; (#m)(x+y,y+z)')).to.have.string "var x, y, z;\n[+, [[+, x, y], [+, y, z]], ]"
 
@@ -447,8 +494,8 @@ describe "compile: ",  ->
 
   describe "class : ",  ->
     it 'should parse class A extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)', ->
-      expect(parse('class A extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)')).to.have.string '[#call! class [A B [[= :: [-> [a [attribute! @ b]] [super]]] [= [attribute! :: f] [-> [x] [[call! super [x]]]]]]]]'
-    xit 'should compile A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)', ->
+      expect(parse('class A extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)')).to.have.string '[#call! class [A B [[= :: [-> [a [attribute! @ b]] super]] [= [attribute! :: f] [-> [x] [call! super [x]]]]]]]'
+    nit 'should compile A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)', ->
       expect(compile('A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)')).to.have.string '7'
 
 
