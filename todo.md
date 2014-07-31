@@ -1,9 +1,5 @@
 todo: better parser builtins ?!, ?/, etc
 
-todo: pring multiple arguments, e.g. pring x, y, z
-
-todo: ":" at the end of line can replace 'then'
-
 todo: transform string to symbol by escaping it. e.g.: \"x...", \"...x", \"..."
 
 todo: add more cases for preprocess operator
@@ -39,6 +35,7 @@ todo: document
   todo: tutorial：interactive samples
   
 ------------------------------------------------------------
+done: ":" at the end of line can replace 'then'
 done: embedded meta compilation: #call, by evaluating the embedded meta code while running
 done: refactor definition ->, =>, etc,  now they produces [->, [params], oneStatement], instead of statement list
 done: \ lead symbol to escape it, e.g. \=, \+=, \>>, \/, etc, useful to write macros.

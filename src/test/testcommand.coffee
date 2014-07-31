@@ -41,7 +41,7 @@ describe 'test command:', ->
       it 'compile hello.tj', -> expect(compile 'samples-js', 'samples/hello.tj').to.deep.equal [undefined]
       it 'parse demo.tj', -> expect(parse 'samples-js/parse', 'samples/demo.tj').to.deep.equal [undefined]
       it 'compile demo.tj', -> expect(compile 'samples-js', 'samples/demo.tj').to.deep.equal [undefined]
-      iit 'compile meta.tj', -> expect(compile 'samples-js', 'samples/meta.tj').to.deep.equal [undefined]
+      it 'compile meta.tj', -> expect(compile 'samples-js', 'samples/meta.tj').to.deep.equal [undefined]
       it 'parse sample.tj', -> expect(parse 'samples-js/parse', 'samples/sample.tj').to.deep.equal [undefined]
       it 'compile sample.tj', -> expect(compile 'samples-js', 'samples/sample.tj').to.deep.equal [undefined]
       it 'compile blockcomment.tj', -> expect(compile 'samples-js', 'samples/blockcomment.tj').to.deep.equal [undefined]

@@ -309,6 +309,9 @@ describe "parse: ",  ->
       it 'should parse if and 1 2 then 3', ->
         x = parse('if and 1 2 then 3')
         expect(str x).to.equal "[[if [and 1 2] 3]]"
+      iit 'should parse if and 1 2:\n 3', ->
+        x = parse('if and 1 2:\n 3')
+        expect(str x).to.equal "[[if [and 1 2] 3]]"
       it 'should parse if add : add 1 2 , add 3 4 then 5', ->
         x = parse('if add : add 1 2 , add 3 4 then 5')
         expect(str x).to.equal "[[if [add [add 1 2] [add 3 4]] 5]]"

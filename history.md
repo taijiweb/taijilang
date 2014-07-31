@@ -1,6 +1,7 @@
 2014
 2014-7
 7-31
+  ":" at the end of line can replace 'then'
   embedded meta compilation: #call, by evaluating the embedded meta code while running
 7-30
   refactor definition ->, =>, etc,  now they produces [->, [params], oneStatement], instead of statement list

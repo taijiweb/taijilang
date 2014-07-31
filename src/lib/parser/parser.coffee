@@ -1012,7 +1012,7 @@ exports.Parser = ->
         else  error 'unexpected '+w.value+', expect '+word+' clause'
       else if (not optionalWord and not optionalClause) or (
           not optionalClause and optionalWord and space.inline)
-        error 'expect keyword '+word
+        if word!='then' or not options.colonAtEndOfLine then error 'expect keyword '+word
       else if not optionalWord then return rollbackToken space
       else if optionalClause then return rollbackToken space
     if not meetWord then rollback start2, line2
@@ -1049,7 +1049,8 @@ exports.Parser = ->
   keywordThenElseStatement = (keyword) -> (isHeadStatement) ->
     line1 = lineno; spc()
     if not (test = parser.clause())? then error 'expect a clause after "'+keyword+'"'
-    then_ = thenClause(line1, isHeadStatement, options={}); else_ = elseClause(line1, isHeadStatement, options)
+    then_ = thenClause(line1, isHeadStatement, options={colonAtEndOfLine: test.colonAtEndOfLine})
+    else_ = elseClause(line1, isHeadStatement, options)
     if else_ then [keyword, test, then_, else_]
     else [keyword, test, then_]
 
@@ -1423,17 +1424,19 @@ exports.Parser = ->
 
   @colonClause = memo ->
     start = cursor; line1 = lineno
-    if not (head = parser.sequenceClause()) then return
-    if not head.push then head = [head]
+    if not (result = parser.sequenceClause()) then return
     spc()
     if (x=parser.symbol()) and x.value==':'
       space = bigSpc()
       if space.newline then error '":" should not before a new line'
       else if space.undent then error '":" should not be before undent'
-      else if space.indent then return rollback start, line1
-      head.push.apply head, parser.clauses()
-      head.stop = cursor; head.line = lineno
-      head
+      else if space.indent
+        result.colonAtEndOfLine = true
+        return result
+      if not result.push or result.isBracket then result = [result]
+      result.push.apply result, parser.clauses()
+      result.stop = cursor; result.line = lineno
+      result
     else return rollback start, line1
 
   @indentClause = memo ->

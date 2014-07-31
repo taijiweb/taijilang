@@ -6,7 +6,7 @@ taiji language 0.1
 
   A very simple REPL written in taijilang
 
-extern! eval str taiji
+extern! str taiji
 
 require "./require"
 readline = require "readline"

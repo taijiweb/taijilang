@@ -3,6 +3,8 @@ taiji language 0.1
 include! 'types.tj'
 // Some example code snippets
 
+print 1 2
+
 //undefined? #= (obj) -> `(typeof( ^obj )==undefined)
 //object? #= (obj) -> `( typeof( ^obj ) == 'object' )
 //array? #= (obj) -> `( Object.prototype.toString.call( ^obj ) === '[object Array]' )

@@ -83,7 +83,7 @@ describe('test command:', function() {
       it('compile demo.tj', function() {
         return expect(compile('samples-js', 'samples/demo.tj')).to.deep.equal([void 0]);
       });
-      iit('compile meta.tj', function() {
+      it('compile meta.tj', function() {
         return expect(compile('samples-js', 'samples/meta.tj')).to.deep.equal([void 0]);
       });
       it('parse sample.tj', function() {
