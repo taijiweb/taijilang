@@ -2,6 +2,7 @@ chai = require("chai")
 expect = chai.expect
 iit = it.only
 idescribe = describe.only
+nit = ->
 
 lib = '../../lib/'
 {Parser} = require lib+'parser'
@@ -51,5 +52,5 @@ describe "compile dyanmic syntax: ",  ->
       expect(compile('?! char()')).to.have.string "true"
 
   describe "?-then statement: ",  ->
-    xit 'should compile ? xyz then x = abc', ->
+    nit 'should compile ? xyz then x = abc', ->
       expect(compile('? xyz then x = abc')).to.have.string "[? [xyz] [then \"= x abc\"]]"

@@ -5,7 +5,7 @@
 fs = require 'fs'
 {convertIdentifier, entity, begin, return_, error, isArray, error, extend, splitSpace, undefinedExp, addPrelude} = require '../utils'
 {Parser} = require '../parser'
-{convert, convertList, convertEllipsisList, convertExps, compileExp, transformToCode, metaProcessConvert, metaProcess} = require '../compiler'
+{convert, convertList, convertEllipsisList, convertExps, compileExp, nonMetaCompileExp, transformToCode, metaProcessConvert, metaProcess} = require '../compiler'
 
 metaIndex = 0
 
@@ -408,14 +408,16 @@ exports['eval!'] = (exp, env) ->
   if isArray(exp0)
     if exp0[0]=='quote!' then convert(exp0[1], env)
     else if exp0[0]=='quasiquote!' then convert(quasiquote(exp0[1], env), env)
-    else ['call!', 'eval', [compileExp(exp0, env)]]
+    else ['call!', 'eval', [nonMetaCompileExp(exp0, env)]]
   else if typeof (exp0=entity(exp0)) =='string'
     if exp0[0]=='"'
       exp = (parser=new Parser).parse(exp0[1...exp0.length-1], parser.moduleBody, 0, env)
       objCode = compileExp(exp.body, env.extend({}))
       ['call!',  'eval', [objCode]]
     else ['call!', 'eval', exp0]
-  else ['call!', 'eval', [compileExp(exp0, env)]]
+  else ['call!', 'eval', [nonMetaCompileExp(exp0, env)]]
+
+exports['metaEval!'] = (exp, env) -> eval nonMetaCompileExp(exp[0], env)
 
 convertMetaExp = (head) -> (exp, env) -> [head, convert(exp[0], env)]
 exports['##'] = convertMetaExp('##')

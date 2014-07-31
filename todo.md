@@ -1,8 +1,10 @@
-todo: embedded meta compilation: #call, by evaluating the embedded meta code while running
-
 todo: better parser builtins ?!, ?/, etc
 
+todo: pring multiple arguments, e.g. pring x, y, z
+
 todo: ":" at the end of line can replace 'then'
+
+todo: transform string to symbol by escaping it. e.g.: \"x...", \"...x", \"..."
 
 todo: add more cases for preprocess operator
   # let, letrec!, letloop!, doWhere!, while, doWhile!, doUntil!, cFor!, forIn!, forOf!, forIn!!, forOf!!
@@ -37,6 +39,7 @@ todo: document
   todo: tutorial：interactive samples
   
 ------------------------------------------------------------
+done: embedded meta compilation: #call, by evaluating the embedded meta code while running
 done: refactor definition ->, =>, etc,  now they produces [->, [params], oneStatement], instead of statement list
 done: \ lead symbol to escape it, e.g. \=, \+=, \>>, \/, etc, useful to write macros.
 done: ellipsis subscript: a[1..3]; b[1...4]; a[...], a[..], x = a[..5]; x = a[...5]

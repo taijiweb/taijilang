@@ -1,5 +1,7 @@
 2014
 2014-7
+7-31
+  embedded meta compilation: #call, by evaluating the embedded meta code while running
 7-30
   refactor definition ->, =>, etc,  now they produces [->, [params], oneStatement], instead of statement list
   ellipsis subscript: a[1..3]; b[1...4]; a[...], a[..], x = a[..5]; x = a[...5]

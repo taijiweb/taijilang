@@ -3,4 +3,5 @@ taiji language 0.1
   a big bug in my idea
   include! will be deprecated!!!
   include! is dead, import! long alive!
+
 include! './module1.tj'

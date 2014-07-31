@@ -1,4 +1,4 @@
-var Parser, chai, compile, compileNoOptimize, constant, expect, idescribe, iit, isArray, lib, realCode, str, taiji, _ref;
+var Parser, chai, compile, compileNoOptimize, constant, expect, idescribe, iit, isArray, lib, nit, realCode, str, taiji, _ref;
 
 chai = require("chai");
 
@@ -7,6 +7,8 @@ expect = chai.expect;
 iit = it.only;
 
 idescribe = describe.only;
+
+nit = function() {};
 
 lib = '../../lib/';
 
@@ -76,7 +78,7 @@ describe("compile dyanmic syntax: ", function() {
     });
   });
   return describe("?-then statement: ", function() {
-    return xit('should compile ? xyz then x = abc', function() {
+    return nit('should compile ? xyz then x = abc', function() {
       return expect(compile('? xyz then x = abc')).to.have.string("[? [xyz] [then \"= x abc\"]]");
     });
   });

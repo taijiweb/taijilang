@@ -81,6 +81,8 @@ exports.convert = convert = (exp, env) ->
 
 exports.convertExps = convertExps = (exp, env) -> begin(for e in exp then convert e, env)
 exports.convertList = (exp, env) -> for e in exp then convert(e, env)
+
+# convert list! construct which contains x..., e.g. [x, y, z..., m]
 exports.convertEllipsisList = convertEllipsisList = (exp, env) ->
   if exp.length==0 then return []
   if exp.length==1
@@ -152,6 +154,7 @@ preprocessMetaConvertFnMap =
   # todo add more construct here ...
 
 taijiExports = ['jsvar!', 'exports']
+
 # use index! so taiji identifier like undefined? will not be illegal in javascript
 # if use 'attribute!' then "exports.undefined?" will be illegel javascript code
 exportsIndex = (name) -> ['index!',taijiExports , '"'+entity(name)+'"']
@@ -299,7 +302,9 @@ metaConvertFnMap =
   # macro call
   '#call!': (exp, metaExpList, env) ->
     args = []
-    for e in exp[2] then metaExpList.push metaTransform(e, metaExpList, env); args.push $atMetaExpList(env.metaIndex++)
+    for e in exp[2]
+      metaExpList.push metaTransform(e, metaExpList, env)
+      args.push $atMetaExpList(env.metaIndex++)
     #console.log code.text
     ['call!', metaTransform(exp[1], metaExpList, env), args]
 
@@ -309,14 +314,19 @@ metaConvertFnMap =
 
 # whehter head is a operator for meta expression?
 isMetaOperation = (head) -> (head[0]=='#' and head[1]!='-') or head=='include!' or head=='import!' or head=='export!'
-#isMetaOperation = (head) -> (head[0]=='#') or head=='include!' or head=='import!'
 
 # should be called by metaConvert while which is processing meta level code
 # exp should be the code which is known being at meta level.
 metaTransform = (exp, metaExpList, env) ->
   if Object.prototype.toString.call(exp) == '[object Array]'
     if exp.length==0 then return exp
-    else if (head=entity(exp[0])) and isMetaOperation(head) then metaConvert(exp, metaExpList, env)
+    head=entity(exp[0])
+    # todo: #call may need special process
+    if head=='#call!'
+      return ['list!', '"metaEval!"', metaConvert(exp, metaExpList, env)]
+    if head and isMetaOperation(head)
+      # no recursive embedded meta compilation
+      metaConvert(exp, metaExpList, env)
     else if typeof head == 'string' and head[..2]=='#-'
       #if exp[1] is array, will be unshifted 'list!' or get index form
       metaConvert exp[1], metaExpList, env
@@ -338,12 +348,6 @@ hasMeta = (exp) ->
         if (e0=entity(e[0])) and typeof e0 == 'string'
           if isMetaOperation(e0) then exp.hasMeta = true; return true
         if hasMeta(e) then exp.hasMeta = true; return true
-#          else
-#            for x in e[1...]
-#              if hasMeta(x) then exp.hasMeta = true; return true
-#        else if hasMeta(e0) then exp.hasMeta = true; return true
-#        for x in e[1...]
-#          if hasMeta(x) then exp.hasMeta = true; return true
   exp.hasMeta = false
   return false
 

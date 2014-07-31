@@ -96,6 +96,7 @@ exports['arguments'] =  ['jsvar!', 'arguments']
 #exports['__hasProp'] =  ['jsvar!', '__hasProp']
 
 exports['regexp!'] = (exp, env) -> ['regexp!', exp[0]]
+exports['eval'] = ['jsvar!', 'eval']
 
 exports["string!"] = convertInterpolatedString = (exp, env)->
   result = ['string!']

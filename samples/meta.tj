@@ -1,0 +1,22 @@
+taiji language 0.1
+
+array? #= (obj) -> ` (Object::toString.call(^obj) == '[object Array]')
+# {array? # 1}
+
+/*
+undefined? #= (obj) -> `((^obj)==undefined)
+# -> array? # []
+a #= 1; b #= 0
+undefined? # 1
+
+y = 1
+f #= (x) -> `((^x)>=y)
+
+f#(1)
+
+# {undefined?  a}
+# {undefined? # 1}
+
+# if a then console.log 1 else console.log 2
+# if b then console.log 1 else console.log 2
+*/

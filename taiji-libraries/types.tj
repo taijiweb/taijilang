@@ -6,7 +6,7 @@ taiji language 0.1
   macro definition will not generate code in the object code, but macro call will.
 
 undefined? #= (obj) -> `((^obj)==undefined)
-null? #= (obj) -> `((^obj)===null or (^obj)==undefined)
+null? #= (obj) -> `((^obj)==null or (^obj)==undefined)
 true? #= (obj) -> ` !!(^obj)
 false? #= (obj) -> ` !(^obj)
 boolean? #= (obj) -> ` (typeof (^obj) == "boolean")
