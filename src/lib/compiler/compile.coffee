@@ -134,23 +134,114 @@ metaInclude = (exp, metaExpList, env) ->
   metaTransform(exp, metaExpList, env) # when including, necessary use the same "env"
 
 preprocessMetaConvertFnMap =
+
   'include': metaInclude
+
   'if': (exp, metaExpList, env) ->
     ['if', metaTransform(exp[1], metaExpList, env),
      metaConvert(exp[2], metaExpList, env),
      metaConvert(exp[3], metaExpList, env)]
-  # #while is not tested still
+
+  # todo: # while, doWhile!, let, etc is not tested still
   'while': (exp, metaExpList, env) ->
     resultExpList = ['metaConvertVar!', 'whileResult']
     ['begin!',
-      ['var', resultExpList],
-      ['=', resultExpList, []],
-      ['while', metaTransform(exp[1], metaExpList, env) # while test:exp[1] body,
-        pushExp(resultExpList, metaConvert(exp[2], metaExpList, env))],
-      resultExpList]
-  #'let': (exp, metaExpList, env) ->
-  #'letrec': (exp, metaExpList, env) ->
-  #'letloop': (exp, metaExpList, env) ->
+     ['var', resultExpList],
+     ['=', resultExpList, []],
+     ['while', metaTransform(exp[1], metaExpList, env) # while test:exp[1] body,
+      pushExp(resultExpList, metaConvert(exp[2], metaExpList, env))],
+     resultExpList]
+
+  #['doWhile!', body, condition]
+  'doWhile!': (exp, metaExpList, env) ->
+    resultExpList = ['metaConvertVar!', 'whileResult']
+    ['begin!',
+     ['var', resultExpList],
+     ['=', resultExpList, []],
+     ['doWhile!',
+      pushExp(resultExpList, metaConvert(exp[1], metaExpList, env)),
+      metaTransform(exp[2], metaExpList, env) # while test:exp[1] body
+     ],
+     resultExpList]
+  # doUntil! is parsed to doWhile!
+
+  'cFor!': (exp, metaExpList, env) ->
+    resultExpList = ['metaConvertVar!', 'whileResult']
+    ['begin!',
+     ['var', resultExpList],
+     ['=', resultExpList, []],
+     ['cFor!',
+        metaTransform(exp[1], metaExpList, env),
+        metaTransform(exp[2], metaExpList, env),
+        metaTransform(exp[3], metaExpList, env),
+        pushExp(resultExpList, metaConvert(exp[4], metaExpList, env))
+     ],
+     resultExpList]
+
+  'forIn!': (exp, metaExpList, env) ->
+    resultExpList = ['metaConvertVar!', 'whileResult']
+    ['begin!',
+     ['var', resultExpList],
+     ['=', resultExpList, []],
+     ['forIn!',
+      metaTransform(exp[1], metaExpList, env),
+      metaTransform(exp[2], metaExpList, env),
+      pushExp(resultExpList, metaConvert(exp[3], metaExpList, env))
+     ],
+     resultExpList]
+
+  'forOf!': (exp, metaExpList, env) ->
+    resultExpList = ['metaConvertVar!', 'whileResult']
+    ['begin!',
+     ['var', resultExpList],
+     ['=', resultExpList, []],
+     ['forOf!',
+      metaTransform(exp[1], metaExpList, env),
+      metaTransform(exp[2], metaExpList, env),
+      pushExp(resultExpList, metaConvert(exp[3], metaExpList, env))
+     ],
+     resultExpList]
+
+  'forIn!!': (exp, metaExpList, env) ->
+    resultExpList = ['metaConvertVar!', 'whileResult']
+    ['begin!',
+     ['var', resultExpList],
+     ['=', resultExpList, []],
+     ['forIn!!',
+      metaTransform(exp[1], metaExpList, env),
+      metaTransform(exp[2], metaExpList, env),
+      metaTransform(exp[3], metaExpList, env),
+      pushExp(resultExpList, metaConvert(exp[4], metaExpList, env))
+     ],
+     resultExpList]
+
+  'forOf!': (exp, metaExpList, env) ->
+    resultExpList = ['metaConvertVar!', 'whileResult']
+    ['begin!',
+     ['var', resultExpList],
+     ['=', resultExpList, []],
+     ['forOf!!',
+      metaTransform(exp[1], metaExpList, env),
+      metaTransform(exp[2], metaExpList, env),
+      metaTransform(exp[3], metaExpList, env),
+      pushExp(resultExpList, metaConvert(exp[4], metaExpList, env))
+     ],
+     resultExpList]
+
+  'let': (exp, metaExpList, env) ->
+    ['let',
+     metaTransform(exp[1], metaExpList, env) #bindings is in meta level
+     metaConvert(exp[2], metaExpList, env)]
+  # {do ... where binding} is parsed to let binding body
+
+  'letrec!': (exp, metaExpList, env) ->
+    ['letrec!',
+     metaTransform(exp[1], metaExpList, env) #bindings is in meta level
+     metaConvert(exp[2], metaExpList, env)]
+
+  # do not consider letloop! while preprocessing
+  #'letloop!': (exp, metaExpList, env) ->
+
   # todo add more construct here ...
 
 taijiExports = ['jsvar!', 'exports']
@@ -266,7 +357,10 @@ metaConvertFnMap =
   # #& metaConvert exp and get the current expression(not metaConverted raw program)
   '#&': (exp, metaExpList, env) ->
     exp2 = metaTransform(exp, metaExpList, env)
-    metaExpList.push exp[1] # here exp[1] is raw object level expression, but metaExpList.push result in "#/" instead
+    # notice the difference between #& and #/
+    # here exp[1] is raw object level expression,
+    # but in "#/" metaExpList.push result instead
+    metaExpList.push exp[1]
     begin([exp2, $atMetaExpList(env.metaIndex++)])
 
   # assign in meta level, same as

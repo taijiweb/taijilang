@@ -329,6 +329,17 @@ describe("parser basic: ", function() {
       });
     });
   });
+  describe("parse escaped string symbol:", function() {
+    var parse;
+    parse = function(text) {
+      var parser, x;
+      parser = new Parser();
+      return x = parser.parse(text, parser.atom, 0).value;
+    };
+    return it("parse \\\"x...\"", function() {
+      return expect(str(parse('\\\"x...\"'))).to.equal('x...');
+    });
+  });
   describe("parse string: ", function() {
     var parse;
     parse = function(text) {

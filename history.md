@@ -1,73 +1,79 @@
 2014
+2014-8
+8-5
+  ? clause then body
+  more preprocess clause
+8-4
+  transform string to symbol by escaping it. e.g.: \"x...", \"...x", \"..."
 2014-7
-7-31
-  ":" at the end of line can replace 'then'
-  embedded meta compilation: #call, by evaluating the embedded meta code while running
-7-30
-  refactor definition ->, =>, etc,  now they produces [->, [params], oneStatement], instead of statement list
-  ellipsis subscript: a[1..3]; b[1...4]; a[...], a[..], x = a[..5]; x = a[...5]
-  \ lead symbol to escape it, e.g. \=, \+=, \>>, \/, etc, useful to write macros.
-  1...5, 1..5
-7-29
-  {x, y, z} = object
-  class is implemented
-7-28
-  forIn!, forOf!, forIn!!, forOf!!, jsForIn!
-7-27
-  fix bug: multi level quasiquote and unquote
-  replace row with column(thank to HackWaly)
-7-25 -> 7-26 
-  try to implementing class by meta language
-7-20 -> 7-24
-  reimplement module after reimplementing meta compilation 
-7-18 
-  found a group of new meta operator #-, #&, #&=
-7-17
-  (x, @y...) ->, (x, @y...) =>
-  refactor meta compilation once again, no metaResultList and assign when metaConvert
-7-16
-  refactor meta compilation; no -=>, ==> or macro, macro is just meta compilation
-  fix a bug in default parameter, should assign based on whether the paramerter is undefined
-7-15
-  do some marketing for taijilang, https://github.com/taijiweb/taijilang got 15 stars.
-------------------------------------------------------------------------------------------  
-7-14
-  taijilang 0.1.0 is released
-7-13
-  \-=> and,\-> and \=> becomes |-=> and, |-> and |=>
-  npm publish taiji 0.1.0
-  recreate git repository, commit and push to github\taijiweb\taijilang
-  prepare to release 0.1.0
-7-12
-  distinct -> and =>, in => this become self, similar to coffee-script
-  default parameter
-  call with ellipsis  arguments, e.g. a(x..., y...)
-  fix bug in [1 2]
-    fix bug in [1 2]:[1 2] is not compiled to [[1, 2]] any more, [1, 2] instead
+  7-31
+    ":" at the end of line can replace 'then'
+    embedded meta compilation: #call, by evaluating the embedded meta code while running
+  7-30
+    refactor definition ->, =>, etc,  now they produces [->, [params], oneStatement], instead of statement list
+    ellipsis subscript: a[1..3]; b[1...4]; a[...], a[..], x = a[..5]; x = a[...5]
+    \ lead symbol to escape it, e.g. \=, \+=, \>>, \/, etc, useful to write macros.
+    1...5, 1..5
+  7-29
+    {x, y, z} = object
+    class is implemented
+  7-28
+    forIn!, forOf!, forIn!!, forOf!!, jsForIn!
+  7-27
+    fix bug: multi level quasiquote and unquote
+    replace row with column(thank to HackWaly)
+  7-25 -> 7-26 
+    try to implementing class by meta language
+  7-20 -> 7-24
+    reimplement module after reimplementing meta compilation 
+  7-18 
+    found a group of new meta operator #-, #&, #&=
+  7-17
+    (x, @y...) ->, (x, @y...) =>
+    refactor meta compilation once again, no metaResultList and assign when metaConvert
+  7-16
+    refactor meta compilation; no -=>, ==> or macro, macro is just meta compilation
+    fix a bug in default parameter, should assign based on whether the paramerter is undefined
+  7-15
+    do some marketing for taijilang, https://github.com/taijiweb/taijilang got 15 stars.
+  ------------------------------------------------------------------------------------------  
+  7-14
+    taijilang 0.1.0 is released
+  7-13
+    \-=> and,\-> and \=> becomes |-=> and, |-> and |=>
+    npm publish taiji 0.1.0
+    recreate git repository, commit and push to github\taijiweb\taijilang
+    prepare to release 0.1.0
+  7-12
+    distinct -> and =>, in => this become self, similar to coffee-script
+    default parameter
+    call with ellipsis  arguments, e.g. a(x..., y...)
+    fix bug in [1 2]
+      fix bug in [1 2]:[1 2] is not compiled to [[1, 2]] any more, [1, 2] instead
 
-7-11
-  construct list with ellipsis operator
-    x = [x..., y..., z]
-  destructive list assign
-    [a, b] = x
-    [a..., b] = x
-    [a, b...] = x
-    [a, b..., c] = x
-    [x, y] = [1, 2]
-  use #= to do meta assignment for macro or meta value
-7-10
-  use @@ access outer scope var
-  refactor testcommand.coffee
-    define parse, compile, run = (outputPath?, filePath) ->
-  let [] becomes list, {} becomes expression block, {. .} becomes hash
-  let, if, while, for, switch, try, etc do'nt put conjunction in the parsed expression
-7-9 
-  prepare to release
-7-8
-  ensure new var name does not conflict with existed names
-  refactor meta to become a member of env
-7-1
-  trying to add module once again
+  7-11
+    construct list with ellipsis operator
+      x = [x..., y..., z]
+    destructive list assign
+      [a, b] = x
+      [a..., b] = x
+      [a, b...] = x
+      [a, b..., c] = x
+      [x, y] = [1, 2]
+    use #= to do meta assignment for macro or meta value
+  7-10
+    use @@ access outer scope var
+    refactor testcommand.coffee
+      define parse, compile, run = (outputPath?, filePath) ->
+    let [] becomes list, {} becomes expression block, {. .} becomes hash
+    let, if, while, for, switch, try, etc do'nt put conjunction in the parsed expression
+  7-9 
+    prepare to release
+  7-8
+    ensure new var name does not conflict with existed names
+    refactor meta to become a member of env
+  7-1
+    trying to add module once again
 
 2014-6
   6-21 -> 6-30: refactor transform.coffee: everything is expression

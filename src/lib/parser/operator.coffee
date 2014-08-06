@@ -119,7 +119,7 @@ error = (message) -> throw message
 
 exports.getOperatorExpression = getExpression = (exp) ->
   if not exp or not (type=exp.type) or type==NUMBER or type==IDENTIFIER or type==NON_INTERPOLATE_STRING or type==INTERPOLATE_STRING\
-      or type==BRACKET or type==DATA_BRACKET or type==CURVE
+      or type==BRACKET or type==DATA_BRACKET or type==CURVE or (type==SYMBOL and exp.escape)
     return exp
   if (value=exp.value)=='@' or value=='::' or value=='...' then return exp
   if type==PAREN or type==INDENT_EXPRESSION then return getExpression(exp.value)

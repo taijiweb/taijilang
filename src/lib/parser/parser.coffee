@@ -50,6 +50,8 @@ exports.Parser = ->
   text = null; cursor = 0; lineno = 1;  lineInfo = []; maxLine = -1
   memoMap = {}; atStatementHead = true
   environment = null
+  # used by ? clause then block to identifier end of dynamic block
+  endCursorOfDynamicBlockStack = []
 
   memoIndex = 0  # don't need be set in parser.init, memoMap need to be set instead.
 
@@ -105,6 +107,7 @@ exports.Parser = ->
     cursor = start; lineno = line1
     x
 
+  @setText = (x) -> parser.text = text = x; x
   @cursor = -> cursor
   @setCursor = (x) -> cursor = x
   @atStatementHead = -> atStatementHead
@@ -203,9 +206,9 @@ exports.Parser = ->
   @concatLine = ->
     if text[cursor]!='\\' then return
     if (c=text[cursor+1])!='\n' and c!='\r' then return
-    cursor++; bigSpc()
+    cursor++; bigSpace()
 
-  @inlineSpaceComment = spc = memo ->
+  @inlineSpaceComment = space = memo ->
     start = cursor; line1 = lineno
     while c=text[cursor]
       if c==' ' or c=='\t' then cursor++
@@ -220,13 +223,13 @@ exports.Parser = ->
 
   @multilineSpaceComment = memo ->
     start = cursor; line1 = lineno; indentColumn = lineInfo[lineno].indentColumn
-    spc();
+    space();
     multiStart = cursor
     while c=text[cursor]
       if newLineAndEmptyLines() then continue
       else if indentColumn!=lineInfo[lineno].indentColumn then break  # stop at indent or undent
       else if parser.indentBlockComment() then continue
-      else if parser.cBlockComment() then spc(); continue
+      else if parser.cBlockComment() then space(); continue
       else break
     if cursor==multiStart then cursor = start; return # fail if only meet inline space comment
     atStatementHead = true
@@ -236,7 +239,7 @@ exports.Parser = ->
     undent:indentColumn>lineInfo[lineno].indentColumn
     newline:indentColumn==lineInfo[lineno].indentColumn}
 
-  @spaceComment = bigSpc = memo -> parser.multilineSpaceComment() or spc()
+  @spaceComment = bigSpace = memo -> parser.multilineSpaceComment() or space()
 
   @regexp = memo ->
     if text[start=cursor]!='/' then return
@@ -448,10 +451,10 @@ exports.Parser = ->
   @paren = paren = memo ->
     start = cursor; line1 = lineno
     if text[cursor]!='(' then return else cursor++
-    space = bigSpc()
-    if space.undent then error 'unexpected undent while parsing parenethis "(...)"'
+    spac = bigSpace()
+    if spac.undent then error 'unexpected undent while parsing parenethis "(...)"'
     exp = parser.operatorExpression()
-    bigSpc()
+    bigSpace()
     if lineInfo[lineno].indentColumn<lineInfo[line1].indentColumn
       error 'expect ) indent equal to or more than ('
     if text[cursor]!=')' then error 'expect )' else cursor++
@@ -459,9 +462,9 @@ exports.Parser = ->
 
   @curve = curve = memo ->
     start = cursor; line1 = lineno; indentColumn = lineInfo[lineno].indentColumn
-    if text[cursor]!='{' or text[cursor+1]=='.' then return else cursor++; spc()
+    if text[cursor]!='{' or text[cursor+1]=='.' then return else cursor++; space()
     body = parser.lineBlock()
-    bigSpc()
+    bigSpace()
     if lineInfo[lineno].indentColumn<indentColumn then error 'unexpected undent while parsing parenethis "{...}"'
     if text[cursor]!='}' then error 'expect }' else cursor++
     if body.length==0 then {type: CURVE, value:'', start:start, stop: cursor, line1:line1, line:lineno}
@@ -474,7 +477,7 @@ exports.Parser = ->
     start = cursor; line1 = lineno; indentColumn = lineInfo[lineno].indentColumn
     if text[cursor]!='[' then return else cursor++
     expList = parser.lineBlock()
-    bigSpc()
+    bigSpace()
     if lineInfo[lineno].indentColumn<indentColumn then error 'unexpected undent while parsing parenethis "[...]"'
     if text[cursor]!=']' then error 'expect ]' else cursor++
     if expList then expList.unshift 'list!'
@@ -485,11 +488,11 @@ exports.Parser = ->
     start = cursor; line1 = lineno; indentColumn = lineInfo[lineno].indentColumn
     if text[cursor...cursor+2]!='[\\' then return else cursor+=2
     result = []
-    while (x=parser.dataLine()) and (space = bigSpc())
+    while (x=parser.dataLine()) and (spac = bigSpace())
       result.push x
       if lineInfo[lineno].indentColumn<indentColumn
         error 'expect to indent the same as or more than  the line of [\\'
-    spc()
+    space()
     if lineInfo[lineno].indentColumn<indentColumn then error 'unexpected undent while parsing parenethis "[\\ ...\\]"'
     if text[cursor...cursor+2]!='\\]' then error 'expect \\]' else cursor+=2
     result.unshift 'list!'
@@ -497,17 +500,17 @@ exports.Parser = ->
 
   @hashItem = memo ->
     start = cursor; line1 = lineno;
-    space1 = bigSpc(); js = false
+    space1 = bigSpace(); js = false
     if space1.indent then error 'unexpected indent'
     else if space1.undent then return rollback start, line1
     if key=parser.compactClauseExpression()
-      space2 = bigSpc()
+      space2 = bigSpace()
       if space2.multipleLine then error 'unexpected new line after hash key'
       if text[cursor]==':' and cursor++
         if (t=key.type)==IDENTIFIER or t==NUMBER or t==NON_INTERPOLATE_STRING then js = true
       else if text[cursor...cursor+2]=='=>' then cursor+=2
       else error 'expect : or => for hash item definition'
-      if (space=follow('spaceComment')) and space.indent
+      if (spac=follow('spaceComment')) and spac.indent
         value = ['hash!'].concat parser.hashBlock()
       else value = parser.clause()
       if not value then error 'expect value of hash item'
@@ -517,16 +520,16 @@ exports.Parser = ->
 
   @hashBlock = memo ->
     start = cursor; line1 = lineno; column1 = lineInfo[lineno].indentColumn
-    if (space=bigSpc()) and space.undent then return
-    result = []; if space.indent then indentColumn = lineInfo[lineno].indentColumn
+    if (spac=bigSpace()) and spac.undent then return
+    result = []; if spac.indent then indentColumn = lineInfo[lineno].indentColumn
     while (x=parser.hashItem()) and result.push x
-      spc()
+      space()
       if not (c=text[cursor]) then break
       if c=='.'
         if text[cursor+1]=='}' then break
         else error 'unexpected ".", expect .} to close hash block'
       if c==';' then cursor++
-      space2 = bigSpc()
+      space2 = bigSpace()
       if not (c=text[cursor]) or c=='}' then break
       if lineno==line1 then continue
       if (column=lineInfo[lineno].indentColumn)>column1
@@ -579,6 +582,22 @@ exports.Parser = ->
     if not sym then return rollback(start, line1)
     else sym.start = start; sym.escape = true; return sym
 
+  @escapeStringSymbol = ->
+    if text[cursor]!="\\" or (quote=text[cursor+1])!='"' and quote!="'" then return
+    cursor += 2; symbolStart = cursor
+    while 1
+      if not (c=text[cursor]) then error 'unexpected end of input while parsing escaped string symbol'
+      else if c=='\n' or c=='\r' then error 'unexpected new line in escaped string symbol'
+      else if c==' ' or c=='\t' then error 'spaces and tabs are not permitted in escaped string symbol'
+      else if c=='"'
+        if c==quote then cursor++; break
+        else error 'unexpected " in escaped string symbol'
+      else if c=="'"
+        if c==quote then cursor++; break
+        else error "unexpected ' in escaped string symbol"
+      cursor++
+    return {type: SYMBOL, escape: true, value: text[symbolStart...cursor-1], start:symbolStart-2, stop:cursor, line: lineno}
+
   @delimiterCharset = charset('|\\//:')
 
   @rightDelimiter = (delimiter) ->
@@ -602,7 +621,7 @@ exports.Parser = ->
     else if result=m[start] then cursor = result.stop; lineno = result.line; return result
     # if not found in memoMap, then parse
     if mode!='inStrExp' and x=parser.string()  then x.priority = 1000
-    else if x = (parser.identifier() or parser.number() or parser.regexp() or parser.delimiterExpression() or parser.escapeSymbol())
+    else if x = (parser.identifier() or parser.number() or parser.regexp() or parser.delimiterExpression() or parser.escapeSymbol() or parser.escapeStringSymbol())
       x.priority = 1000
     else if parser.defaultSymbolOfDefinition() then cursor = start; x = null
     else if x=parser.symbol() then x.priority = 1000
@@ -628,19 +647,19 @@ exports.Parser = ->
     start = cursor; line1 = lineno
     token = parser.operatorLiteral()
     if not token then return
-    space = bigSpc()
+    spac = bigSpace()
     if not text[cursor] then return rollback start, line1
     if parser.rightDelimiter() then return rollback start, line1
-    if space.newline or space.undent then return rollback start, line1
+    if spac.newline or spac.undent then return rollback start, line1
     op = hasOwnProperty.call(prefixOperatorDict, token.value) and prefixOperatorDict[token.value]
     if not op then return rollback start, line1
-    if space.indent
+    if spac.indent
       if mode!='opExp' then return rollback start, line1
       if text[cursor]=='.' then error 'unnecessary "."'
       priInc = 300
     else
       if text[cursor]=='.' and text[cursor+1]!='.'
-        if (space2=bigSpc()) and space2.value
+        if (space2=bigSpace()) and space2.value
           error 'unexpected spaces, new line or comment after "."'
         else if text[cursor+1]=='}' then return rollback start, line1
         else cursor++
@@ -652,7 +671,7 @@ exports.Parser = ->
     start = cursor
     if not (op=parser.symbol()) then return
     else if (op.value!='...')  then cursor = start; return
-    spc()
+    space()
     if (c=text[cursor])==',' or c==')' or c==']'
       #if x.priority>780 then cursor = start; return
       if priority>600 then cursor = start; return
@@ -669,9 +688,9 @@ exports.Parser = ->
     if not text[cursor] then return
     if op=parser.customSuffixOperator(mode, x, priority) then return op
     start = cursor; line1 = lineno
-    space = bigSpc()
-    if space.multiline or space.tailComment or space.concatLine then return rollback start, line1
-    if space.value then (if priority>=600 then return rollback start, line1  else priInc = 300)
+    spac = bigSpace()
+    if spac.multiline or spac.tailComment or spac.concatLine then return rollback start, line1
+    if spac.value then (if priority>=600 then return rollback start, line1  else priInc = 300)
     else priInc = 600; if text[cursor]=='.' and text[cursor+1]!='.' and text[cursor+1]!='}' then cursor++
     token =parser.operatorLiteral()
     if not token then return rollback start, line1
@@ -683,18 +702,18 @@ exports.Parser = ->
   rollback = (cur, line) -> cursor = cur; lineno = line; return
   rollbackToken = (token) -> cursor = token.start; lineno = token.line1 or token.line; return
 
-  parser.clauseEnd = (space) ->
+  parser.clauseEnd = (spac) ->
     start = cursor; line1 = lineno
-    space = space or bigSpc()
+    spac = spac or bigSpace()
     if (c=text[cursor])==','
-      if not space.inline then error '"," should not be at the head of a line'
+      if not spac.inline then error '"," should not be at the head of a line'
       cursor++; return true
-    if parser.sentenceEnd(space) or c==';' then  rollbackToken space; return true
+    if parser.sentenceEnd(spac) or c==';' then  rollbackToken spac; return true
 
-  parser.expressionEnd = (mode, space) ->
+  parser.expressionEnd = (mode, spac) ->
     if (not parser.isClauseExpression(mode)) then return
-    (c=text[cursor])==':' and text[cursor+1]!=':'  or parser.clauseEnd(space)\
-    or (mode=='comClExp' and space.value) or (mode=='inStrExp' and (c=="'" or c=='"'))
+    (c=text[cursor])==':' and text[cursor+1]!=':'  or parser.clauseEnd(spac)\
+    or (mode=='comClExp' and spac.value) or (mode=='inStrExp' and (c=="'" or c=='"'))
 
   parser.isClauseExpression = (mode) -> mode=='comClExp' or mode=='spClExp' or mode=='inStrExp'
 
@@ -707,7 +726,7 @@ exports.Parser = ->
     if not text[cursor] then return  # match compact expression in interpolated string, meet the end delimiter
     if op=parser.customBinaryOperator(mode, x, priority, leftAssoc) then return op
     start = cursor; line1 = lineno
-    if parser.expressionEnd(mode, space1=bigSpc()) then return rollback start, line1
+    if parser.expressionEnd(mode, space1=bigSpace()) then return rollback start, line1
     if space1.indent or space1.newline then priInc = 0
     else if undentFromLine(line1) then return rollback start, line1
     else if space1.value then priInc = 300
@@ -725,7 +744,7 @@ exports.Parser = ->
       else cursor++
 #      else if not meetDot
 #        error 'unexpected "." after "'+opToken.value+'" which doese not follow "."'
-    if parser.expressionEnd(mode, space2=bigSpc()) then return rollback start, line1
+    if parser.expressionEnd(mode, space2=bigSpace()) then return rollback start, line1
     if space2.undent then error 'unexpected undent after binary operator "'+opToken.value+'"'
     if not c then error 'unexpected end of input, expect right operand after binary operator'
     if c==')' or c==']' or c==','
@@ -747,7 +766,7 @@ exports.Parser = ->
         else if space1.indent
           priInc = 0; indentStart = cursor; indentLine = lineno
           indentExp = parser.recursiveExpression(cursor)(mode, 0, true)
-          if  (space3=bigSpc()) and not space3.undent and text[cursor] and text[cursor]!=')'
+          if  (space3=bigSpace()) and not space3.undent and text[cursor] and text[cursor]!=')'
             error 'expect an undent after a indented block expression'
           indentExp = {type: INDENT_EXPRESSION, value: indentExp, priority:1000}
           tag = 'expr('+mode+','+300+','+(0+!op.rightAssoc)+')'
@@ -769,7 +788,7 @@ exports.Parser = ->
       if space1.indent
         priInc = 0; indentStart = cursor; indentLine = lineno
         indentExp = parser.recursiveExpression(cursor)(mode, 0, true)
-        if  (space3=bigSpc()) and not space3.undent and text[cursor] and text[cursor]!=')'
+        if  (space3=bigSpace()) and not space3.undent and text[cursor] and text[cursor]!=')'
           error 'expect an undent after a indented block expression'
         indentExp = {type: INDENT_EXPRESSION, value: indentExp, priority:1000}
         tag = 'expr('+mode+','+300+','+(0+!op.rightAssoc)+')'
@@ -787,7 +806,7 @@ exports.Parser = ->
 
   @binaryCallOperator = (mode, x, priority, leftAssoc) ->
     start = cursor; line1 = lineno
-    if (space=bigSpc()) and space.value and parser.followParenArguments()
+    if (spac=bigSpace()) and spac.value and parser.followParenArguments()
       if mode=='opExp'
         throw '() as call operator should tightly close to the left caller'
       else rollback start, line1;  return
@@ -797,9 +816,9 @@ exports.Parser = ->
 
   @binaryMacroCallOperator = (mode, x, priority, leftAssoc) ->
     start = cursor; line1 = lineno
-    space1=spc()
+    space1=space()
     if text[cursor]!='#' then return rollback start, line1
-    cursor++; space2 = spc();
+    cursor++; space2 = space();
     if !!space2.value != !!space1.value and text[cursor]=='('
       error 'should have spaces on both or neither sides of symbol around "#"'
     if not parser.followParenArguments() then return rollback start, line1
@@ -809,7 +828,7 @@ exports.Parser = ->
 
   @binaryIndexOperator = (mode, x, priority, leftAssoc) ->
     start = cursor; line1 = lineno
-    if (space=bigSpc()) and space.value and follow('bracket')
+    if (spac=bigSpace()) and spac.value and follow('bracket')
       if mode=='opExp'
         throw '[] as subscript should tightly close to left operand'
       else rollback start, line1;  return
@@ -820,17 +839,17 @@ exports.Parser = ->
   # a.b, fn(x, y).b
   @binaryAttributeOperator = (mode, x, priority, leftAssoc) ->
     start = cursor; line1 = lineno
-    if (space=bigSpc()) and space.value
+    if (spac=bigSpace()) and spac.value
       if 500<=priority then return rollback start, line1
       if not (text[cursor]=='.' and text[cursor+1]!='.') then return rollback start, line1
       if text[cursor]=='}' then  return rollback start, line1
       cursor++
-      if not (space2=bigSpc())
+      if not (space2=bigSpace())
         error 'expect spaces after "." because there are spaces before it'
       else return {symbol:'attribute!', type: SYMBOL, priority: 500}
     else if 800>priority and (text[cursor]=='.' and text[cursor+1]!='.') and ++cursor
       if text[cursor]=='}' then  return rollback start, line1
-      if (space=bigSpc()) and space.value
+      if (spac=bigSpace()) and spac.value
         error 'unexpected spaces after "." because there are no space before it'
       else if follow('symbol') then return
       else return {symbol:'attribute!', type: SYMBOL, priority: 800}
@@ -936,34 +955,61 @@ exports.Parser = ->
         param
       if not meetError then result
 
-  evalWhileParsing = (clause) ->
-    new Function('__$taiji_$_$parser__', compileExp(['return',clause], environment))(parser)
-
-  # the head of expression will be convert to attribute of __$taiji_$_$parser__
-  evalParserAttribute = (clause) ->
-    code=compileExp(['return', ['?/', clause]], environment)
-    new Function('__$taiji_$_$parser__', code)(parser)
-
-  evalParserExpression = (clause) ->
-    code=compileExp(['return', ['?!', clause]], environment)
-    new Function('__$taiji_$_$parser__', code)(parser)
-
   leadWordClauseMap =
-    '??':  evalWhileParsing
-    '?/':  evalParserAttribute
-    '?!':  evalParserExpression
+    # eval while parsing, call by ?? clause
+    # e.g.
+    # ?? ?text()
+    # ?? ?cursor()
+    # ?? ?number()1234
+    '??':  (clause) ->
+      code = compileExp(['return', clause], environment)
+      new Function('__$taiji_$_$parser__', code)(parser)
+
+    # the head of clause will be convert to attribute of __$taiji_$_$parser__
+    # see exports['?/'] and convertParserAttribute in core.coffee
+    # {?/ matcheA(x, y) } will be converted to {?? ?matchA(x, y)}
+    '?/': (clause) ->
+      # notice the difference between ?? and ?/
+      # here ['?/', clause] is compiled
+      code=compileExp(['return', ['?/', clause]], environment)
+      new Function('__$taiji_$_$parser__', code)(parser)
+
+    # identifier in clause will be convert to attribute of __$taiji_$_$parser__
+    # see exports['?!'] and convertParserAttribute in core.coffee
+    # {?! matcheA(x, y) } will be converted to {?? ?matchA(?x, ?y)}
+    '?!': (clause) ->
+      code=compileExp(['return', ['?!', clause]], environment)
+      new Function('__$taiji_$_$parser__', code)(parser)
+
     '~':  (clause) -> ['quote!', clause]
     '`':  (clause) -> ['quasiquote!', clause]
     '^':  (clause) -> ['unquote!', clause]
     '^&': (clause) -> ['unquote-splice', clause]
+
+    # preprocess opertator
+    # see # see metaConvertFnMap['#'] and preprocessMetaConvertFnMap for more information
     '#':  (clause) -> ['#', clause]
+
+    # evaluate in compile time
+    # see metaConvertFnMap['##']
     '##':  (clause) -> ['##', clause]
-    '#.': (clause) -> ['#.', clause]
+
+    # evaluate in both compile time and run time
+    # see metaConvertFnMap['#/']
+    '#/': (clause) -> ['#/', clause]
+
+    # escape from compile time to runtime
+    # see metaConvertFnMap['#-']
+    '#-': (clause) -> ['#/', clause]
+
+    # #& metaConvert exp and get the current expression(not metaConverted raw program)
+    # see metaConvertFnMap['#&']
+    '#&': (clause) -> ['#&', clause]
 
   @leadWordClause = ->
     start = cursor; line1 = lineno
     if not (key = parser.symbol() or parser.identifier()) then return
-    if (space=spc()) and (not space.value or space.undent) then return rollback start, line1
+    if (spac=space()) and (not spac.value or spac.undent) then return rollback start, line1
     if not (fn=leadWordClauseMap[key.value]) then return rollback start, line1
     clause = fn(parser.clause())
     if clause and typeof clause=='object'
@@ -975,7 +1021,7 @@ exports.Parser = ->
     if not (lbl=parser.jsIdentifier()) then return
     if text[cursor]!='#' then cursor = start; return
     cursor++
-    if (space=bigSpc()) and (not space.value or space.undent or space.newline)  then cursor = start; return
+    if (spac=bigSpace()) and (not spac.value or spac.undent or spac.newline)  then cursor = start; return
     if clause=parser.clause() then clause = ['label!', lbl, clause]
     else clause = ['label!', lbl, '']
     extend clause, {start:start, stop:cursor, line1:line1, line:lineno}
@@ -992,14 +1038,14 @@ exports.Parser = ->
     if options.optionalWord? then optionalWord = options.optionalWord
     else optionalWord = word=='then'
     indentColumn = lineInfo[line1].indentColumn
-    space = bigSpc(); column = lineInfo[lineno].indentColumn
+    spac = bigSpace(); column = lineInfo[lineno].indentColumn
     if column==indentColumn and lineno!=line1 and not isHeadStatement
       if not optionalClause
         error 'meet new line, expect inline keyword "'+word+'" for inline statement'
-      else rollbackToken space; return
+      else rollbackToken spac; return
     if column<indentColumn
       if not optionalClause then error 'unexpected undent, expect '+word
-      else rollbackToken space; return
+      else rollbackToken spac; return
     else if column>indentColumn
       if options.indentColumn
         if column!=options.indentColumn then error 'unconsistent indent'
@@ -1008,13 +1054,13 @@ exports.Parser = ->
     meetWord = w and w.value==word
     if not meetWord
       if isConj(w)
-        if optionalClause then rollbackToken space; return
+        if optionalClause then rollbackToken spac; return
         else  error 'unexpected '+w.value+', expect '+word+' clause'
       else if (not optionalWord and not optionalClause) or (
-          not optionalClause and optionalWord and space.inline)
+          not optionalClause and optionalWord and spac.inline)
         if word!='then' or not options.colonAtEndOfLine then error 'expect keyword '+word
-      else if not optionalWord then return rollbackToken space
-      else if optionalClause then return rollbackToken space
+      else if not optionalWord then return rollbackToken spac
+      else if optionalClause then return rollbackToken spac
     if not meetWord then rollback start2, line2
     clauseFn()
 
@@ -1026,17 +1072,17 @@ exports.Parser = ->
   finallyClause  = (line1, isHeadStatement, options) -> conjClause 'finally', line1, isHeadStatement, options
   catchClauseOfTryStatement = (line1, isHeadStatement, options) ->
     expectIndentConj 'catch', line1, isHeadStatement, options, ->
-      line2 = lineno; spc(); atStatementHead = false
-      catchVar = parser.identifier(); spc(); then_ = thenClause(line2, false, {})
+      line2 = lineno; space(); atStatementHead = false
+      catchVar = parser.identifier(); space(); then_ = thenClause(line2, false, {})
       [catchVar, then_]
 
   caseClauseOfSwitchStatement = (line1, isHeadStatement, options) ->
     expectIndentConj 'case', line1, isHeadStatement, options, ->
-      line2 = lineno; spc(); atStatementHead = false
+      line2 = lineno; space(); atStatementHead = false
       exp = parser.compactClauseExpression()
       #if exp.isBracket then exp.shift()
       if exp[0]!='list!' then exp = ['list!', exp]
-      spc(); expectChar(':', 'expect ":" after case values')
+      space(); expectChar(':', 'expect ":" after case values')
       body = parser.block() or parser.lineBlock()
       [exp, begin(body)]
 
@@ -1047,8 +1093,8 @@ exports.Parser = ->
 
   # if test then action else action
   keywordThenElseStatement = (keyword) -> (isHeadStatement) ->
-    line1 = lineno; spc()
-    if not (test = parser.clause())? then error 'expect a clause after "'+keyword+'"'
+    line1 = lineno; space()
+    if not (test=parser.clause())? then error 'expect a clause after "'+keyword+'"'
     then_ = thenClause(line1, isHeadStatement, options={colonAtEndOfLine: test.colonAtEndOfLine})
     else_ = elseClause(line1, isHeadStatement, options)
     if else_ then [keyword, test, then_, else_]
@@ -1056,7 +1102,7 @@ exports.Parser = ->
 
   # while! test body...
   keywordTestExpressionBodyStatement = (keyword) -> (isHeadStatement) ->
-    line1 = lineno; spc()
+    line1 = lineno; space()
     if not (test = parser.compactClauseExpression())
       error 'expect a compact clause expression after "'+keyword+'"'
     if not (body = parser.lineBlock()) then error 'expect the body for while! statement'
@@ -1064,23 +1110,23 @@ exports.Parser = ->
 
   # throw or return value
   throwReturnStatement = (keyword) -> (isHeadStatement) ->
-    spc(); if text[cursor]==':' and text[cursor+1]!=':' then cursor++; spc();
+    space(); if text[cursor]==':' and text[cursor+1]!=':' then cursor++; space();
     if clause = parser.clause() then [keyword, clause] else [keyword]
 
   # break; continue
   breakContinueStatement = (keyword) -> (isHeadStatement) ->
-    spc()
+    space()
     if lbl = jsIdentifier() then [keyword, lbl] else [keyword]
 
   letLikeStatement = (keyword) -> (isHeadStatement) ->
-    line1 = lineno; spc()
+    line1 = lineno; space()
     varDesc = parser.varInitList() or parser.clause()
     [keyword, varDesc, thenClause(line1, isHeadStatement, {})]
 
   # no cursor and lineno is attached in result, so can not be memorized directly.
   @identifierLine = ->
     result = []
-    while spc() and not parser.lineEnd() and not follow('newline') and text[cursor]!=';'
+    while space() and not parser.lineEnd() and not follow('newline') and text[cursor]!=';'
       if x=parser.identifier() then result.push x
       else error 'expect an identifier'
     result
@@ -1089,39 +1135,39 @@ exports.Parser = ->
   @identifierList = ->
     line1 = lineno; indentColumn = lineInfo[line1].indentColumn
     result = parser.identifierLine()
-    space = bigSpc();
+    spac = bigSpace();
     if (row0=lineInfo[lineno].indentColumn)<=indentColumn
-      rollbackToken space; return result
+      rollbackToken spac; return result
     if text[cursor]==';' then return result
     while varList=parser.identifierLine()
       result.push.apply result, varList
-      space = bigSpc()
-      if (column=lineInfo[lineno].indentColumn)<=indentColumn then rollbackToken space; break
+      spac = bigSpace()
+      if (column=lineInfo[lineno].indentColumn)<=indentColumn then rollbackToken spac; break
       else if column!=row0 then error 'inconsistent indent of multiple identifiers lines after extern!'
       if text[cursor]==';' then break
     result
 
   @varInit = ->
     if not (id = parser.identifier()) then return
-    spc()
+    space()
     if text[cursor]=='=' and cursor++
       if value=parser.block() then value = begin(value)
       else if not(value=parser.clause()) then error 'expect a value after "=" in variable initilization'
-    spc()
+    space()
     if text[cursor]==',' then cursor++
     if not value then return id else return [id, '=', value]
 
   @varInitList = ->
     start = cursor; line1 = lineno; result = []
     indentColumn0 = lineInfo[lineno].indentColumn
-    space = bigSpc()
+    spac = bigSpace()
     column = lineInfo[lineno].indentColumn
     if column>indentColumn0 then indentColumn1 = column
-    else if space.undent or space.newline then error 'unexpected new line, expect at least one variable in var statement'
+    else if spac.undent or spac.newline then error 'unexpected new line, expect at least one variable in var statement'
     while 1
       if x=parser.varInit() then result.push x
       else break
-      space1 = bigSpc()
+      space1 = bigSpace()
       column = lineInfo[lineno].indentColumn
       if not text[cursor] or text[cursor]==';' or follow 'rightDelimiter' then break
       if lineno==line1 then continue
@@ -1149,13 +1195,13 @@ exports.Parser = ->
       if sym
         error 'file path should not follow "#" or "#/" immediately in import! statement, expect variable name instead'
       else return  rollback(start, lineno)
-    spc()
+    space()
     start1 = cursor; line2 = lineno
     if (as_=taijiIdentifier())
       if as_.value=='from' then as_ = undefined; rollback start1, line2
       else if as_.value!='as' then error 'unexpected word '+as_.value+', expect "as", "," or "from [module path...]"'
       else
-        spc()
+        space()
         sym2 = parser.symbol()
         if sym2 and (symValue2=sym2.value)!='#' and symValue2!='#/'
           error 'unexpected symbol after "as" in import! statement'
@@ -1172,9 +1218,9 @@ exports.Parser = ->
             error 'runtime variable can not be imported as meta variable'
           else if symValue2=='#/'
             'runtime variable can not be imported as both meta and runtime variable'
-        spc(); asName = expectIdentifier()
+        space(); asName = expectIdentifier()
         if symValue=='#/' and not symValue2
-          spc(); sym3 = parser.symbol()
+          space(); sym3 = parser.symbol()
           if not sym3 then error 'expect # after "#/'+name.value+' as '+asName.value+'"'
           else if sym3.value!='#' then error 'unexpected '+sym3.value+' after "#/'+name.value+'as '+asName.value+'"'
           asName2 = expectIdentifier()
@@ -1191,17 +1237,17 @@ exports.Parser = ->
 
   @exportItem = ->
     runtime = undefined
-    if text[cursor...cursor+2]=='#/' then cursor+=2; runtime = 'runtime'; meta = 'meta'; spc()
-    else if (c=text[cursor])=='#' then cursor++; meta = 'meta'; spc()
+    if text[cursor...cursor+2]=='#/' then cursor+=2; runtime = 'runtime'; meta = 'meta'; space()
+    else if (c=text[cursor])=='#' then cursor++; meta = 'meta'; space()
     else runtime = 'runtime'
     if meta then name = expectIdentifier()
     else if not (name = taijiIdentifier()) then return
-    spc()
+    space()
     if text[cursor]=='=' and cursor++
-      spc(); value = parser.spaceClauseExpression(); spc()
+      space(); value = parser.spaceClauseExpression(); space()
     [name, value, runtime, meta]
 
-  @spaceComma = spaceComma = -> spc(); if text[cursor]==',' then cursor++; spc(); return true
+  @spaceComma = spaceComma = -> space(); if text[cursor]==',' then cursor++; space(); return true
   @seperatorList = seperatorList = (item, seperator) ->
     if typeof item=='string' then item = parser[item]
     ->
@@ -1221,32 +1267,56 @@ exports.Parser = ->
     else error message or 'expect identifier'
 
   @expectOneOfWords = expectOneOfWords = (words...) ->
-    spc(); token = taijiIdentifier();
+    space(); token = taijiIdentifier();
     if not token then error 'expect one of the words: '+words.join(' ')
     value = token.value; i = 0; length = words.length;
     while i<length then (if value==words[i] then return words[i] else i++)
     error 'expect one of the words: '+words.join(' ')
 
   maybeOneOfWords = (words...) ->
-    spc(); token = taijiIdentifier();
+    space(); token = taijiIdentifier();
     if not token then return
     value = token.value; i = 0; length = words.length;
     while i<length then (if value==words[i] then return words[i] else i++)
     return
-  expectWord = (word) -> spc(); (if not (token=taijiIdentifier()) or token.value!=word then error 'expect '+ word); word
+  expectWord = (word) -> space(); (if not (token=taijiIdentifier()) or token.value!=word then error 'expect '+ word); word
   word = (w) ->
-    start = cursor; line1 = lineno; spc()
+    start = cursor; line1 = lineno; space()
     if not token=taijiIdentifier() then return
     if token.value!=w then return rollback(start, line1)
     return token
 
   @expectChar = expectChar = (c) -> if text[cursor]==c then cursor++ else error 'expect "'+c+'"'
 
+  @endOfDynamicBlock = @eob = ->
+    if cursor==endCursorOfDynamicBlockStack[-1] then return true
+    else return false
+
   @keywordToStatementMap =
     '?': (isHeadStatement) ->
-      if not spc().value then return
-      line1 = lineno
-      ['?', parser.lineBlock(), thenClause(line1, isHeadStatement, {})]
+      start = cursor; line1 = lineno
+      if not space().value then return
+      leadClause = parser.clause()
+      code = compileExp(['return', ['?/', leadClause]], environment)
+      space(); indentColumn = lineInfo[lineno].indentColumn
+      if expectWord('then') or (text[cursor]==':' and cursor++)
+        space()
+        if newline()
+          blockStopLineno = lineno
+          while lineInfo[blockStopLineno].indentColumn>indentColumn and blockStopLineno<maxLine
+            blockStopLineno++
+          cursorAtEndOfDynamicBlock = lineInfo[blockStopLineno].indentColumn or text.length
+        else
+          blockStopLineno = lineno+1
+          cursorAtEndOfDynamicBlock = lineInfo[blockStopLineno].indentColumn or text.length
+      else error 'expect "then" or ":"'
+      endCursorOfDynamicBlockStack.push cursorAtEndOfDynamicBlock
+      result = new Function('__$taiji_$_$parser__', code)(parser)
+      endCursorOfDynamicBlockStack.pop()
+      cursor = cursorAtEndOfDynamicBlock; lineno = blockStopLineno
+      if Object::toString.call(result) == '[object Array]'
+        extend result, {start: start, stop:cursor, line1: line, lineno:lineno}
+      else {value: result, start: start, stop:cursor, line1: line1, lineno:lineno}
 
     'break': breakContinueStatement('break')
     'continue': breakContinueStatement('continue')
@@ -1257,22 +1327,22 @@ exports.Parser = ->
     'var': (isHeadStatement) -> ['var'].concat parser.varInitList()
     'extern!': (isHeadStatement) -> ['extern!'].concat parser.identifierList()
     'include!': (isHeadStatement) ->
-      spc()
+      space()
       if with_ = word('with')
-        spc(); parseMethod = expect('taijiIdentifier', 'expect a parser method')
-      spc(); filePath = expect('string', 'expect a file path')
+        space(); parseMethod = expect('taijiIdentifier', 'expect a parser method')
+      space(); filePath = expect('string', 'expect a file path')
       ['include!', filePath, parseMethod]
 
     # import [#/]name [as [#/]name] ... from path as [#/]name #name [with method]
     'import!': (isHeadStatement) ->
-      spc()
-      items = parser.importItemList(); spc()
+      space()
+      items = parser.importItemList(); space()
       if items.length then from_ = expectWord('from') # or items[0][2]
       else from_ = word('from')
       #if not from_ then return ['import!', names[0][0], names[0][1], []]
-      spc(); srcModule = parser.string(); spc();
+      space(); srcModule = parser.string(); space();
       if as_ = literal('as')
-        spc()
+        space()
         sym = parser.symbol()
         if sym
           if (symValue=sym.value)!='#' and sym.value!='#/'
@@ -1280,16 +1350,16 @@ exports.Parser = ->
         alias = expectIdentifier('expect an alias for module')
         if symValue=='#' then metaAlias = alias; alias = undefined
         else if symValue=='#/' then metaAlias = alias
-        spc()
+        space()
         sym2 = parser.symbol()
         if sym and sym2 then error 'unexpected symbol after meta alias'
-        spc(); alias2 = parser.identifier()
+        space(); alias2 = parser.identifier()
         # sym is the first symbol # or #/
         if sym  and alias2 then 'unexpected identifier '+alias2+' after '+symValue+alias
         if alias2 then metaAlias = alias2
-        spc()
+        space()
       if with_ = word('with')
-        spc(); parseMethod = expect('taijiIdentifier', 'expect a parser method')
+        space(); parseMethod = expect('taijiIdentifier', 'expect a parser method')
       runtimeImportList = []; metaImportList = []
       for item in items
         for x in item
@@ -1297,7 +1367,7 @@ exports.Parser = ->
           else runtimeImportList.push x
       ['import!'].concat [srcModule, parseMethod, alias, metaAlias, runtimeImportList, metaImportList]
 
-    'export!': (isHeadStatement) -> spc(); ['export!'].concat parser.exportItemList()
+    'export!': (isHeadStatement) -> space(); ['export!'].concat parser.exportItemList()
 
     'let': letLikeStatement('let')
     'letrec!': letLikeStatement('letrec!')
@@ -1307,18 +1377,18 @@ exports.Parser = ->
     'while!': keywordTestExpressionBodyStatement('while!')
 
     'for': (isHeadStatement) ->
-      line1 = lineno; spc()
+      line1 = lineno; space()
       if text[cursor]=='(' and cursor++
-        init = parser.clause(); spc(); expectChar(';')
-        test = parser.clause(); spc(); expectChar(';')
-        step = parser.clause(); spc(); expectChar(')')
+        init = parser.clause(); space(); expectChar(';')
+        test = parser.clause(); space(); expectChar(';')
+        step = parser.clause(); space(); expectChar(')')
         return ['cFor!', init, test, step, thenClause(line1, isHeadStatement, {})]
-      name1 = expectIdentifier(); spc()
-      if text[cursor]==',' then cursor++; spc()
+      name1 = expectIdentifier(); space()
+      if text[cursor]==',' then cursor++; space()
       if (token=jsIdentifier()) and value=token.value
         if value=='in' or value=='of' then inOf = value
-        else name2 = value; spc(); inOf = expectOneOfWords('in', 'of')
-        spc(); obj = parser.clause()
+        else name2 = value; space(); inOf = expectOneOfWords('in', 'of')
+        space(); obj = parser.clause()
       if name2
         if inOf=='in' then kw = 'forIn!!' else kw = 'forOf!!'
         [kw, name1, name2, obj, thenClause(line1, isHeadStatement, {})]
@@ -1327,7 +1397,7 @@ exports.Parser = ->
         [kw, name1, obj, thenClause(line1, isHeadStatement, {})]
 
     'do': (isHeadStatement) ->
-      line1 = lineno; spc(); indentColumn = lineInfo[lineno].indentColumn
+      line1 = lineno; space(); indentColumn = lineInfo[lineno].indentColumn
       body = parser.lineBlock()
       if newlineFromLine(line1, lineno) and not isHeadStatement then return body
       if not (conj=maybeOneOfWords('where', 'when', 'until'))
@@ -1357,10 +1427,10 @@ exports.Parser = ->
       ['try', begin(test), catchClauses, else_, final]
 
     'class': (isHeadStatement) ->
-      line1 = lineno; spc();
+      line1 = lineno; space();
       # class name should be provided explicitly
-      name = expect('identifier', 'expect class name'); spc()
-      if parser.conjunction('extends') then spc(); superClass = parser.identifier(); spc()
+      name = expect('identifier', 'expect class name'); space()
+      if parser.conjunction('extends') then space(); superClass = parser.identifier(); space()
       else supers = undefined
       if followNewline() and newlineFromLine(line1, line1+1) then body = undefined
       else body = parser.lineBlock()
@@ -1392,7 +1462,7 @@ exports.Parser = ->
   @defaultAssignSymbol = -> (x=parser.symbol()) and parser.isAssign(x.value) and x
 
   @defaultAssignRightSide = memo ->
-    space2 = bigSpc()
+    space2 = bigSpace()
     if space2.undent then error 'unexpected undent after assign symbol'+symbol.value
     else if space2.newline then error 'unexpected new line after assign symbol'+symbol.value
     parser.block() or parser.clause()
@@ -1400,16 +1470,16 @@ exports.Parser = ->
   @makeAssignClause = (assignLeftSide, assignSymbol, assignRightSide) -> ->
     start = cursor; line1 = lineno
     if not (left=assignLeftSide()) then return
-    space = spc()
+    spac = space()
     if not (token=assignSymbol()) then return rollback start, line1
-    right = assignRightSide(space)
+    right = assignRightSide(spac)
     if left.type==CURVE
       eLeft = entity(left)
       if typeof eLeft=='string'
         if eLeft[0]=='"' then error 'unexpected left side of assign: '+eLeft
         left = [left]
       else if eLeft and eLeft.push
-        if eLeft[0]=='begin!' then error 'syntax error: left side of assign should be a list of variable names separated by space'
+        if eLeft[0]=='begin!' then error 'syntax error: left side of assign should be a list of variable names separated by spac'
       else error 'unexpected left side of assign'
       return ['hashAssign!', left, right]
     extend [token, left, right], {start:start, cursor:cursor, line1:line1, line:lineno}
@@ -1425,12 +1495,12 @@ exports.Parser = ->
   @colonClause = memo ->
     start = cursor; line1 = lineno
     if not (result = parser.sequenceClause()) then return
-    spc()
+    space()
     if (x=parser.symbol()) and x.value==':'
-      space = bigSpc()
-      if space.newline then error '":" should not before a new line'
-      else if space.undent then error '":" should not be before undent'
-      else if space.indent
+      spac = bigSpace()
+      if spac.newline then error '":" should not before a new line'
+      else if spac.undent then error '":" should not be before undent'
+      else if spac.indent
         result.colonAtEndOfLine = true
         return result
       if not result.push or result.isBracket then result = [result]
@@ -1442,7 +1512,7 @@ exports.Parser = ->
   @indentClause = memo ->
     start = cursor; line1 = lineno
     if not (head=parser.sequenceClause()) then return
-    space = bigSpc(); if not space.indent then return rollback start, line1
+    spac = bigSpace(); if not spac.indent then return rollback start, line1
     if parser.lineEnd() then return rollback start, line1
     if not (blk=parser.blockWithoutIndentHead()) then return rollback start, line1
     if not head.push then head = [head]; head.start = start; head.line1 = line1
@@ -1452,8 +1522,8 @@ exports.Parser = ->
   @macroCallClause = memo ->
     start = cursor; line1 = lineno
     if (head=parser.compactClauseExpression())
-       if (space1=spc()) and not space1.value then return rollback(start, line1)
-       if text[cursor]=='#' and cursor++ and ((space=spc()) and space.value or text[cursor]=='\n' or text[cursor]=='\r')
+       if (space1=space()) and not space1.value then return rollback(start, line1)
+       if text[cursor]=='#' and cursor++ and ((spac=space()) and spac.value or text[cursor]=='\n' or text[cursor]=='\r')
           if blk = parser.block()
             return extend ['#call!', head, blk], {cursor:start, line1:lineno, stop:cursor, line:lineno}
           else if args = parser.clauses()
@@ -1462,7 +1532,7 @@ exports.Parser = ->
 
   @unaryExpressionClause = memo ->
     start = cursor; line1 = lineno
-    if (head=parser.compactClauseExpression()) and spc() and (x=parser.spaceClauseExpression()) and parser.clauseEnd()
+    if (head=parser.compactClauseExpression()) and space() and (x=parser.spaceClauseExpression()) and parser.clauseEnd()
       if text[cursor]==',' then cursor++
       return extend [getOperatorExpression(head), getOperatorExpression(x)], {start:start, stop:cursor, line1:line1, line:lineno}
     return rollback start, line1
@@ -1492,9 +1562,9 @@ exports.Parser = ->
   @makeDefinition = (parameterList, symbolOfDefinition, definitionBody) -> memo ->
     start = cursor; line1 = lineno
     if not (parameters=parameterList()) then parameters = []
-    spc()
+    space()
     if not (token=symbolOfDefinition()) then return rollback start, line1
-    spc()
+    space()
     body = definitionBody()
     extend [token, parameters, body], {start:start, stop:cursor, line1:line1, line:lineno}
 
@@ -1508,8 +1578,8 @@ exports.Parser = ->
     if x or (x=parser.defaultDefinition()) then return x
 
   @clauseItem = ->
-    start = cursor; line1 = lineno; space = bigSpc()
-    if not space.inline then rollbackToken space; return
+    start = cursor; line1 = lineno; spac = bigSpace()
+    if not spac.inline then rollbackToken spac; return
     if parser.clauseEnd() then return
     if text[cursor]==':' and text[cursor+1]!=':' then return
     if (item=parser.definition()) then return item
@@ -1539,10 +1609,10 @@ exports.Parser = ->
 
   @clauses = -> result = []; (while clause=parser.clause() then result.push clause); return result
 
-  @sentenceEnd = (space) ->
-    space=space or bigSpc()
+  @sentenceEnd = (spac) ->
+    spac = spac or bigSpace()
     if parser.lineEnd() then return true
-    if not space.inline then rollbackToken(space); return true
+    if not spac.inline then rollbackToken(spac); return true
 
   @sentence = memo ->
     start = cursor; line1 = lineno
@@ -1570,7 +1640,7 @@ exports.Parser = ->
     extend [['codeBlockComment!', code]], {start:start, stop:cursor, line1: line1, line: lineno}
 
   @lineEnd = -> not text[cursor] or follow('conjunction') or follow('rightDelimiter')#  \
-   # or (space=follow('spaceComment') and not space.inline)
+   # or (spac=follow('spaceComment') and not spac.inline)
 
   @line = ->
     if parser.lineEnd() then return
@@ -1581,28 +1651,28 @@ exports.Parser = ->
     result
 
   @block = ->
-    indentColumn = lineInfo[lineno].indentColumn; space = bigSpc();
-    if not space.indent then return rollbackToken space
+    indentColumn = lineInfo[lineno].indentColumn; spac = bigSpace();
+    if not spac.indent then return rollbackToken spac
     else
       x = parser.blockWithoutIndentHead()
-      space = bigSpc()
-      if lineInfo[lineno].indentColumn<indentColumn then rollbackToken space
+      spac = bigSpace()
+      if lineInfo[lineno].indentColumn<indentColumn then rollbackToken spac
       x
 
   @blockWithoutIndentHead = ->
     indentColumn = lineInfo[lineno].indentColumn; result = []
-    while (x=parser.line()) and (space = bigSpc())
+    while (x=parser.line()) and (spac = bigSpace())
       if x.length!=1 or not (x0=x[0]) or (x0[0]!='lineComment!' and x0[0]!='codeBlockComment!')
         result.push.apply(result, x)
-      if lineInfo[lineno].indentColumn<indentColumn then rollbackToken space; break
+      if lineInfo[lineno].indentColumn<indentColumn then rollbackToken spac; break
     result
 
   @lineBlock = ->
     start = cursor; line1 = lineno; indentColumn = lineInfo[lineno].indentColumn
-    space1 = bigSpc(); if space1.indent then return parser.blockWithoutIndentHead()
+    space1 = bigSpace(); if space1.indent then return parser.blockWithoutIndentHead()
     line = parser.line()
     cursor2 = cursor; line2 = lineno;
-    bigSpc(); column = lineInfo[lineno].indentColumn
+    bigSpace(); column = lineInfo[lineno].indentColumn
     if column<=indentColumn then rollback cursor2, line2
     else line.push.apply line, parser.blockWithoutIndentHead()
     line
@@ -1613,7 +1683,7 @@ exports.Parser = ->
     else ['list!'].concat(items)
 
   @dataClause = ->
-    if (parser.clauseEnd(space = bigSpc())) then return
+    if (parser.clauseEnd(spac = bigSpace())) then return
     clause = []
     while 1
       if text[cursor]==':' and text[cursor+1]!=':' then error 'unexptected ";" in data block'
@@ -1640,13 +1710,13 @@ exports.Parser = ->
 
   @dataBlock = ->
     indentColumn = lineInfo[lineno].indentColumn; result = []
-    space = bigSpc()
+    spac = bigSpace()
     # had better to check indent before call dataBlock
-    # space.indent is a wrong check, because it will ignore half dent wrongly.
-    #if not space.indent then return rollbackToken space
-    while (x=parser.dataLine()) and (space = bigSpc())
+    # spac.indent is a wrong check, because it will ignore half dent wrongly.
+    #if not spac.indent then return rollbackToken spac
+    while (x=parser.dataLine()) and (spac = bigSpace())
       result.push(x)
-      if lineInfo[lineno].indentColumn<indentColumn then rollbackToken space; break
+      if lineInfo[lineno].indentColumn<indentColumn then rollbackToken spac; break
     result
 
   @dataLine = ->
@@ -1657,9 +1727,9 @@ exports.Parser = ->
 
   @lines = ->
     indentColumn = lineInfo[lineno].indentColumn; result = []
-    while (x=parser.line()) and (space = bigSpc())
+    while (x=parser.line()) and (spac = bigSpace())
       result.push.apply result, x
-      if lineInfo[lineno].indentColumn<indentColumn then rollbackToken space; break
+      if lineInfo[lineno].indentColumn<indentColumn then rollbackToken spac; break
     result
 
   @moduleHeader = ->
@@ -1752,6 +1822,7 @@ exports.Parser = ->
     atStatementHead = true
     @environment = environment = env
     @meetEllipsis = false
+    endCursorOfDynamicBlockStack = []
 
   @parse = (data, root, cur, env) ->
     parser.init(data, cur, env)

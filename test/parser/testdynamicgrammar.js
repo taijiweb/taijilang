@@ -24,21 +24,27 @@ describe("parse dyanmic syntax: ", function() {
     env = taiji.initEnv(taiji.builtins, taiji.rootModule, {});
     parser = env.parser;
     x = parser.parse(head + text, parser.module, 0, env);
-    return x.body;
+    return str(x.body);
   };
-  it('should parse ? xyz then x = abc', function() {
-    return expect(str(parse('? xyz then x = abc'))).to.deep.equal("[? [xyz] [= x abc]]");
+  it('should parse ? xyz then anything here', function() {
+    return expect(parse('? xyz then anything here')).to.equal("[object Object]");
+  });
+  it('should parse ? cursor() then anything here', function() {
+    return expect(parse('? cursor() then x = abc')).to.equal("35");
+  });
+  it('should parse ? text then anything here', function() {
+    return expect(parse('? text then anything here')).to.equal("taiji language 0.1\n? text then anything here");
   });
   it('should parse ?? 1', function() {
-    return expect(str(parse('?? 1'))).to.deep.equal("1");
+    return expect(parse('?? 1')).to.equal("1");
   });
   it('should parse ?/ ?cursor', function() {
-    return expect(str(parse('?/ ?cursor'))).to.deep.equal("function () {\n    return cursor;\n  }");
+    return expect(parse('?/ ?cursor')).to.equal("function () {\n    return cursor;\n  }");
   });
   it('should parse ?/ ?cursor()', function() {
-    return expect(str(parse('?/ cursor()'))).to.deep.equal("30");
+    return expect(parse('?/ cursor()')).to.equal("30");
   });
   return it('should parse ?/ clause(), print 1', function() {
-    return expect(str(parse('?/ clause(), print 1'))).to.deep.equal("[print 1]");
+    return expect(parse('?/ clause(), print 1')).to.equal("[print 1]");
   });
 });

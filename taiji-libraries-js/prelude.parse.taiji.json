@@ -1,0 +1,6 @@
+["begin!",
+  ["lineComment!","// some definitions"],
+  ["lineComment!","//  __taijiVersion #= '0.1.0'"],
+  ["lineComment!","//  __compileMode #= 'test'\r\n"],
+  ["#/=","__slice",["attribute!",[],"slice"]],
+  ["#/=","__hasProp",["attribute!",["hash!"],"hasOwnProperty"]]]

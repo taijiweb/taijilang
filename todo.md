@@ -1,18 +1,19 @@
-todo: better parser builtins ?!, ?/, etc
-
-todo: transform string to symbol by escaping it. e.g.: \"x...", \"...x", \"..."
-
-todo: add more cases for preprocess operator
+todo: document
+  todo: tutorial：interactive samples
+  
+todo: test new preprocess operator
   # let, letrec!, letloop!, doWhere!, while, doWhile!, doUntil!, cFor!, forIn!, forOf!, forIn!!, forOf!!
+
+todo: assign optimization
+  # ssaVar, const var, dummy var, etc
+
+todo: better parser builtins ?!, ?/, etc
 
 todo: remove "entity" utility function
   # method: everything is array, even number, string, identifier or symbol
   # ['num!', value], ['str', "some string"], ['symbol', 'console'], ['symbol', '+'], etc...
   # syntax information(cursor, line number, etc) is attachted to array
   
-todo: assign optimization
-  # ssaVar, const var, dummy var, etc
-
 todo: [x, y, z] @= value # all= at --> all?
 
 todo: dummy var: can be assigned, but can not be readed
@@ -31,10 +32,10 @@ todo: source map
   # a complicateful, hard and task with too much work to do
   # coffee-script is my friend.
 
-todo: document
-  todo: tutorial：interactive samples
-  
 ------------------------------------------------------------
+done: add more preprocess operator
+  # let, letrec!, letloop!, doWhere!, while, doWhile!, doUntil!, cFor!, forIn!, forOf!, forIn!!, forOf!!
+done: transform string to symbol by escaping it. e.g.: \"x...", \"...x", \"..."
 done: ":" at the end of line can replace 'then'
 done: embedded meta compilation: #call, by evaluating the embedded meta code while running
 done: refactor definition ->, =>, etc,  now they produces [->, [params], oneStatement], instead of statement list

@@ -256,6 +256,13 @@ describe "parser basic: ",  ->
       it "parse _a1", ->
         expect(parse('_a1')).to.equal '_a1'
 
+  describe "parse escaped string symbol:",  ->
+    parse = (text) ->
+      parser = new Parser()
+      x = parser.parse(text, parser.atom, 0).value
+    it "parse \\\"x...\"", ->
+      expect(str parse('\\\"x...\"')).to.equal 'x...'
+
   describe "parse string: ",  ->
     parse = (text) ->
       parser = new Parser()

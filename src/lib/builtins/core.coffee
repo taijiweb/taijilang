@@ -427,6 +427,7 @@ exports['#call!'] = (exp, env) -> ['#call', convert(exp[0], env), convert(exp[1]
 
 # dynamic syntax, extend the parser on the fly
 # the head of exp[0] will be convert to attribute of __$taiji_$_$parser__
+# {?/ matchA(x,y)} will be converted { ?? ?matchA(x, y) }
 exports['?/'] = (exp, env) ->
   convert(convertParserAttribute(exp[0]), env)
 
@@ -443,6 +444,7 @@ convertParserAttribute = (exp) ->
   else exp
 
 # identifier in exp[0] will be convert to attribute of __$taiji_$_$parser__
+# {?! matchA(x,y)} will be converted { ?? ?matchA(?x, ?y) }
 exports['?!'] = (exp, env) ->
   convert(convertParserExpression(exp[0]), env)
 
