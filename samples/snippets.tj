@@ -1,6 +1,6 @@
 taiji language 0.1
 
-include! 'types.tj'
+include! 'types@.tj'
 // Some example code snippets
 
 print 1 2

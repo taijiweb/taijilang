@@ -2,7 +2,7 @@ taiji language 0.1
 
   this file is not tested
 
-include! 'types.tj'
+include! 'types@.tj'
 
 __extends  = (child, parent) ->
   for key of parent then if __hasProp.call(parent, key) then child[key] = parent[key]

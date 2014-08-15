@@ -1,4 +1,4 @@
-var Parser, chai, compile, compileNoOptimize, constant, expect, idescribe, iit, isArray, lib, ndescribe, realCode, str, taiji, _ref;
+var Parser, chai, compile, compileNoOptimize, constant, expect, idescribe, iit, isArray, lib, ndescribe, nit, realCode, str, taiji, _ref;
 
 chai = require("chai");
 
@@ -9,6 +9,8 @@ iit = it.only;
 idescribe = describe.only;
 
 ndescribe = function() {};
+
+nit = function() {};
 
 lib = '../../lib/';
 
@@ -150,22 +152,22 @@ describe("compile operator expression: ", function() {
     it("compile a . b", function() {
       return expect(compile('var a; (a . b)')).to.have.string("var a;\na.b");
     });
-    it("compile a&/b", function() {
+    nit("compile a&/b", function() {
       return expect(compile('var a, b; a&/b')).to.have.string("var a, b;\na[b]");
     });
-    it("compile a&/1", function() {
+    nit("compile a&/1", function() {
       return expect(compile('var a; a&/1')).to.have.string("var a;\na[1]");
     });
-    it("compile a&/(1)", function() {
+    nit("compile a&/(1)", function() {
       return expect(compile('var a; a&/(1)')).to.have.string("var a;\na[1]");
     });
-    it("compile a&/(1,2)", function() {
+    nit("compile a&/(1,2)", function() {
       return expect(compile('var a; a&/(1,2)')).to.have.string("var a;\na[[1, 2]]");
     });
-    it("compile '1'&/1", function() {
+    nit("compile '1'&/1", function() {
       return expect(compile("'1'&/1")).to.have.string("\"1\"[1]");
     });
-    it("compile '1'&/(1,2)", function() {
+    nit("compile '1'&/(1,2)", function() {
       return expect(compile("'1'&/(1,2)")).to.have.string("\"1\"[[1, 2]]");
     });
     it("compile a[1]", function() {
@@ -248,7 +250,7 @@ describe("compile operator expression: ", function() {
       return expect(compile('var a; a += b = 1')).to.have.string("var a, b = 1;\na += b");
     });
   });
-  return describe("ternary, i.e. condition expression", function() {
+  return ndescribe("ternary, i.e. condition expression", function() {
     it("compile 1 ?  2 :  3", function() {
       return expect(compile('(1 ?  2 :  3)')).to.have.string("1? 2: 3");
     });

@@ -4,6 +4,7 @@ iit = it.only
 idescribe = describe.only
 
 ndescribe = ->
+nit = ->
 
 lib = '../../lib/'
 {constant, isArray, str} = require lib+'parser/base'
@@ -34,9 +35,9 @@ describe "parse operator expression: ", ->
     it 'should parse + + 1', ->
       expect(str parse('+ + 1 ')).to.deep.equal "[+x [+x 1]]"
     it 'should parse %lineno', ->
-      expect(str parse('%lineno')).to.deep.equal "[% lineno]"
+      expect(str parse('%lineno')).to.deep.equal "[%x lineno]"
     it 'should parse %lineno()', ->
-      expect(str parse('%lineno()')).to.deep.equal "[call! [% lineno] []]"
+      expect(str parse('%lineno()')).to.deep.equal "[call! [%x lineno] []]"
 
   describe "add and multiply: ", ->
     it "parse 1+2", ->
@@ -163,9 +164,9 @@ describe "parse operator expression: ", ->
     it "parse a.b", ->
       expect(str parse('a.b')).to.deep.equal '[attribute! a b]'
     it "parse %a.b", ->
-      expect(str parse('%a.b')).to.deep.equal "[attribute! [% a] b]"
+      expect(str parse('%a.b')).to.deep.equal "[attribute! [%x a] b]"
     it "parse %a()", ->
-      expect(str parse('%a()')).to.deep.equal "[call! [% a] []]"
+      expect(str parse('%a()')).to.deep.equal "[call! [%x a] []]"
     it "parse a.b.c", ->
       expect(str parse('a.b.c')).to.deep.equal "[attribute! [attribute! a b] c]"
     it "parse a.b()", ->
@@ -176,14 +177,16 @@ describe "parse operator expression: ", ->
       expect(str parse('@b()')).to.deep.equal "[call! [attribute! @ b] []]"
     it "parse a . b", ->
       expect(str parse('a . b')).to.deep.equal '[attribute! a b]'
-    it "parse a&/b", ->
+
+    nit "parse a&/b", ->
       expect(str parse('a&/b')).to.deep.equal '[index! a b]'
-    it "parse a&/(1,2)", ->
+    nit "parse a&/(1,2)", ->
       expect(str parse('a&/(1,2)')).to.deep.equal '[index! a [, 1 2]]'
-    it "parse '1'&/1", ->
+    nit "parse '1'&/1", ->
       expect(str parse("'1'&/1")).to.deep.equal "[index! \"1\" 1]"
-    it "parse '1'&/(1,2)", ->
+    nit "parse '1'&/(1,2)", ->
       expect(str parse("'1'&/(1,2)")).to.deep.equal "[index! \"1\" [, 1 2]]"
+
     it "parse a[1]", ->
       expect(str parse('a[1]')).to.deep.equal '[index! a 1]'
     it "parse a (1)", ->
@@ -237,7 +240,8 @@ describe "parse operator expression: ", ->
       expect(str parse('a += b = 1')).to.deep.equal '[+= a [= b 1]]'
 
   # ? should be identifier character, : should lead clauses.
-  describe "ternary, i.e. condition expression: ", ->
+  # {if! x y z} can be expression, so {x? y: z} is deprecated.
+  ndescribe "ternary, i.e. condition expression: ", ->
     it "parse 1 ?  2 :  3", ->
       expect(str parse('1 ?  2 :  3')).to.deep.equal '[?: 1 2 3]'
 

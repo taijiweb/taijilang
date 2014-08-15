@@ -520,7 +520,7 @@ describe("compile: ", function() {
     it('should compile #(a=1)', function() {
       return expect(compile('#(a=1)')).to.have.string('1');
     });
-    it('should compile \'a#=1;# ` ^a', function() {
+    it('should compile a#=1;# ` ^a', function() {
       return expect(compile('a#=1;# ` ^a')).to.have.string("1");
     });
     it('should compile \'#(a=1);# ` ^a', function() {
@@ -586,7 +586,7 @@ describe("compile: ", function() {
     });
   });
   describe("macro is just meta operation: ", function() {
-    it('should compile ##{->} 1', function() {
+    it('should compile ##{-> 1}()', function() {
       return expect(compile('##{-> 1}()')).to.have.string("1");
     });
     it('should compile ##{-> ~(1+2)}()', function() {

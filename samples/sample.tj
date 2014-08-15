@@ -36,9 +36,10 @@ begin! 1 2
       +9/9)
 
 a.!=1 // a! can be a taiji language identifier, so we should separate a and != by "."
-a<>1 // or we can use <> instead.
-a.!==1; a<*>1 // for the same reason as the above
-y+.!1 // y+!1 will be parsed as [+. y 1], so we separate + and ! by "."
+// because ! can not be used as first character, so a!=1 equal to a != 1 now.
+// a<>1 // or we can use <> instead.
+// a.!==1; a<*>1 // for the same reason as the above
+y+.!1 // y+!1 will be parsed as [+! y 1], so we separate + and ! by "."
 y+.!x
 y+.!!1 // !!x equal to !(!x) or !.!x
 x+.!!y

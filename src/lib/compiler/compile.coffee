@@ -356,12 +356,12 @@ metaConvertFnMap =
 
   # #& metaConvert exp and get the current expression(not metaConverted raw program)
   '#&': (exp, metaExpList, env) ->
-    exp2 = metaTransform(exp, metaExpList, env)
+    result = metaTransform(exp[1], metaExpList, env)
     # notice the difference between #& and #/
     # here exp[1] is raw object level expression,
     # but in "#/" metaExpList.push result instead
     metaExpList.push exp[1]
-    begin([exp2, $atMetaExpList(env.metaIndex++)])
+    begin([result, $atMetaExpList(env.metaIndex++)])
 
   # assign in meta level, same as
   '#=': (exp, metaExpList, env) ->
@@ -369,7 +369,8 @@ metaConvertFnMap =
 
   '#/=': (exp, metaExpList, env) ->
     result = metaTransform ['=', exp[1], exp[2]], metaExpList, env
-    metaExpList.push result; begin([result, $atMetaExpList(env.metaIndex++)])
+    metaExpList.push result
+    begin([result, $atMetaExpList(env.metaIndex++)])
 
   # #&= assign the object level program to meta variable( not metaConverted raw program)
   '#&=': (exp, metaExpList, env) ->

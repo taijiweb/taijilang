@@ -632,8 +632,9 @@ exports.Parser = ->
 
   @prefixParserAttributeOperator = (priority, leftAssoc) ->
     start = cursor
-    if (x=parser.symbol()) and x.value=='?' and parser.follow('atom')
-      {symbol:'parserAttr!', value: '?', priority: 800: start:cursor-1, stop:cursor, line:lineno}
+    if (x=parser.symbol()) and x.value=='%' and parser.follow('atom')
+      # {symbol:'parserAttr!', value: '%', priority: 800: start:cursor-1, stop:cursor, line:lineno}
+      {symbol:'%x', value: '%', priority: 800: start:cursor-1, stop:cursor, line:lineno}
     else cursor = start; return
 
   @customPrefixOperators = [@prefixParserAttributeOperator]
@@ -781,7 +782,7 @@ exports.Parser = ->
     else
       if priority>300 then return rollback start, line1
       # any operator near newline always have the priority 300, i.e. compute from up to down
-      if op.valu==',' or op.value==':' or op.value=='?'  or op.assign
+      if op.valu==',' or op.value==':' or op.value=='%'  or op.assign
         error 'binary operator '+op.symbol+' should not be at begin of line'
       if space2.undent then error 'binary operator should not be at end of block'
       else if space2.newline then error 'a single binary operator should not occupy whole line.'
@@ -956,29 +957,29 @@ exports.Parser = ->
       if not meetError then result
 
   leadWordClauseMap =
-    # eval while parsing, call by ?? clause
+    # eval while parsing, call by %% clause
     # e.g.
-    # ?? ?text()
-    # ?? ?cursor()
-    # ?? ?number()1234
-    '??':  (clause) ->
+    # %% %text()
+    # %% %cursor()
+    # %% %number()1234
+    '%%':  (clause) ->
       code = compileExp(['return', clause], environment)
       new Function('__$taiji_$_$parser__', code)(parser)
 
     # the head of clause will be convert to attribute of __$taiji_$_$parser__
-    # see exports['?/'] and convertParserAttribute in core.coffee
-    # {?/ matcheA(x, y) } will be converted to {?? ?matchA(x, y)}
-    '?/': (clause) ->
-      # notice the difference between ?? and ?/
-      # here ['?/', clause] is compiled
-      code=compileExp(['return', ['?/', clause]], environment)
+    # see exports['%/'] and convertParserAttribute in core.coffee
+    # {%/ matcheA(x, y) } will be converted to {%% %matchA(x, y)}
+    '%/': (clause) ->
+      # notice the difference between %% and %/
+      # here ['%/', clause] is compiled
+      code=compileExp(['return', ['%/', clause]], environment)
       new Function('__$taiji_$_$parser__', code)(parser)
 
     # identifier in clause will be convert to attribute of __$taiji_$_$parser__
-    # see exports['?!'] and convertParserAttribute in core.coffee
-    # {?! matcheA(x, y) } will be converted to {?? ?matchA(?x, ?y)}
-    '?!': (clause) ->
-      code=compileExp(['return', ['?!', clause]], environment)
+    # see exports['%!'] and convertParserAttribute in core.coffee
+    # {%! matcheA(x, y) } will be converted to {%% %matchA(%x, %y)}
+    '%!': (clause) ->
+      code=compileExp(['return', ['%!', clause]], environment)
       new Function('__$taiji_$_$parser__', code)(parser)
 
     '~':  (clause) -> ['quote!', clause]
@@ -1293,11 +1294,11 @@ exports.Parser = ->
     else return false
 
   @keywordToStatementMap =
-    '?': (isHeadStatement) ->
+    '%': (isHeadStatement) ->
       start = cursor; line1 = lineno
       if not space().value then return
       leadClause = parser.clause()
-      code = compileExp(['return', ['?/', leadClause]], environment)
+      code = compileExp(['return', ['%/', leadClause]], environment)
       space(); indentColumn = lineInfo[lineno].indentColumn
       if expectWord('then') or (text[cursor]==':' and cursor++)
         space()
@@ -1327,13 +1328,13 @@ exports.Parser = ->
     'var': (isHeadStatement) -> ['var'].concat parser.varInitList()
     'extern!': (isHeadStatement) -> ['extern!'].concat parser.identifierList()
     'include!': (isHeadStatement) ->
-      space()
-      if with_ = word('with')
-        space(); parseMethod = expect('taijiIdentifier', 'expect a parser method')
       space(); filePath = expect('string', 'expect a file path')
+      space()
+      if word('by')
+        space(); parseMethod = expect('taijiIdentifier', 'expect a parser method')
       ['include!', filePath, parseMethod]
 
-    # import [#/]name [as [#/]name] ... from path as [#/]name #name [with method]
+    # import [#/]name [as [#/]name] ... from path as [#/]name #name [by method]
     'import!': (isHeadStatement) ->
       space()
       items = parser.importItemList(); space()
@@ -1358,7 +1359,7 @@ exports.Parser = ->
         if sym  and alias2 then 'unexpected identifier '+alias2+' after '+symValue+alias
         if alias2 then metaAlias = alias2
         space()
-      if with_ = word('with')
+      if word('by')
         space(); parseMethod = expect('taijiIdentifier', 'expect a parser method')
       runtimeImportList = []; metaImportList = []
       for item in items

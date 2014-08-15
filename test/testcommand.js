@@ -174,14 +174,11 @@ describe('test command:', function() {
       it('compile macros.tj', function() {
         return expect(compile('taiji-libraries-js', 'taiji-libraries/macros.tj')).to.deep.equal([void 0]);
       });
-      it('parse class.tj', function() {
-        return expect(parse('taiji-libraries-js/parse', 'taiji-libraries/class.tj')).to.deep.equal([void 0]);
+      it('parse class@.tj', function() {
+        return expect(parse('taiji-libraries-js/parse', 'taiji-libraries/class@.tj')).to.deep.equal([void 0]);
       });
-      it('parse lib class.tj', function() {
-        return expect(parse('taiji-libraries-js', 'taiji-libraries/class.tj')).to.deep.equal([void 0]);
-      });
-      it('compile lib class.tj', function() {
-        return expect(compile('taiji-libraries-js', 'taiji-libraries/class.tj')).to.deep.equal([void 0]);
+      it('compile class@.tj', function() {
+        return expect(compile('taiji-libraries-js', 'taiji-libraries/class@.tj')).to.deep.equal([void 0]);
       });
       it('compile browser.tj', function() {
         return expect(compile('taiji-libraries-js', 'taiji-libraries/browser.tj')).to.deep.equal([void 0]);

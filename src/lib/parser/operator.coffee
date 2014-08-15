@@ -33,10 +33,12 @@ exports.prefixOperatorDict = prefixOperatorDict =
   '!': {symbol: '!x', priority: 180},
   '!!': {symbol: '!!x', priority: 180} # according the symbol matcher, !! is parsed one single symbol
   'not': {priority: 180}
-  '|%': {symbol: '~', priority: 180}   #~, bit not
+  '|~': {symbol: '~', priority: 180}   #~, bit not
   '++': {symbol: '++x', priority: 180}
   '--': {symbol: '--x',priority: 180}
-  '%': {symbol: '%', priority: 210}
+  # % used as parser attributer prefix operator
+  # % parsing means dividing text to many parts, so use % is iconic and proper.
+  '%': {symbol: '%x', priority: 210}
   '@@':  {priority: 210} # outer scope var
 
 do -> for op, result of exports.prefixOperatorDict
@@ -61,41 +63,48 @@ exports.binaryOperatorDict =
   # 'yield':  {priority: 20} # prefix
 
   # condition, should transform it to proper form.
-  '?':{priority: 30}, ':':{priority: 31} # ? should be identifier character, : should lead clauses
+  #'?':{priority: 30}, ':':{priority: 31} # ? should be identifier character, : should lead clauses
   # ||| is logic xor
-  '&&': {priority: 50}, '||': {priority: 40}, '|||': {symbol: '^', priority: 40}
-  'and': {symbol:'&&', priority: 50}, 'or': {symbol:'||', priority: 40}, 'xor': {symbol: '^', priority: 40}
+  '&&': {priority: 50}, '||': {priority: 40}, #'|||': {symbol: '^', priority: 40}
+  'and': {symbol:'&&', priority: 50}, 'or': {symbol:'||', priority: 40}, #'xor': {symbol: '^', priority: 40}
   # ^ will be used as unquote, so use |\ as bit xor
-  '|\\': {priority: 60}, '|': {priority: 70}, '&': {priority: 80}
+  #'|\\': {priority: 60},
+  # update: use ^ as binary operator will not conflict with prefix ^
+  '^': {priority: 60},
+  '|': {priority: 70}, '&': {priority: 80}
 
   '==': {priority: 90}, '!=': {priority: 90}, '===': {priority: 90}, '!==': {priority: 90},
   # because ! can be in identifier, so we use <> and <*> make a.!=b and a.!==b can be a<>b and a<*>b
-  '<>': {symbol: '!==', priority: 90},  '<*>': {symbol: '!=', priority: 90}
+  # update! the first character should not be !, and !! becomes a prefix operator, so <> and <*> become unnecessary.
+  # '<>': {symbol: '!==', priority: 90},  '<*>': {symbol: '!=', priority: 90}
   '<': {priority: 100}, '<=': {priority: 100}, '>': {priority: 100}, '>=': {priority: 100}
   'in': {priority: 100}, 'instanceof': {priority: 100}
 
-  # a..b, a...b, [a..b], [a...b]
+  # a..b, a...b, x[a..b], x[a...b]
   '..': {priority: 105}, '...': {priority: 105},
 
+  # >>>: javascript bitwise unsigned right shift operator.
   '<<': {priority: 110}, '>>': {priority: 110}, '>>>': {priority: 110}
   '+': {priority: 120}, '-': {priority: 120}
 
   # integer division, to replace '//', which is line comment
-  '*': {priority: 130}, '/': {priority: 130}, '/%': {priority: 130}, '%': {priority: 130}
+  # update: there is no integer division operator in javascript
+  '*': {priority: 130}, '/': {priority: 130}, '%': {priority: 130}  #'/%': {priority: 130},
 
-  #'.': {priority: 200, symbol: 'attribute!'}  # attribute, become customed parser.binaryAttributeOperator
-  '&/': {priority:200, symbol: 'index!'} # index
+  # '.': {priority: 200, symbol: 'attribute!'}  # attribute, become customed parser.binaryAttributeOperator
+  # '&/': {priority:200, symbol: 'index!'} # index
 
-  '|||=': {priority:20, value:'|||=', symbol:'^=', rightAssoc: true, assign:true}
-  'and=': {priority:20, value:'and=', symbol:'&&=', rightAssoc: true, assign:true}
-  'or=': {priority:20, value:'or=', symbol:'||=', rightAssoc: true, assign:true}
+  #'|||=': {priority:20, value:'|||=', symbol:'^=', rightAssoc: true, assign:true}
+
+  #'and=': {priority:20, value:'and=', symbol:'&&=', rightAssoc: true, assign:true}
+  #'or=': {priority:20, value:'or=', symbol:'||=', rightAssoc: true, assign:true}
 
 do -> for op, result of exports.binaryOperatorDict
   result.value = op
   if not result.symbol then result.symbol = op
 
 #: #=: meta assign, assign meta value or macro to variable
-exports.assignOperators = ('= #= += -= *= /= %= <<= >>= >>>= &= |\= |='+' &&= ||= #= #/= #&=').split(' ')
+exports.assignOperators = ('= += -= *= /= %= <<= >>= >>>= &= |= ^= &&= ||= #= #/=').split(' ') # #&=
 do -> for op in exports.assignOperators
   exports.binaryOperatorDict[op] = {priority:20, value: op, symbol:op, rightAssoc: true, assign:true}
 

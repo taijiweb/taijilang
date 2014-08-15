@@ -3,6 +3,9 @@ expect = chai.expect
 iit = it.only
 idescribe = describe.only
 
+ndescribe = ->
+nit = ->
+
 lib = '../../lib/'
 {constant, isArray, str} = require lib+'parser/base'
 {getOperatorExpression} = require lib+'parser/operator'
@@ -459,10 +462,13 @@ describe "parser basic: ",  ->
       expect(str parse('a.b')).to.equal '[attribute! a b]'
     it 'should parse a.b.c', ->
       expect(str parse('a.b.c')).to.equal '[attribute! [attribute! a b] c]'
-    it 'should parse a&/b', ->
+
+    # x[i] can be used as subscript, so a&/b is deprecated.
+    nit 'should parse a&/b', ->
       expect(str parse('a&/b')).to.equal  '[index! a b]'
-    it 'should parse a&/b&/c', ->
+    nit 'should parse a&/b&/c', ->
       expect(str parse('a&/b&/c')).to.equal '[index! [index! a b] c]'
+
     it 'should parse a(b)', ->
       expect(str parse('a(b)')).to.equal  '[call! a [b]]'
     it 'should parse a()', ->

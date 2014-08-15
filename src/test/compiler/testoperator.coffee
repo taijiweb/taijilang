@@ -2,7 +2,10 @@ chai = require("chai")
 expect = chai.expect
 iit = it.only
 idescribe = describe.only
+
 ndescribe = ->
+nit = ->
+
 
 lib = '../../lib/'
 {Parser} = require lib+'parser'
@@ -114,18 +117,21 @@ describe "compile operator expression: ", ->
       expect(compile('var a; a.b')).to.have.string "var a;\na.b"
     it "compile a . b", ->
       expect(compile('var a; (a . b)')).to.have.string "var a;\na.b"
-    it "compile a&/b", ->
+
+    # x[y] can be used as subscript, so &/ is deprecated.
+    nit "compile a&/b", ->
       expect(compile('var a, b; a&/b')).to.have.string "var a, b;\na[b]"
-    it "compile a&/1", ->
+    nit "compile a&/1", ->
       expect(compile('var a; a&/1')).to.have.string "var a;\na[1]"
-    it "compile a&/(1)", ->
+    nit "compile a&/(1)", ->
       expect(compile('var a; a&/(1)')).to.have.string "var a;\na[1]"
-    it "compile a&/(1,2)", ->
+    nit "compile a&/(1,2)", ->
       expect(compile('var a; a&/(1,2)')).to.have.string "var a;\na[[1, 2]]"
-    it "compile '1'&/1", ->
+    nit "compile '1'&/1", ->
       expect(compile("'1'&/1")).to.have.string "\"1\"[1]"
-    it "compile '1'&/(1,2)", ->
+    nit "compile '1'&/(1,2)", ->
       expect(compile("'1'&/(1,2)")).to.have.string "\"1\"[[1, 2]]"
+
     it "compile a[1]", ->
       expect(compile('var a; a[1]')).to.have.string "var a;\na[1]"
     it "compile a [1]", ->
@@ -180,7 +186,8 @@ describe "compile operator expression: ", ->
     it "compile a += b = 1", ->
       expect(compile('var a; a += b = 1')).to.have.string "var a, b = 1;\na += b"
 
-  describe "ternary, i.e. condition expression", ->
+  # {if! x y z} could be used as ternary
+  ndescribe "ternary, i.e. condition expression", ->
     it "compile 1 ?  2 :  3", ->
       expect(compile('(1 ?  2 :  3)')).to.have.string "1? 2: 3"
 

@@ -425,10 +425,17 @@ exports['#'] = convertMetaExp('#')
 exports['#/'] = convertMetaExp('#/')
 exports['#call!'] = (exp, env) -> ['#call', convert(exp[0], env), convert(exp[1], env)]
 
+# prefix % will generate %x
+#exports['parserAttr!'] = (exp, env) ->
+#  convert(['attribute!', '__$taiji_$_$parser__', exp[0]], env)
+
+exports['%x'] = (exp, env) ->
+  convert(['attribute!', '__$taiji_$_$parser__', exp[0]], env)
+
 # dynamic syntax, extend the parser on the fly
 # the head of exp[0] will be convert to attribute of __$taiji_$_$parser__
-# {?/ matchA(x,y)} will be converted { ?? ?matchA(x, y) }
-exports['?/'] = (exp, env) ->
+# {%/ matchA(x,y)} will be converted { %% %matchA(x, y) }
+exports['%/'] = (exp, env) ->
   convert(convertParserAttribute(exp[0]), env)
 
 convertParserAttribute = (exp) ->
@@ -444,8 +451,8 @@ convertParserAttribute = (exp) ->
   else exp
 
 # identifier in exp[0] will be convert to attribute of __$taiji_$_$parser__
-# {?! matchA(x,y)} will be converted { ?? ?matchA(?x, ?y) }
-exports['?!'] = (exp, env) ->
+# {%! matchA(x,y)} will be converted { %% %matchA(%x, %y) }
+exports['%!'] = (exp, env) ->
   convert(convertParserExpression(exp[0]), env)
 
 convertParserExpression = (exp) ->
@@ -458,6 +465,3 @@ convertParserExpression = (exp) ->
       extend result, exp
     else exp
   else exp
-
-exports['parserAttr!'] = (exp, env) ->
-  convert(['attribute!', '__$taiji_$_$parser__', exp[0]], env)

@@ -1,5 +1,5 @@
 ["begin!",
-  ["include!","\"types.tj\"",null],
+  ["include!","\"types@.tj\"",null],
   ["=", "__extends",
     ["->", ["child","parent"],
       ["begin!",

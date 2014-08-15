@@ -1,4 +1,4 @@
-var BLOCK_COMMENT, COMPACT_CLAUSE_EXPRESSION, EOI, HALF_DENT, IDENTIFIER, INDENT, NEWLINE, NUMBER, PAREN, PAREN_OPERATOR_EXPRESSION, Parser, SPACE_CLAUSE_EXPRESSION, UNDENT, chai, constant, expect, getOperatorExpression, idescribe, iit, isArray, lib, str, _ref;
+var BLOCK_COMMENT, COMPACT_CLAUSE_EXPRESSION, EOI, HALF_DENT, IDENTIFIER, INDENT, NEWLINE, NUMBER, PAREN, PAREN_OPERATOR_EXPRESSION, Parser, SPACE_CLAUSE_EXPRESSION, UNDENT, chai, constant, expect, getOperatorExpression, idescribe, iit, isArray, lib, ndescribe, nit, str, _ref;
 
 chai = require("chai");
 
@@ -7,6 +7,10 @@ expect = chai.expect;
 iit = it.only;
 
 idescribe = describe.only;
+
+ndescribe = function() {};
+
+nit = function() {};
 
 lib = '../../lib/';
 
@@ -658,10 +662,10 @@ describe("parser basic: ", function() {
     it('should parse a.b.c', function() {
       return expect(str(parse('a.b.c'))).to.equal('[attribute! [attribute! a b] c]');
     });
-    it('should parse a&/b', function() {
+    nit('should parse a&/b', function() {
       return expect(str(parse('a&/b'))).to.equal('[index! a b]');
     });
-    it('should parse a&/b&/c', function() {
+    nit('should parse a&/b&/c', function() {
       return expect(str(parse('a&/b&/c'))).to.equal('[index! [index! a b] c]');
     });
     it('should parse a(b)', function() {

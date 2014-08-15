@@ -369,7 +369,7 @@ describe "compile: ",  ->
       expect(compile('a#=1')).to.have.string '1'
     it 'should compile #(a=1)', ->
       expect(compile('#(a=1)')).to.have.string '1'
-    it '''should compile 'a#=1;# ` ^a''', ->
+    it '''should compile a#=1;# ` ^a''', ->
       expect(compile('a#=1;# ` ^a')).to.have.string "1"
     it '''should compile '#(a=1);# ` ^a''', ->
       expect(compile('#(a=1);# ` ^a')).to.have.string "1"
@@ -417,7 +417,7 @@ describe "compile: ",  ->
       expect(compile('## if 0 then 1+2 else 3+4')).to.have.string '7'
 
   describe "macro is just meta operation: ",  ->
-    it 'should compile ##{->} 1', ->
+    it 'should compile ##{-> 1}()', ->
       expect(compile('##{-> 1}()')).to.have.string "1"
     it 'should compile ##{-> ~(1+2)}()', ->
       expect(compile('##{-> ~(1+2)}()')).to.have.string "3"

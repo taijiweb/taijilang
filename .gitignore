@@ -16,6 +16,7 @@ benchmarks
 node_modules
 dist
 .idea
+tmp
 temp
 temp.*
 dev
