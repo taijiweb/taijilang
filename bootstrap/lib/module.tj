@@ -6,7 +6,6 @@ path = require 'path'
 hasOwnProperty = (obj, prop) -> Object.prototype.hasOwnProperty.call(obj, prop)
 
 modulePaths = []
-#console.log modulePaths
 
 module.exports = exports = TaijiModule = (filePath, @parent) ->
   @exports = {} # meta exports for the module
@@ -20,7 +19,6 @@ module.exports = exports = TaijiModule = (filePath, @parent) ->
     @modulePaths = @parent.modulePaths.slice()
     @modulePaths.unshift path.resolve(@basePath, '../taiji-libraries')
   else
-    #console.log modulePaths
     @modulePaths = modulePaths.slice()
     @modulePaths.unshift path.resolve(@basePath, '../taiji_modules')
   return this
@@ -30,12 +28,8 @@ TaijiModule._initPaths = ->
     splitter = if process.platform == 'win32' then ';' else ':'
     paths = process.env['TAIJILANG_PATH'].split(splitter)
     for path1, i in paths then paths[i] = path.resolve(path1, 'taiji-libraries')
-  else
-    paths = []
-  # console.log paths
   modulePaths = paths
 
-# console.log 'initpaths'
 TaijiModule._initPaths()
 
 # In order to minimize unnecessary lstat() calls, this cache is a list of known-real paths. Set to an empty object to reset.

@@ -55,7 +55,7 @@ class Pattern
     if @desttail then @dest = @destbase+@desttail
     else @dest = @destbase
 
-cleanFolders = for p in 'lib bin test samples-js taiji-libraries-js'.split(' ') then folders_dest+p
+cleanFolders = for p in 'lib bin test samples-js taiji-libraries-js bootstrap-js'.split(' ') then folders_dest+p
 task 'clean', -> src(cleanFolders, {read:false}).pipe(clean())
 
 files_copy = (folders_src+name for name in ['**/*.js', '**/*.json', '**/*.html', '**/*.css'])

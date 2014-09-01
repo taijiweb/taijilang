@@ -1,4 +1,4 @@
-var Parser, chai, compile, compileNoOptimize, constant, expect, idescribe, iit, isArray, lib, ndescribe, realCode, str, taiji, _ref;
+var Parser, chai, compile, compileNoOptimize, constant, expect, expectCompile, expectParse, head, idescribe, iit, iitCompile, iitParse, isArray, itCompile, itParse, lib, ndescribe, parse, realCode, str, taiji, _ref;
 
 chai = require("chai");
 
@@ -20,16 +20,55 @@ taiji = require(lib + 'taiji');
 
 realCode = require(lib + 'utils').realCode;
 
+head = 'taiji language 0.1\n';
+
+parse = function(text) {
+  var parser, x;
+  parser = new Parser();
+  x = parser.parse(head + text, parser.module, 0);
+  return str(x.body);
+};
+
 compile = function(code) {
-  var head;
   head = 'taiji language 0.1\n';
   return realCode(taiji.compile(head + code, taiji.rootModule, taiji.builtins, {}));
 };
 
 compileNoOptimize = function(code) {
-  var head;
   head = 'taiji language 0.1\n';
   return realCode(taiji.compileNoOptimize(head + code, taiji.rootModule, taiji.builtins, {}));
+};
+
+expectCompile = function(srcCode, result) {
+  return expect(compile(srcCode)).to.have.string(result);
+};
+
+itCompile = function(srcCode, result) {
+  return it('should compile' + srcCode, function() {
+    return expectCompile(srcCode, result);
+  });
+};
+
+iitCompile = function(srcCode, result) {
+  return iit('should compile ' + srcCode, function() {
+    return expectCompile(srcCode, result);
+  });
+};
+
+expectParse = function(srcCode, result) {
+  return expect(parse(srcCode)).to.have.string(result);
+};
+
+itParse = function(srcCode, result) {
+  return it('should parse' + srcCode, function() {
+    return expectParse(srcCode, result);
+  });
+};
+
+iitParse = function(srcCode, result) {
+  return iit('should parse ' + srcCode, function() {
+    return expectParse(srcCode, result);
+  });
 };
 
 describe("compiler basic: ", function() {
@@ -202,6 +241,7 @@ describe("compiler basic: ", function() {
   });
   describe("hash!: ", function() {
     return describe("hash! expression: ", function() {
+      itCompile('{}', "{ }");
       it('should compile {.1:2.}', function() {
         return expect(compile('{.1:2.}')).to.have.string("{ 1: 2}");
       });

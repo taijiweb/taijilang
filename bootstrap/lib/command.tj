@@ -87,13 +87,14 @@ SWITCHES = [
   ['-s', '--stdio',           'listen for and compile scripts over stdio']
   ['-t', '--transforma',      'print out the internal expression after transforming']
   ['-v', '--version',         'display the version number']
+  ['-w', '--watch',           'watch scripts for changes and rerun commands']
   ['-z', '--optimize',       'print out the internal expression after optimizing']
 ]
 
 # Top-level objects shared by all the functions.
 exports.testing = false
 exports.opts = opts = {}
-sourceCode = []; optionParser = null
+sources = []; sourceCode = []; notSources = {}; watchedDirs  = {}; optionParser = null
 
 # Run `taiji` by parsing passed options and determining what action to take Many flags cause us to divert before compiling anything.
 # Flags passed after `--` will be passed verbatim to your script as arguments in `process.argv`
@@ -129,19 +130,27 @@ exports.run = ->
 # Compile a path, which could be a script or a directory.
 # If a directory is passed, recursively compile all '.taiji', and '.tj' extension source files in it and all subdirectories.
 compilePath = (action, source, topLevel, base) ->
+  return if action+' '+source in sources or watchedDirs[source] or not topLevel and (notSources[source] or hidden source)
   try stats = fs.statSync source
   catch err
     if err.code is 'ENOENT' then console.error "File not found: #{source}"; process.exit 1
     throw err
   if stats.isDirectory()
+    if path.basename(source) is 'node_modules' then notSources[source] = true; return
     if opts.run then compilePath action, findDirectoryIndex(source), topLevel, base; return
+    watchDir source, base if opts.watch
     try files = fs.readdirSync source
     catch err then (if err.code is 'ENOENT' then return else throw err)
     for file in files then compilePath action, (path.join source, file), no, base
   else if topLevel or utils.isTaiji source
+    sources.push action+' '+source
+    sourceCode.push null
+    delete notSources[action+' '+source]
+    watch source, base if opts.watch
     try code = fs.readFileSync source
     catch err then (if err.code is 'ENOENT' then return else throw err)
     compileScript(action, source, code.toString(), base)
+  else notSources[action+' '+source] = true
 
 findDirectoryIndex = (source) ->
   for ext in taiji.FILE_EXTENSIONS
@@ -163,15 +172,20 @@ compileScript = (action, file, input, base = null) ->
     else
       compiled = exports[action](t.input, new TaijiModule(file, taiji.rootModule), t.options)
       t.output = compiled
+      if o.map
+        t.output = compiled.js
+        t.sourceMap = compiled.v3SourceMap
       taiji.emit 'success', task
       if o.print then printLine t.output.trim()
-      else if o.compile then writeJs base, t.file, t.output, options.outputPath, t.sourceMap
-      else writeResult base, t.file, t.output, options.outputPath, action
+      else if o.compile or o.map then writeJs base, t.file, t.output, options.outputPath, t.sourceMap
+      else
+        writeResult base, t.file, t.output, options.outputPath, action
   catch err
     taiji.emit 'failure', err, task
     return if taiji.listeners('failure').length
     message = err.stack or "#{err}"
-    printWarn message; process.exit 1
+    if o.watch then printLine message + '\x07'
+    else printWarn message; process.exit 1
 
 # Get the corresponding output JavaScript path for a source file.
 outputPath = (source, base, extension=".js") ->
@@ -193,6 +207,7 @@ writeJs = (base, sourcePath, js, jsPath) ->
       js = ' ' if js.length==0
       fs.writeFile jsPath, js, (err) ->
         if err then printLine err.message
+        else if opts.compile and opts.watch then timeLog "compiled #{sourcePath}"
   fs.exists jsDir, (itExists) ->
     if itExists then processFile() else mkdirp jsDir, processFile
 
@@ -203,7 +218,14 @@ writeResult = (base, sourcePath, obj, objPath, action) ->
     obj = ' ' if obj.length==0
     fs.writeFile objPath, obj, (err) ->
       if err then printLine err.message
+      else if opts.watch then timeLog action+" #{sourcePath}"
   fs.exists objDir, (itExists) -> if itExists then write() else mkdirp objDir, write
+
+# Convenience for cleaner setTimeouts.
+wait = (milliseconds, func) -> setTimeout func, milliseconds
+
+# When watching scripts, it's useful to log changes with the timestamp.
+timeLog = (message) -> console.log "#{(new Date).toLocaleTimeString()} - #{message}"
 
 # Use the [OptionParser module](optparse.html) to extract all options from `process.argv` that are specified in `SWITCHES`.
 parseOptions = ->
@@ -217,7 +239,7 @@ parseOptions = ->
 
 # The compile-time options to pass to the taiji compiler.
 compileOptions = (filename, base) ->
-  answer = {filename, bare: opts.bare, header: opts.compile and not opts['no-header']}
+  answer = {filename, bare: opts.bare, header: opts.compile and not opts['no-header'], sourceMap: opts.map}
   if filename
     if base
       cwd = process.cwd()

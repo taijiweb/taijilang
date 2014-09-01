@@ -17,3 +17,19 @@ object? #= (obj) -> ` (Object::toString.call(^obj) == '[object Object]')
 function? #= (obj) -> ` (Object::toString.call(^obj) == '[object Function]')
 
 isArray #= (obj) ->  (Object::toString.call(obj) == '[object Array]')
+
+/. require! usage:
+  require! 'module'
+  require! m1 = 'module1'
+  require! {x, y} = m2 = 'module'
+  require! 'abc' 'def'
+
+/.require! #= (args...) ->
+  result = ['begin!']
+  for arg in args then
+    if string? # arg then
+      baseName = baseName(arg)
+      result.push `{\= ^baseName {require ^arg}}
+    else if array? # arg then
+      if
+  result

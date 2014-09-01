@@ -1,0 +1,8 @@
+#!/usr/bin/env node
+taiji language 0.1
+
+path = require('path')
+fs = require('fs')
+
+lib = path.join(path.dirname(fs.realpathSync(__filename)), '../lib')
+require(lib + '/command').run()

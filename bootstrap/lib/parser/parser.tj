@@ -153,7 +153,7 @@ exports.Parser = ->
     indentColumn = lineInfo[lineno].indentColumn
     if cursor==lineInfo[lineno].start+indentColumn then return
     start = cursor
-    if lineno==maxLine then cursor = text.length
+    if lineno+1==maxLine then cursor = text.length; lineno++
     else cursor = lineInfo[lineno+1].start-1
 #      while (c=text[cursor])=='\n' or c=='\r' then cursor--
 #      cursor++
@@ -463,10 +463,6 @@ exports.Parser = ->
   @curve = curve = memo ->
     start = cursor; line1 = lineno; indentColumn = lineInfo[lineno].indentColumn
     if text[cursor]!='{' or text[cursor+1]=='.' then return else cursor++; space()
-    space()
-    if text[cursor]=='}'
-      cursor++
-      return extend ['hash!'], {start:start, stop:cursor, line1:line1, line:lineno}
     body = parser.lineBlock()
     bigSpace()
     if lineInfo[lineno].indentColumn<indentColumn then error 'unexpected undent while parsing parenethis "{...}"'
@@ -1484,7 +1480,7 @@ exports.Parser = ->
         if eLeft[0]=='"' then error 'unexpected left side of assign: '+eLeft
         left = [left]
       else if eLeft and eLeft.push
-        if eLeft[0]=='begin!' then error 'syntax error: left side of assign should be a list of variable names separated by space'
+        if eLeft[0]=='begin!' then error 'syntax error: left side of assign should be a list of variable names separated by spac'
       else error 'unexpected left side of assign'
       return ['hashAssign!', left, right]
     extend [token, left, right], {start:start, cursor:cursor, line1:line1, line:lineno}
@@ -1742,7 +1738,7 @@ exports.Parser = ->
         (x=decimal()) and char('.') and (y=decimal()))
       error 'taiji language module should begin with "taiji language x.x"'
     if (x=x.value)!=0 or (y=y.value)!=1 then error 'taiji 0.1 can not process taiji language'+x+'.'+y
-    lineno++
+    lineno = 2
     while lineno<=maxLine and (lineInfo[lineno].indentColumn>0 or lineInfo[lineno].empty) then lineno++
     if lineno>maxLine then cursor = text.length
     else cursor = lineInfo[lineno].start # lineInfo[lineno].indentColumn = 0
@@ -1754,9 +1750,6 @@ exports.Parser = ->
     begin body
 
   @module = ->
-    if text[cursor...cursor+2]=='#!'
-      lineno = 2; cursor = lineInfo[lineno].start
-      binNode = ['scriptDirective!', text[...cursor]]
     header = parser.moduleHeader()
     {type: MODULE, header:header, body:parser.moduleBody()}
 

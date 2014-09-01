@@ -1,10 +1,16 @@
 2014
+
+2014-9
+9-1: parse {} as [hash!]
+
 2014-8
-8-5
-  ? clause then body
-  more preprocess clause
-8-4
-  transform string to symbol by escaping it. e.g.: \"x...", \"...x", \"..."
+  8-19-8-31 personal private affairs
+  8-10 -> 8-18 the definitive guide to taiji language -- taiji zhenjing
+  8-5
+    ? clause then body
+    more preprocess clause
+  8-4
+    transform string to symbol by escaping it. e.g.: \"x...", \"...x", \"..."
 2014-7
   7-31
     ":" at the end of line can replace 'then'

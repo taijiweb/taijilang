@@ -34,21 +34,18 @@ run = (code) ->
   code = compile(code)
   str eval code
 
-expectCompile = (srcCode, result) -> expect(compile(srcCode)).to.have.string result
-itCompile = (srcCode, result) -> it 'should compile '+srcCode, ->  expectCompile(srcCode, result)
-iitCompile = (srcCode, result) -> iit 'should compile '+srcCode, ->  expectCompile(srcCode, result)
-
-expectParse = (srcCode, result) -> expect(parse(srcCode)).to.have.string result
-itParse = (srcCode, result) -> it 'should parse '+srcCode, ->  expectParse(srcCode, result)
-iitParse = (srcCode, result) -> iit 'should parse '+srcCode, ->  expectParse(srcCode, result)
-
 describe "compile: ",  ->
   describe "simple: ",  ->
-    itCompile 'var a', "var a;\na"
-    itCompile '1', '1'
-    itCompile 'begin! 1 2', '2'
-    itParse '[1, 2]', "[list! 1 2]"
-    itCompile '[1, 2]', '[1, 2]'
+    it 'should compile var a', ->
+      expect(compile('var a')).to.have.string "var a;\na"
+    it 'should compile 1', ->
+      expect(compile('1')).to.have.string '1'
+    it 'should compile begin! 1 2', ->
+      expect(compile('begin! 1 2')).to.have.string '2'
+    it 'should parse [1, 2]', ->
+      expect(parse('[1, 2]')).to.have.string "[list! 1 2]"
+    it 'should compile [1, 2]', ->
+      expect(compile('[1, 2]')).to.have.string "[1, 2]"
     it 'should parse [1 2]', ->
       expect(parse('[1 2]')).to.have.string "[list! [1 2]]"
     it 'should compile [1 2]', ->
@@ -131,9 +128,6 @@ describe "compile: ",  ->
 
     it 'should comile {a} = x', ->
       expect(compile('var x; {a} = x')).to.equal "var x, a = x.a;\na"
-
-    it 'should comile {a, b} = x', ->
-      expect(compile('var x; {a b} = x')).to.equal "var x, a = x.a, \n    b = x.b;\nb"
 
   describe "ellipsis range: ",  ->
     it "should parse 1...5", ->
@@ -504,10 +498,8 @@ describe "compile: ",  ->
     nit 'should compile A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)', ->
       expect(compile('A = class extends B\n  :: = (a, @b) -> super\n  ::f = (x) -> super(x)')).to.have.string '7'
 
+
   describe "snipets from samples: ",  ->
     it 'should compile extern! node outfile\nnode.spawn outfile() {.stdio: "inherit".}', ->
       expect(compile('extern! node outfile\nnode.spawn outfile() {.stdio: "inherit".}')).to.have.string "node.spawn(outfile(), { stdio: \"inherit\"})"
 
-    itCompile 'extern! Error; throw new Error // """ Use taiji.register() or require the taiji/register module to require {ext} files."""', 'throw new Error'
-    itParse 'throw new Error // """ Use taiji.register() or require the taiji/register module to require {ext} files."""', '[throw [new Error]]'
-    itParse "''' Use taiji.register() or require the taiji/register module to require {ext} files.'''", '" Use taiji.register() or require the taiji/register module to require {ext} files."'

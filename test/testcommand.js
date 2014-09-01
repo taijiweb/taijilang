@@ -14,7 +14,7 @@ command = require(lib + 'command');
 
 command.testing = true;
 
-describe('test command:', function() {
+idescribe('test command:', function() {
   var compile, parse, run, transform;
   describe("taiji command utilities: ", function() {
     return describe("taiji information: ", function() {
@@ -167,7 +167,7 @@ describe('test command:', function() {
         return expect(compile('samples-js/bootstrap', 'samples/bootstrap/repl.tj')).to.deep.equal([void 0]);
       });
     });
-    return describe("parse and compile taiji-libraries: ", function() {
+    describe("parse and compile taiji-libraries: ", function() {
       it('parse macros.tj', function() {
         return expect(parse('taiji-libraries-js/parse', 'taiji-libraries/macros.tj')).to.deep.equal([void 0]);
       });
@@ -188,6 +188,14 @@ describe('test command:', function() {
       });
       return it('parse prelude.tj', function() {
         return expect(parse('taiji-libraries-js', 'taiji-libraries/prelude.tj')).to.deep.equal([void 0]);
+      });
+    });
+    return idescribe("parse and compile bootstrap: ", function() {
+      it('compile bin/taiji.tj', function() {
+        return expect(compile('bootstrap-js/bin', 'bootstrap/bin/taiji.tj')).to.deep.equal([void 0]);
+      });
+      return it('compile lib/taiji.tj', function() {
+        return expect(compile('bootstrap-js/lib', 'bootstrap/lib/taiji.tj')).to.deep.equal([void 0]);
       });
     });
   });

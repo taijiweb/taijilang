@@ -10,12 +10,6 @@ lib = '../../lib/'
 taiji = require lib+'taiji'
 {realCode} = require lib+'utils'
 
-head = 'taiji language 0.1\n'
-parse = (text) ->
-  parser = new Parser()
-  x = parser.parse(head+text, parser.module, 0)
-  str x.body
-
 compile = (code) ->
   head = 'taiji language 0.1\n'
   realCode taiji.compile(head+code, taiji.rootModule, taiji.builtins, {})
@@ -23,14 +17,6 @@ compile = (code) ->
 compileNoOptimize = (code) ->
   head = 'taiji language 0.1\n'
   realCode taiji.compileNoOptimize(head+code, taiji.rootModule, taiji.builtins, {})
-
-expectCompile = (srcCode, result) -> expect(compile(srcCode)).to.have.string result
-itCompile = (srcCode, result) -> it 'should compile'+srcCode, ->  expectCompile(srcCode, result)
-iitCompile = (srcCode, result) -> iit 'should compile '+srcCode, ->  expectCompile(srcCode, result)
-
-expectParse = (srcCode, result) -> expect(parse(srcCode)).to.have.string result
-itParse = (srcCode, result) -> it 'should parse'+srcCode, ->  expectParse(srcCode, result)
-iitParse = (srcCode, result) -> iit 'should parse '+srcCode, ->  expectParse(srcCode, result)
 
 describe "compiler basic: ",  ->
   describe "compile number: ",  ->
@@ -151,8 +137,6 @@ describe "compiler basic: ",  ->
 
   describe "hash!: ",  ->
     describe "hash! expression: ",  ->
-      itCompile '{}', "{ }"
-
       it 'should compile {.1:2.}', ->
         expect(compile('{.1:2.}')).to.have.string "{ 1: 2}"
       it 'should compile {.1:2; 3:4.}', ->

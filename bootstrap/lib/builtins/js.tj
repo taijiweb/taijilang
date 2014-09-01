@@ -98,10 +98,6 @@ exports['arguments'] =  ['jsvar!', 'arguments']
 exports['regexp!'] = (exp, env) -> ['regexp!', exp[0]]
 exports['eval'] = ['jsvar!', 'eval']
 
-# node module variable
-exports['__filename'] = ['jsvar!', '__filename']
-exports['__dir'] = ['jsvar!', '__dir']
-
 exports["string!"] = convertInterpolatedString = (exp, env)->
   result = ['string!']
   piece = '""'

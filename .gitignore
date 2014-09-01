@@ -23,5 +23,6 @@ dev
 build
 deprecated
 samples-js
+bootstrap-js
 
 /lib/compiler/metacompiled.js

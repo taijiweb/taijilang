@@ -1,4 +1,4 @@
-var Parser, chai, compile, compileNoOptimize, constant, expect, head, idescribe, iit, isArray, lib, metaCompile, ndescribe, nit, parse, realCode, run, str, taiji, _ref;
+var Parser, chai, compile, compileNoOptimize, constant, expect, expectCompile, expectParse, head, idescribe, iit, iitCompile, iitParse, isArray, itCompile, itParse, lib, metaCompile, ndescribe, nit, parse, realCode, run, str, taiji, _ref;
 
 chai = require("chai");
 
@@ -52,23 +52,45 @@ run = function(code) {
   return str(eval(code));
 };
 
+expectCompile = function(srcCode, result) {
+  return expect(compile(srcCode)).to.have.string(result);
+};
+
+itCompile = function(srcCode, result) {
+  return it('should compile ' + srcCode, function() {
+    return expectCompile(srcCode, result);
+  });
+};
+
+iitCompile = function(srcCode, result) {
+  return iit('should compile ' + srcCode, function() {
+    return expectCompile(srcCode, result);
+  });
+};
+
+expectParse = function(srcCode, result) {
+  return expect(parse(srcCode)).to.have.string(result);
+};
+
+itParse = function(srcCode, result) {
+  return it('should parse ' + srcCode, function() {
+    return expectParse(srcCode, result);
+  });
+};
+
+iitParse = function(srcCode, result) {
+  return iit('should parse ' + srcCode, function() {
+    return expectParse(srcCode, result);
+  });
+};
+
 describe("compile: ", function() {
   describe("simple: ", function() {
-    it('should compile var a', function() {
-      return expect(compile('var a')).to.have.string("var a;\na");
-    });
-    it('should compile 1', function() {
-      return expect(compile('1')).to.have.string('1');
-    });
-    it('should compile begin! 1 2', function() {
-      return expect(compile('begin! 1 2')).to.have.string('2');
-    });
-    it('should parse [1, 2]', function() {
-      return expect(parse('[1, 2]')).to.have.string("[list! 1 2]");
-    });
-    it('should compile [1, 2]', function() {
-      return expect(compile('[1, 2]')).to.have.string("[1, 2]");
-    });
+    itCompile('var a', "var a;\na");
+    itCompile('1', '1');
+    itCompile('begin! 1 2', '2');
+    itParse('[1, 2]', "[list! 1 2]");
+    itCompile('[1, 2]', '[1, 2]');
     it('should parse [1 2]', function() {
       return expect(parse('[1 2]')).to.have.string("[list! [1 2]]");
     });
@@ -171,8 +193,11 @@ describe("compile: ", function() {
     it('should compile {a b c} = x', function() {
       return expect(compile('var x; {a b c} = x')).to.equal("var x, a = x.a, \n    b = x.b, \n    c = x.c;\nc");
     });
-    return it('should comile {a} = x', function() {
+    it('should comile {a} = x', function() {
       return expect(compile('var x; {a} = x')).to.equal("var x, a = x.a;\na");
+    });
+    return it('should comile {a, b} = x', function() {
+      return expect(compile('var x; {a b} = x')).to.equal("var x, a = x.a, \n    b = x.b;\nb");
     });
   });
   describe("ellipsis range: ", function() {
@@ -703,8 +728,11 @@ describe("compile: ", function() {
     });
   });
   return describe("snipets from samples: ", function() {
-    return it('should compile extern! node outfile\nnode.spawn outfile() {.stdio: "inherit".}', function() {
+    it('should compile extern! node outfile\nnode.spawn outfile() {.stdio: "inherit".}', function() {
       return expect(compile('extern! node outfile\nnode.spawn outfile() {.stdio: "inherit".}')).to.have.string("node.spawn(outfile(), { stdio: \"inherit\"})");
     });
+    itCompile('extern! Error; throw new Error // """ Use taiji.register() or require the taiji/register module to require {ext} files."""', 'throw new Error');
+    itParse('throw new Error // """ Use taiji.register() or require the taiji/register module to require {ext} files."""', '[throw [new Error]]');
+    return itParse("''' Use taiji.register() or require the taiji/register module to require {ext} files.'''", '" Use taiji.register() or require the taiji/register module to require {ext} files."');
   });
 });
