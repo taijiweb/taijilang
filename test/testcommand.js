@@ -14,7 +14,7 @@ command = require(lib + 'command');
 
 command.testing = true;
 
-idescribe('test command:', function() {
+describe('test command:', function() {
   var compile, parse, run, transform;
   describe("taiji command utilities: ", function() {
     return describe("taiji information: ", function() {
@@ -190,12 +190,18 @@ idescribe('test command:', function() {
         return expect(parse('taiji-libraries-js', 'taiji-libraries/prelude.tj')).to.deep.equal([void 0]);
       });
     });
-    return idescribe("parse and compile bootstrap: ", function() {
+    return describe("parse and compile bootstrap: ", function() {
       it('compile bin/taiji.tj', function() {
         return expect(compile('bootstrap-js/bin', 'bootstrap/bin/taiji.tj')).to.deep.equal([void 0]);
       });
-      return it('compile lib/taiji.tj', function() {
+      it('compile lib/taiji.tj', function() {
         return expect(compile('bootstrap-js/lib', 'bootstrap/lib/taiji.tj')).to.deep.equal([void 0]);
+      });
+      iit('parse lib/repl.tj', function() {
+        return expect(parse('bootstrap-js/lib', 'bootstrap/lib/repl.tj')).to.deep.equal([void 0]);
+      });
+      return it('compile lib/repl.tj', function() {
+        return expect(compile('bootstrap-js/lib', 'bootstrap/lib/repl.tj')).to.deep.equal([void 0]);
       });
     });
   });

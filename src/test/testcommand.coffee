@@ -8,7 +8,7 @@ command = require lib+'command'
 
 command.testing = true
 
-idescribe 'test command:', ->
+describe 'test command:', ->
   describe "taiji command utilities: ",  ->
     describe "taiji information: ",  ->
       it 'should display taiji version', ->
@@ -80,9 +80,11 @@ idescribe 'test command:', ->
       it 'compile html.tj', -> expect(compile 'taiji-libraries-js', 'taiji-libraries/html.tj').to.deep.equal [undefined]
       it 'parse prelude.tj', -> expect(parse 'taiji-libraries-js', 'taiji-libraries/prelude.tj').to.deep.equal [undefined]
 
-    idescribe "parse and compile bootstrap: ",  ->
+    describe "parse and compile bootstrap: ",  ->
       it 'compile bin/taiji.tj', -> expect(compile 'bootstrap-js/bin', 'bootstrap/bin/taiji.tj').to.deep.equal [undefined]
       it 'compile lib/taiji.tj', -> expect(compile 'bootstrap-js/lib', 'bootstrap/lib/taiji.tj').to.deep.equal [undefined]
+      iit 'parse lib/repl.tj', -> expect(parse 'bootstrap-js/lib', 'bootstrap/lib/repl.tj').to.deep.equal [undefined]
+      it 'compile lib/repl.tj', -> expect(compile 'bootstrap-js/lib', 'bootstrap/lib/repl.tj').to.deep.equal [undefined]
 
   run = (filePath) ->
     command.opts = {run:true, arguments:[filePath]}

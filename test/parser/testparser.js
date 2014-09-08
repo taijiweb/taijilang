@@ -1,4 +1,4 @@
-var Parser, chai, constant, expect, idescribe, iit, isArray, lib, str, _ref;
+var Parser, chai, constant, expect, idescribe, iit, isArray, lib, nit, str, _ref;
 
 chai = require("chai");
 
@@ -7,6 +7,8 @@ expect = chai.expect;
 iit = it.only;
 
 idescribe = describe.only;
+
+nit = function() {};
 
 lib = '../../lib/';
 
@@ -581,34 +583,34 @@ describe("parse: ", function() {
         it('should parse try 1 catch e then 2', function() {
           var x;
           x = parse('try 1 catch e then 2');
-          return expect(x).to.equal("[[try 1 [list! [e 2]] undefined undefined]]");
+          return expect(x).to.equal("[[try 1 [e 2] undefined]]");
         });
-        it('should parse try 1 else 2', function() {
+        nit('should parse try 1 else 2', function() {
           var x;
           x = parse('try 1 else 2');
           return expect(x).to.equal("[[try 1 [list!] 2 undefined]]");
         });
-        it('should parse try 1 catch e then 2 else 3', function() {
+        nit('should parse try 1 catch e then 2 else 3', function() {
           var x;
           x = parse('try 1 catch e then 2 else 3');
           return expect(x).to.equal("[[try 1 [list! [e 2]] 3 undefined]]");
         });
-        it('should parse try 1 catch e then 2 \nelse 3', function() {
+        nit('should parse try 1 catch e then 2 \nelse 3', function() {
           var x;
           x = parse('try 1 catch e then 2 \nelse 3');
           return expect(x).to.equal("[[try 1 [list! [e 2]] 3 undefined]]");
         });
-        it('should parse try 1 catch e then \n  2 \nelse 3', function() {
+        nit('should parse try 1 catch e then \n  2 \nelse 3', function() {
           var x;
           x = parse('try 1 catch e then \n  2 \nelse 3');
           return expect(x).to.equal("[[try 1 [list! [e 2]] 3 undefined]]");
         });
-        it('should parse try 1 \ncatch e then 2 \nelse 3', function() {
+        nit('should parse try 1 \ncatch e then 2 \nelse 3', function() {
           var x;
           x = parse('try 1 \ncatch e then 2 \nelse 3');
           return expect(x).to.equal("[[try 1 [list! [e 2]] 3 undefined]]");
         });
-        return it('should parse try 1 \n  2 \nelse 3', function() {
+        return nit('should parse try 1 \n  2 \nelse 3', function() {
           return expect(parse('try 1 \n  2 \nelse 3')).to.equal("[[try [1 2] [list!] 3 undefined]]");
         });
       });
@@ -616,27 +618,32 @@ describe("parse: ", function() {
         it('should parse try 1 catch e then try 2 catch e then 3', function() {
           var x;
           x = parse('try 1 catch e then try 2 catch e then 3');
-          return expect(x).to.equal("[[try 1 [list! [e [try 2 [list! [e 3]] undefined undefined]]] undefined undefined]]");
+          return expect(x).to.equal("[[try 1 [e [try 2 [e 3] undefined]] undefined]]");
         });
-        it('should parse try 1 catch e then try 2 catch e then 3 else 4', function() {
+        nit('should parse try 1 catch e then try 2 catch e then 3 else 4', function() {
           var x;
           x = parse('try 1 catch e then try 2 catch e then 3 else 4');
           return expect(x).to.equal("[[try 1 [list! [e [try 2 [list! [e 3]] 4 undefined]]] undefined undefined]]");
         });
-        it('should parse try 1 catch e then try 2 catch e then 3 \nelse 4', function() {
+        nit('should parse try 1 catch e then try 2 catch e then 3 \nelse 4', function() {
           var x;
           x = parse('try 1 catch e then try 2 catch e then 3 \nelse 4');
           return expect(x).to.equal("[[try 1 [list! [e [try 2 [list! [e 3]] undefined undefined]]] 4 undefined]]");
         });
-        it('should parse try 1 catch e then \n try 2 catch e then 3 \nelse 4', function() {
+        nit('should parse try 1 catch e then \n try 2 catch e then 3 \nelse 4', function() {
           var x;
           x = parse('try 1 catch e then \n try 2 catch e then 3 \nelse 4');
           return expect(x).to.equal("[[try 1 [list! [e [try 2 [list! [e 3]] undefined undefined]]] 4 undefined]]");
         });
-        return it('should parse try 1 catch e then\n try 2 catch e then 3 \n else 4', function() {
+        nit('should parse try 1 catch e then\n try 2 catch e then 3 \n else 4', function() {
           var x;
           x = parse('try 1 catch e then\n try 2 catch e then 3 \n else 4');
           return expect(x).to.equal("[[try 1 [list! [e [try 2 [list! [e 3]] 4 undefined]]] undefined undefined]]");
+        });
+        return it('should parse try \n 1 catch e then\n 2', function() {
+          var x;
+          x = parse('try \n 1 catch e then\n 2');
+          return expect(x).to.equal("[[try 1 e 2 undefined]]");
         });
       });
     });
@@ -644,7 +651,7 @@ describe("parse: ", function() {
       return it('should parse try if 1 then 2 catch e then 3', function() {
         var x;
         x = parse('try if 1 then 2 catch e then 3');
-        return expect(x).to.equal("[[try [if 1 2] [list! [e 3]] undefined undefined]]");
+        return expect(x).to.equal("[[try [if 1 2] [e 3] undefined]]");
       });
     });
     describe("switch statement: ", function() {
@@ -791,7 +798,7 @@ describe("parse: ", function() {
     it('should parse / print \n abs 3 \n abs 4', function() {
       return expect(parse('/ print \n abs 3 \n abs 4')).to.equal("[[codeBlockComment! [[print [abs 3] [abs 4]]]]]");
     });
-    it('should parse / try 1 \n  2 \nelse 3', function() {
+    nit('should parse / try 1 \n  2 \nelse 3', function() {
       return expect(parse('/ try 1 \n  2 \nelse 3')).to.equal("[[codeBlockComment! [[try [1 2] [list!] 3 undefined]]]]");
     });
     it('should parse \'#a=1;a', function() {
@@ -1014,9 +1021,9 @@ describe("parse: ", function() {
         x = parse('x = ->\n 1\n/* comment */');
         return expect(x).to.deep.equal("[= x [-> [] 1]]");
       });
-      it('should parse x = /-h\b|-r\b|-v\b|-b\b/', function() {
+      it('should parse x = /!-h\b|-r\b|-v\b|-b\b/', function() {
         var x;
-        x = parse('x = /-h\b|-r\b|-v\b|-b\b/');
+        x = parse('x = /!-h\b|-r\b|-v\b|-b\b/');
         return expect(x).to.deep.equal("[= x [regexp! /-h\b|-r\b|-v\b|-b\b/]]");
       });
       it('should parse a = 2\nx = : 1', function() {

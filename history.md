@@ -1,7 +1,9 @@
 2014
 
 2014-9
-9-1: parse {} as [hash!]
+9-1: 
+  regexp: /.../  --> /!.../
+  parse {} as [hash!]
 
 2014-8
   8-19-8-31 personal private affairs

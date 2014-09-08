@@ -117,7 +117,7 @@ testRunner #= (groupname, desc)->
     passed = 0
     failed = 0
     each tests (elem) ->
-        if elem.match(/^Passed/) then ++passed
+        if elem.match(/!^Passed/) then ++passed
         else ++failed
     str
       /.str "\n" desc "\n" start "\n\n"

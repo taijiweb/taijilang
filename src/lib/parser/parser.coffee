@@ -242,23 +242,21 @@ exports.Parser = ->
   @spaceComment = bigSpace = memo -> parser.multilineSpaceComment() or space()
 
   @regexp = memo ->
-    if text[start=cursor]!='/' then return
-    if cursor==(indentColumn=lineInfo[lineno].indentColumn) then return # code block comment
-    c = text[cursor+1]
-    if c=='*' or c=='/' then return
-    start = cursor
+    if text[cursor..cursor+1]!='/!' then return
+    start = cursor; cursor += 2
     while c = text[++cursor]
       if c=='\\' and text[cursor+1]=='/' then cursor++
       else if c=='\n' or c=='\r'
         error 'meet unexpected new line while parsing regular expression'
       else if c=='/'
-        i = 0
-        while c=text[++cursor] and ++i
-          if c=='i' or c=='g'or c=='m' then cursor++
+        i = 0; cursor++
+        # console.log text.slice(cursor)
+        while c=text[cursor]
+          if c=='i' or c=='g'or c=='m' then cursor++; ++i
           else break
         if i>3 then 'too many modifiers after regexp'
         break
-    { type: REGEXP, value:text.slice(start, cursor), start:start, stop: cursor, line: lineno}
+    { type: REGEXP, value:'/'+text.slice(start+2, cursor), start:start, stop: cursor, line: lineno}
 
   @literal = literal = (string) ->
     length = string.length
@@ -1075,7 +1073,7 @@ exports.Parser = ->
   thenClause  = (line1, isHeadStatement, options) -> conjClause 'then', line1, isHeadStatement, options
   elseClause  = (line1, isHeadStatement, options) -> conjClause 'else', line1, isHeadStatement, options
   finallyClause  = (line1, isHeadStatement, options) -> conjClause 'finally', line1, isHeadStatement, options
-  catchClauseOfTryStatement = (line1, isHeadStatement, options) ->
+  catchClause = (line1, isHeadStatement, options) ->
     expectIndentConj 'catch', line1, isHeadStatement, options, ->
       line2 = lineno; space(); atStatementHead = false
       catchVar = parser.identifier(); space(); then_ = thenClause(line2, false, {})
@@ -1426,10 +1424,13 @@ exports.Parser = ->
       if not (test = parser.lineBlock()) then error 'expect a line or block after "try"'
       if atStatementHead and not isHeadStatement
         error 'meet unexpected new line when parsing inline try statement'
-      options = {}; catchClauses = ['list!']
-      while catch_=catchClauseOfTryStatement(line1, isHeadStatement, options) then catchClauses.push catch_
-      else_ = elseClause(line1, isHeadStatement, options); final = finallyClause(line1, isHeadStatement, options)
-      ['try', begin(test), catchClauses, else_, final]
+      options = {}; #catchClauses = ['list!']
+      #while catch_=catchClause(line1, isHeadStatement, options) then catchClauses.push catch_
+      #else_ = elseClause(line1, isHeadStatement, options);
+      catch_ = catchClause(line1, isHeadStatement, options)
+      final = finallyClause(line1, isHeadStatement, options)
+      #['try', begin(test), catch_, else_, final]
+      ['try', begin(test), catch_[0], catch_[1], final]
 
     'class': (isHeadStatement) ->
       line1 = lineno; space();

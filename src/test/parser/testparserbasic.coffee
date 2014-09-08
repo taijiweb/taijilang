@@ -319,8 +319,8 @@ describe "parser basic: ",  ->
         parser = new Parser()
         x = parser.parse(text, parser.regexp, 2)
         x and x.value
-      it "parse 1,/-h\b|-r\b|-v\b|-b\b/", ->
-        expect(str parse('1,/-h\b|-r\b|-v\b|-b\b/')).to.equal '/-h\b|-r\b|-v\b|-b\b/'
+      it "parse 1,/!-h\b|-r\b|-v\b|-b\b/", ->
+        expect(str parse('1,/!-h\b|-r\b|-v\b|-b\b/')).to.equal '/-h\b|-r\b|-v\b|-b\b/'
 
   describe "prefixOperator: ",  ->
     parse = (text) ->
@@ -490,10 +490,12 @@ describe "parser basic: ",  ->
       expect(str parse('toString.call')).to.equal "[attribute! toString call]"
     it "parse 1,/-h\b|-r\b|-v\b|-b\b/", ->
       expect(str parse('1,/-h\b|-r\b|-v\b|-b\b/')).to.equal '1'
-    it "parse 1+./1/.test('1')", ->
-      expect(str parse("1+./1/.test('1')")).to.equal "[+ 1 [call! [attribute! [regexp! /1/] test] [\"1\"]]]"
-    it "parse x=./1/", ->
-      expect(str parse('x=./1/')).to.equal "[= x [regexp! /1/]]"
+    it "parse 1+./!1/.test('1')", ->
+      expect(str parse("1+./!1/.test('1')")).to.equal "[+ 1 [call! [attribute! [regexp! /1/] test] [\"1\"]]]"
+    it "parse x=./!1/", ->
+      expect(str parse('x=./!1/')).to.equal "[= x [regexp! /1/]]"
+    it "parse x=./!1/g", ->
+      expect(str parse('x=./!1/g')).to.equal "[= x [regexp! /1/g]]"
 
   describe "space clause expression:", ->
     parse = (text) ->

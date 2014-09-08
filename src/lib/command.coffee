@@ -29,14 +29,11 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 ###
 
-# this file is borrowed from coffee-script, and is not tested in taiji still.
-
 # The `taiji` utility. Handles command-line compilation of taijilang
 # into various forms: saved into `.js` files or printed to stdout
-# or recompiled every time the source is saved,
 # printed as a token stream or as the syntax tree, or launch an interactive repl.
 
-# taiji can be used both on the serve based on Node.js/V8, or to run directly in the browser.
+# taiji can be used both on the server based on Node.js/V8, or to run directly in the browser.
 # This module contains the main entry functions for tokenizing, parsing, and compiling source taiji into JavaScript.
 
 fs = require 'fs'

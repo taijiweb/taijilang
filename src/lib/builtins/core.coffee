@@ -254,8 +254,8 @@ exports['letloop!'] = (exp, env) ->
 keywordConvert = (keyword) -> (exp, env) -> [keyword].concat(for e in exp then convert e, env)
 
 do ->
-  symbols  = 'throw return break label! if! cFor! while while! doWhile! try! with! ?: ,'
-  keywords = 'throw return break label!  if  cFor! while while  doWhile! try with! ?: list!'
+  symbols  = 'throw return break label! if! cFor! while while! doWhile! try! try with! ?: ,'
+  keywords = 'throw return break label!  if  cFor! while while  doWhile! try try with! ?: list!'
   for sym, i in splitSpace symbols then exports[sym] = keywordConvert(splitSpace(keywords)[i])
 
 exports['begin!'] = (exp, env) -> begin(for e in exp then convert e, env)

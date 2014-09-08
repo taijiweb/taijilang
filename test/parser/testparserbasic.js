@@ -421,8 +421,8 @@ describe("parser basic: ", function() {
         x = parser.parse(text, parser.regexp, 2);
         return x && x.value;
       };
-      return it("parse 1,/-h\b|-r\b|-v\b|-b\b/", function() {
-        return expect(str(parse('1,/-h\b|-r\b|-v\b|-b\b/'))).to.equal('/-h\b|-r\b|-v\b|-b\b/');
+      return it("parse 1,/!-h\b|-r\b|-v\b|-b\b/", function() {
+        return expect(str(parse('1,/!-h\b|-r\b|-v\b|-b\b/'))).to.equal('/-h\b|-r\b|-v\b|-b\b/');
       });
     });
   });
@@ -698,11 +698,14 @@ describe("parser basic: ", function() {
     it("parse 1,/-h\b|-r\b|-v\b|-b\b/", function() {
       return expect(str(parse('1,/-h\b|-r\b|-v\b|-b\b/'))).to.equal('1');
     });
-    it("parse 1+./1/.test('1')", function() {
-      return expect(str(parse("1+./1/.test('1')"))).to.equal("[+ 1 [call! [attribute! [regexp! /1/] test] [\"1\"]]]");
+    it("parse 1+./!1/.test('1')", function() {
+      return expect(str(parse("1+./!1/.test('1')"))).to.equal("[+ 1 [call! [attribute! [regexp! /1/] test] [\"1\"]]]");
     });
-    return it("parse x=./1/", function() {
-      return expect(str(parse('x=./1/'))).to.equal("[= x [regexp! /1/]]");
+    it("parse x=./!1/", function() {
+      return expect(str(parse('x=./!1/'))).to.equal("[= x [regexp! /1/]]");
+    });
+    return it("parse x=./!1/g", function() {
+      return expect(str(parse('x=./!1/g'))).to.equal("[= x [regexp! /1/g]]");
     });
   });
   describe("space clause expression:", function() {

@@ -2,6 +2,7 @@ chai = require("chai")
 expect = chai.expect
 iit = it.only
 idescribe = describe.only
+nit = ->
 
 lib = '../../lib/'
 {Parser} = require lib+'parser'
@@ -393,45 +394,49 @@ describe "parse: ",  ->
       describe "group1: ",  ->
         it 'should parse try 1 catch e then 2', ->
           x = parse('try 1 catch e then 2')
-          expect(x).to.equal "[[try 1 [list! [e 2]] undefined undefined]]"
-        it 'should parse try 1 else 2', ->
+          expect(x).to.equal "[[try 1 [e 2] undefined]]"
+        # javascript try-catch has no else clause.
+        nit 'should parse try 1 else 2', ->
           x = parse('try 1 else 2')
           expect(x).to.equal "[[try 1 [list!] 2 undefined]]"
-        it 'should parse try 1 catch e then 2 else 3', ->
+        nit 'should parse try 1 catch e then 2 else 3', ->
           x = parse('try 1 catch e then 2 else 3')
           expect(x).to.equal "[[try 1 [list! [e 2]] 3 undefined]]"
-        it 'should parse try 1 catch e then 2 \nelse 3', ->
+        nit 'should parse try 1 catch e then 2 \nelse 3', ->
           x = parse('try 1 catch e then 2 \nelse 3')
           expect(x).to.equal "[[try 1 [list! [e 2]] 3 undefined]]"
-        it 'should parse try 1 catch e then \n  2 \nelse 3', ->
+        nit 'should parse try 1 catch e then \n  2 \nelse 3', ->
           x = parse('try 1 catch e then \n  2 \nelse 3')
           expect(x).to.equal "[[try 1 [list! [e 2]] 3 undefined]]"
-        it 'should parse try 1 \ncatch e then 2 \nelse 3', ->
+        nit 'should parse try 1 \ncatch e then 2 \nelse 3', ->
           x = parse('try 1 \ncatch e then 2 \nelse 3')
           expect(x).to.equal "[[try 1 [list! [e 2]] 3 undefined]]"
-        it 'should parse try 1 \n  2 \nelse 3', ->
+        nit 'should parse try 1 \n  2 \nelse 3', ->
           expect(parse('try 1 \n  2 \nelse 3')).to.equal "[[try [1 2] [list!] 3 undefined]]"
       describe "group2: ",  ->
         it 'should parse try 1 catch e then try 2 catch e then 3', ->
           x = parse('try 1 catch e then try 2 catch e then 3')
-          expect(x).to.equal "[[try 1 [list! [e [try 2 [list! [e 3]] undefined undefined]]] undefined undefined]]"
-        it 'should parse try 1 catch e then try 2 catch e then 3 else 4', ->
+          expect(x).to.equal "[[try 1 [e [try 2 [e 3] undefined]] undefined]]"
+        nit 'should parse try 1 catch e then try 2 catch e then 3 else 4', ->
           x = parse('try 1 catch e then try 2 catch e then 3 else 4')
           expect(x).to.equal "[[try 1 [list! [e [try 2 [list! [e 3]] 4 undefined]]] undefined undefined]]"
-        it 'should parse try 1 catch e then try 2 catch e then 3 \nelse 4', ->
+        nit 'should parse try 1 catch e then try 2 catch e then 3 \nelse 4', ->
           x = parse('try 1 catch e then try 2 catch e then 3 \nelse 4')
           expect(x).to.equal "[[try 1 [list! [e [try 2 [list! [e 3]] undefined undefined]]] 4 undefined]]"
-        it 'should parse try 1 catch e then \n try 2 catch e then 3 \nelse 4', ->
+        nit 'should parse try 1 catch e then \n try 2 catch e then 3 \nelse 4', ->
           x = parse('try 1 catch e then \n try 2 catch e then 3 \nelse 4')
           expect(x).to.equal "[[try 1 [list! [e [try 2 [list! [e 3]] undefined undefined]]] 4 undefined]]"
-        it 'should parse try 1 catch e then\n try 2 catch e then 3 \n else 4', ->
+        nit 'should parse try 1 catch e then\n try 2 catch e then 3 \n else 4', ->
           x = parse('try 1 catch e then\n try 2 catch e then 3 \n else 4')
           expect(x).to.equal "[[try 1 [list! [e [try 2 [list! [e 3]] 4 undefined]]] undefined undefined]]"
+        it 'should parse try \n 1 catch e then\n 2', ->
+          x = parse('try \n 1 catch e then\n 2')
+          expect(x).to.equal "[[try 1 e 2 undefined]]"
 
     describe "try if statement: ",  ->
       it 'should parse try if 1 then 2 catch e then 3', ->
         x = parse('try if 1 then 2 catch e then 3')
-        expect(x).to.equal "[[try [if 1 2] [list! [e 3]] undefined undefined]]"
+        expect(x).to.equal "[[try [if 1 2] [e 3] undefined]]"
 
     describe "switch statement: ",  ->
       describe "group1: ",  ->
@@ -527,7 +532,7 @@ describe "parse: ",  ->
     it 'should parse / print \n abs 3 \n abs 4', ->
       expect(parse('/ print \n abs 3 \n abs 4')).to.equal "[[codeBlockComment! [[print [abs 3] [abs 4]]]]]"
 
-    it 'should parse / try 1 \n  2 \nelse 3', ->
+    nit 'should parse / try 1 \n  2 \nelse 3', ->
       expect(parse('/ try 1 \n  2 \nelse 3')).to.equal "[[codeBlockComment! [[try [1 2] [list!] 3 undefined]]]]"
 
     it '''should parse '#a=1;a''', ->
@@ -698,8 +703,8 @@ describe "parse: ",  ->
         x = parse('x = ->\n 1\n/* comment */')
         expect(x).to.deep.equal "[= x [-> [] 1]]"
 
-      it 'should parse x = /-h\b|-r\b|-v\b|-b\b/', ->
-        x = parse('x = /-h\b|-r\b|-v\b|-b\b/')
+      it 'should parse x = /!-h\b|-r\b|-v\b|-b\b/', ->
+        x = parse('x = /!-h\b|-r\b|-v\b|-b\b/')
         expect(x).to.deep.equal "[= x [regexp! /-h\b|-r\b|-v\b|-b\b/]]"
 
       it 'should parse a = 2\nx = : 1', ->

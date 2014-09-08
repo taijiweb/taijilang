@@ -72,7 +72,10 @@ exports.convert = convert = (exp, env) ->
     result = convert(entity(exp), env)
   else if typeof entity(exp)=='string'
     if not exp or exp[0]=='"' then return exp
-    if not (result = env.get(exp)) then error 'fail to look up symbol from environment:', exp
+    if not (result = env.get(exp))
+      if exp.start
+        throw exp.start+'('+exp.lineno+'): '+message+': \n'+text[exp.start-40...exp.start]+'|   |'+text[exp.start...exp.start+40]
+      else error 'fail to look up symbol from environment:', exp
   else result = exp
   if typeof result=='function' then result
   else
