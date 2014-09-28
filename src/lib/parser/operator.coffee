@@ -78,7 +78,7 @@ exports.binaryOperatorDict =
   # update! the first character should not be !, and !! becomes a prefix operator, so <> and <*> become unnecessary.
   # '<>': {symbol: '!==', priority: 90},  '<*>': {symbol: '!=', priority: 90}
   '<': {priority: 100}, '<=': {priority: 100}, '>': {priority: 100}, '>=': {priority: 100}
-  'in': {priority: 100}, 'instanceof': {priority: 100}
+  'in': {priority: 100}, 'instanceof': {priority: 100}, 'isoneof': {priority: 100}
 
   # a..b, a...b, x[a..b], x[a...b]
   '..': {priority: 105}, '...': {priority: 105},

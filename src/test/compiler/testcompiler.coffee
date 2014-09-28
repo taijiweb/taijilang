@@ -511,3 +511,12 @@ describe "compile: ",  ->
     itCompile 'extern! Error; throw new Error // """ Use taiji.register() or require the taiji/register module to require {ext} files."""', 'throw new Error'
     itParse 'throw new Error // """ Use taiji.register() or require the taiji/register module to require {ext} files."""', '[throw [new Error]]'
     itParse "''' Use taiji.register() or require the taiji/register module to require {ext} files.'''", '" Use taiji.register() or require the taiji/register module to require {ext} files."'
+
+  describe "snipets from samples: ",  ->
+    itCompile "var path; path.join process.env.HOME, '.taiji_history'", 'var path;\npath.join(process.env.HOME);\n".taiji_history"'
+    itCompile "var path; if process.env.HOME then path.join process.env.HOME, '.taiji_history'", \
+      'var path;\n\nif (process.env.HOME){ \n  path.join(process.env.HOME);\n  ".taiji_history";\n}'
+    itParse "{. a: if process then process 1, 2 .}",  '[hash! [jshashitem! a [if process [begin! [process 1] 2]]]]'
+    itCompile "{. a: if process then process 1, 2 .}",  '{ a: process && (process(1), 2)}'
+    itParse 'extern! useWinPathSep; pathSep = if useWinPathSep then /!\\\\|\\// else /!\\//', '[begin! [extern! useWinPathSep] [= pathSep [if useWinPathSep [regexp! /\\\\|\\//] [regexp! /\\//]]]]'
+    itCompile '''extern! useWinPathSep; pathSep = if useWinPathSep then /!\\\\|\\// else /!\\//''', 'var pathSep = useWinPathSep? /\\\\|\\//: /\\//;\npathSep'

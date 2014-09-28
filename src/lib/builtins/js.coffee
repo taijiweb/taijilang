@@ -59,6 +59,7 @@ for symbol in '+ -'.split ' '
       else ['prefix!', symbol].concat convert exp[0], env
 #augmentAssign = (symbol) -> (exp, env) -> ['augmentAssign', symbol].concat convertList exp, env
 for symbol in '+ - * / && || << >> >>> ,'.split(' ') then exports[symbol+'='] = binary symbol+'='
+exports['instanceof'] = binary 'instanceof'
 
 prefix = (symbol) -> (exp, env) -> ['prefix!', symbol, convert exp[0], env]
 for symbol in '++x --x yield new typeof void !x ~x +x -x'.split(' ')
@@ -143,10 +144,10 @@ exports['forOf!!'] = (exp, env) ->
     env.set(key.value, key); key1 = ['var', key]
   else key1 = convert(key, env)
   vObj = env.newVar('obj')
-  result.push ['direct!', ['var', vObj]]
-  result.push ['=', vObj, obj]
-  length = env.newVar('length')
-  body = begin(['=', value, ['index!', vObj, key]])
+  env.set(vObj.symbol, vObj)
+  result =[['direct!', ['var', vObj]], ['=', vObj, obj]]
+  result.push ['=', value, ['index!', vObj, key]]
+  body = begin(result.concat(body))
   ['jsForIn!', key1, convert(vObj, env), convert(body, env)]
 
 exports['forOf!'] = (exp, env) ->

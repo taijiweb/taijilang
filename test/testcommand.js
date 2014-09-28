@@ -150,7 +150,7 @@ describe('test command:', function() {
         return expect(compile('samples-js', 'samples/democlass.tj')).to.deep.equal([void 0]);
       });
     });
-    describe("parse and compile samples/bootstrap: ", function() {
+    describe("samples/bootstrap: ", function() {
       it('parse require.tj', function() {
         return expect(parse('samples-js/bootstrap/parse', 'samples/bootstrap/require.tj')).to.deep.equal([void 0]);
       });
@@ -167,7 +167,7 @@ describe('test command:', function() {
         return expect(compile('samples-js/bootstrap', 'samples/bootstrap/repl.tj')).to.deep.equal([void 0]);
       });
     });
-    describe("parse and compile taiji-libraries: ", function() {
+    describe("taiji-libraries: ", function() {
       it('parse macros.tj', function() {
         return expect(parse('taiji-libraries-js/parse', 'taiji-libraries/macros.tj')).to.deep.equal([void 0]);
       });
@@ -190,18 +190,21 @@ describe('test command:', function() {
         return expect(parse('taiji-libraries-js', 'taiji-libraries/prelude.tj')).to.deep.equal([void 0]);
       });
     });
-    return describe("parse and compile bootstrap: ", function() {
+    return describe("bootstrap: ", function() {
       it('compile bin/taiji.tj', function() {
         return expect(compile('bootstrap-js/bin', 'bootstrap/bin/taiji.tj')).to.deep.equal([void 0]);
       });
-      it('compile lib/taiji.tj', function() {
-        return expect(compile('bootstrap-js/lib', 'bootstrap/lib/taiji.tj')).to.deep.equal([void 0]);
-      });
-      iit('parse lib/repl.tj', function() {
+      it('parse lib/repl.tj', function() {
         return expect(parse('bootstrap-js/lib', 'bootstrap/lib/repl.tj')).to.deep.equal([void 0]);
       });
-      return it('compile lib/repl.tj', function() {
+      it('compile lib/repl.tj', function() {
         return expect(compile('bootstrap-js/lib', 'bootstrap/lib/repl.tj')).to.deep.equal([void 0]);
+      });
+      it('parse lib/utils.tj', function() {
+        return expect(parse('bootstrap-js/lib', 'bootstrap/lib/utils.tj')).to.deep.equal([void 0]);
+      });
+      return iit('compile lib/utils.tj', function() {
+        return expect(compile('bootstrap-js/lib', 'bootstrap/lib/utils.tj')).to.deep.equal([void 0]);
       });
     });
   });

@@ -57,7 +57,7 @@ tokenFnMap =
   'regexp!': (exp) -> priority(exp[1], 0)
   #'array!':(exp) ->  priority(['[', list(exp[1...]), ']'], 0)  # array[i...]
   'list!':(exp) ->  priority(['[', list(exp[1...]), ']'], 0)  # array[i...]
-  'comma!':(exp) ->  priority(list(exp[1]), 18)
+  'comma!':(exp) ->  priority(list(exp[1...]), 18)
   'call!': (exp) ->
     caller = token(exp[1])
     setFunction caller, priority([caller, paren(list(exp[2]))], 2)

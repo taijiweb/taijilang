@@ -153,7 +153,7 @@ optimizeFnMap =
     exp
 
   'list!': (exp, env) -> exp[1] = ['list!'].concat optimizeList(exp[1...], env)
-  'comma!': (exp, env) -> exp[1] = optimizeList(exp[1], env); exp
+  'comma!': (exp, env) -> ['comma!'].concat optimizeList(exp[1...], env)
 
   'begin!': (exp, env) ->
     exp = for e in exp[1...] then optimize(e, env)

@@ -244,8 +244,9 @@ exports.Parser = ->
   @regexp = memo ->
     if text[cursor..cursor+1]!='/!' then return
     start = cursor; cursor += 2
-    while c = text[++cursor]
-      if c=='\\' and text[cursor+1]=='/' then cursor++
+    while c = text[cursor]
+      if c=='\\' and text[cursor+1]=='/' then cursor += 2
+      else if c=='\\' and text[cursor+1]=='\\' then cursor += 2
       else if c=='\n' or c=='\r'
         error 'meet unexpected new line while parsing regular expression'
       else if c=='/'
@@ -256,6 +257,7 @@ exports.Parser = ->
           else break
         if i>3 then 'too many modifiers after regexp'
         break
+      else cursor++
     { type: REGEXP, value:'/'+text.slice(start+2, cursor), start:start, stop: cursor, line: lineno}
 
   @literal = literal = (string) ->
@@ -1428,6 +1430,7 @@ exports.Parser = ->
       #while catch_=catchClause(line1, isHeadStatement, options) then catchClauses.push catch_
       #else_ = elseClause(line1, isHeadStatement, options);
       catch_ = catchClause(line1, isHeadStatement, options)
+      if not catch_ then error 'expect a catch clause for try-catch statement'
       final = finallyClause(line1, isHeadStatement, options)
       #['try', begin(test), catch_, else_, final]
       ['try', begin(test), catch_[0], catch_[1], final]

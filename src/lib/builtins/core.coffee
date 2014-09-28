@@ -146,7 +146,10 @@ convertAssign = (left, right, env) ->
       begin(result)
   # left is not variable, is a assignable expression instead
   # ['@@' varName] is included by this case, see below: exports['@@'] = (exp, env) ->
-  else ['=', convert(left, env), convertAssignRight(right, env)]
+  else
+    # we should convert the right side at first
+    right = convertAssignRight(right, env)
+    ['=', convert(left, env), right]
 
 # normal assign in object language
 exports['='] = (exp, env) -> convertAssign(exp[0], exp[1], env)
