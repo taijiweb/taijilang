@@ -203,7 +203,7 @@ describe('test command:', function() {
       it('parse lib/utils.tj', function() {
         return expect(parse('bootstrap-js/lib', 'bootstrap/lib/utils.tj')).to.deep.equal([void 0]);
       });
-      return iit('compile lib/utils.tj', function() {
+      return it('compile lib/utils.tj', function() {
         return expect(compile('bootstrap-js/lib', 'bootstrap/lib/utils.tj')).to.deep.equal([void 0]);
       });
     });

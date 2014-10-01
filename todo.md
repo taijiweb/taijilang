@@ -1,3 +1,5 @@
+todo: refactor parser for performance: more lexical analysis before parsing, record parent pointer, consistent tree expression, debug and test support
+
 todo: document
   todo: tutorial：interactive samples
   

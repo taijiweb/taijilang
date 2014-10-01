@@ -607,17 +607,73 @@ describe("parser basic: ", function() {
       return expect(parse('(++')).to.equal(void 0);
     });
   });
+  describe("matchToken: ", function() {
+    var parse, parser;
+    parser = new Parser();
+    parse = function(text) {
+      var x;
+      parser.init(text, 0);
+      x = parser.testMatchToken();
+      return x;
+    };
+    it("parse toString", function() {
+      return expect(str(parse('toString').expr)).to.equal('[identifier! toString]');
+    });
+    it("parse 123", function() {
+      return expect(str(parse('123').expr)).to.equal('[number! 123]');
+    });
+    it("parse inline space comment", function() {
+      var x;
+      parser = new Parser();
+      parser.init('123   /*sfadl*/', 0);
+      parser.testMatchToken();
+      x = parser.testMatchToken();
+      return expect(x.value).to.equal('   /*sfadl*/');
+    });
+    it("parse multiple line space comment", function() {
+      var x;
+      parser = new Parser();
+      parser.init('123   /*sfadl*/ \n // line comment \n something', 0);
+      parser.testMatchToken();
+      x = parser.testMatchToken();
+      return expect(x.value).to.equal("   /*sfadl*/ \n ");
+    });
+    it("parse multiple line space comment 2", function() {
+      var x;
+      parser = new Parser();
+      parser.init('123   /*sfadl*/ \n// line comment \n// line comment 2\n something', 0);
+      parser.testMatchToken();
+      x = parser.testMatchToken();
+      return expect(x.value).to.equal("   /*sfadl*/ \n// line comment \n// line comment 2\n ");
+    });
+    it("parse multiple line space comment 3", function() {
+      var x;
+      parser = new Parser();
+      parser.init('123   // line comment // line comment 2\n/*fds;j*/ something', 0);
+      parser.testMatchToken();
+      x = parser.testMatchToken();
+      return expect(x.value).to.equal("   // line comment // line comment 2\n/*fds;j*/ ");
+    });
+    return iit("parse multiple line space comment 4", function() {
+      var x;
+      parser = new Parser();
+      parser.init('123   // line comment // line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  something', 0);
+      parser.testMatchToken();
+      x = parser.testMatchToken();
+      return expect(x.value).to.equal("   // line comment // line comment 2\n/*fds;j*/ ");
+    });
+  });
   describe("parse atom: ", function() {
     var parse, parser;
     parser = new Parser();
     parse = function(text) {
       var x;
       x = parser.parse(text, parser.atom, 0);
-      return x && x.value;
+      return str(x);
     };
-    return describe("is number: ", function() {
+    return describe("toString: ", function() {
       return it("parse toString", function() {
-        return expect(parse('toString')).to.equal('toString');
+        return expect(parse('toString')).to.equal('[identifier! toString]');
       });
     });
   });

@@ -85,7 +85,7 @@ describe 'test command:', ->
       it 'parse lib/repl.tj', -> expect(parse 'bootstrap-js/lib', 'bootstrap/lib/repl.tj').to.deep.equal [undefined]
       it 'compile lib/repl.tj', -> expect(compile 'bootstrap-js/lib', 'bootstrap/lib/repl.tj').to.deep.equal [undefined]
       it 'parse lib/utils.tj', -> expect(parse 'bootstrap-js/lib', 'bootstrap/lib/utils.tj').to.deep.equal [undefined]
-      iit 'compile lib/utils.tj', -> expect(compile 'bootstrap-js/lib', 'bootstrap/lib/utils.tj').to.deep.equal [undefined]
+      it 'compile lib/utils.tj', -> expect(compile 'bootstrap-js/lib', 'bootstrap/lib/utils.tj').to.deep.equal [undefined]
 
   run = (filePath) ->
     command.opts = {run:true, arguments:[filePath]}

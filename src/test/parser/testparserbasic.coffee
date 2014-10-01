@@ -425,15 +425,56 @@ describe "parser basic: ",  ->
     it 'should parse (++', ->
       expect(parse('(++')).to.equal undefined
 
+  describe "matchToken: ",  ->
+    parser = new Parser()
+    parse = (text) ->
+      parser.init(text, 0)
+      x = parser.testMatchToken()
+      x
+    it "parse toString", ->
+      expect(str parse('toString').expr).to.equal '[identifier! toString]'
+    it "parse 123", ->
+      expect(str parse('123').expr).to.equal '[number! 123]'
+    it "parse inline space comment", ->
+      parser = new Parser()
+      parser.init('123   /*sfadl*/', 0)
+      parser.testMatchToken()
+      x = parser.testMatchToken()
+      expect(x.value).to.equal '   /*sfadl*/'
+    it "parse multiple line space comment", ->
+      parser = new Parser()
+      parser.init('123   /*sfadl*/ \n // line comment \n something', 0)
+      parser.testMatchToken()
+      x = parser.testMatchToken()
+      expect(x.value).to.equal "   /*sfadl*/ \n "
+    it "parse multiple line space comment 2", ->
+      parser = new Parser()
+      parser.init('123   /*sfadl*/ \n// line comment \n// line comment 2\n something', 0)
+      parser.testMatchToken()
+      x = parser.testMatchToken()
+      expect(x.value).to.equal "   /*sfadl*/ \n// line comment \n// line comment 2\n "
+    it "parse multiple line space comment 3", ->
+      parser = new Parser()
+      parser.init('123   // line comment // line comment 2\n/*fds;j*/ something', 0)
+      parser.testMatchToken()
+      x = parser.testMatchToken()
+      expect(x.value).to.equal "   // line comment // line comment 2\n/*fds;j*/ "
+    iit "parse multiple line space comment 4", ->
+      parser = new Parser()
+      parser.init('123   // line comment // line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  something', 0)
+      parser.testMatchToken()
+      x = parser.testMatchToken()
+      expect(x.value).to.equal "   // line comment // line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  "
+
   describe "parse atom: ",  ->
     parser = new Parser()
     parse = (text) ->
       x = parser.parse(text, parser.atom, 0)
-      x and x.value
+      str x
 
-    describe "is number: ",  ->
+    describe "toString: ",  ->
       it "parse toString", ->
-        expect(parse('toString')).to.equal 'toString'
+        expect(parse('toString')).to.equal '[identifier! toString]'
 
   describe "parenthesis: ",  ->
     parse = (text) ->
