@@ -8,7 +8,7 @@ lib = '../../lib/'
 {str, extend} = require lib+'utils'
 taiji = require lib+'taiji'
 
-describe "parse dyanmic syntax: ",  ->
+ndescribe "parse dyanmic syntax: ",  ->
   head = 'taiji language 0.1\n'
   parse = (text) ->
     env = taiji.initEnv(taiji.builtins, taiji.rootModule, {})

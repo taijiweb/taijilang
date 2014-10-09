@@ -6,7 +6,6 @@ idescribe = describe.only
 ndescribe = ->
 nit = ->
 
-
 lib = '../../lib/'
 {Parser} = require lib+'parser'
 {constant, isArray, str} = require lib+'parser/base'
@@ -21,7 +20,7 @@ compileNoOptimize = (code) ->
   head = 'taiji language 0.1\n'
   realCode taiji.compileNoOptimize(head+code, taiji.rootModule, taiji.builtins, {})
 
-describe "compile operator expression: ", ->
+ndescribe "compile operator expression: ", ->
   describe "atom: ", ->
     it "compile 1", ->
       expect(compile('1')).to.have.string '1'

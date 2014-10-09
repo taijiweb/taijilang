@@ -41,7 +41,7 @@ run = function(code) {
   return str(eval(code));
 };
 
-describe("taiji module: ", function() {
+ndescribe("taiji module: ", function() {
   describe("path: ", function() {
     it('__dirname', function() {
       return expect(__dirname).to.match(/test/);

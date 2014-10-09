@@ -2,13 +2,14 @@ chai = require("chai")
 expect = chai.expect
 iit = it.only
 idescribe = describe.only
+ndescribe = ->
 nit = ->
 
 lib = '../../lib/'
 {Parser} = require lib+'parser'
 {constant, isArray, str} = require lib+'parser/base'
 
-describe "parse: ",  ->
+ndescribe "parse: ",  ->
   describe "clause: ",  ->
     parse = (text) ->
       parser = new Parser()

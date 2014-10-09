@@ -2,13 +2,14 @@ chai = require("chai")
 expect = chai.expect
 iit = it.only
 idescribe = describe.only
+ndescribe = ->
 
 lib = '../lib/'
 command = require lib+'command'
 
 command.testing = true
 
-describe 'test command:', ->
+ndescribe 'test command:', ->
   describe "taiji command utilities: ",  ->
     describe "taiji information: ",  ->
       it 'should display taiji version', ->

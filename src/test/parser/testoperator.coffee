@@ -2,7 +2,6 @@ chai = require("chai")
 expect = chai.expect
 iit = it.only
 idescribe = describe.only
-
 ndescribe = ->
 nit = ->
 
@@ -11,7 +10,7 @@ lib = '../../lib/'
 {getOperatorExpression} = require lib+'parser/operator'
 {Parser} = require lib+'parser'
 
-describe "parse operator expression: ", ->
+ndescribe "parse operator expression: ", ->
   parse = (text) ->
     parser = new Parser()
     x = getOperatorExpression parser.parse(text, parser.operatorExpression, 0)

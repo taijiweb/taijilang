@@ -7,7 +7,7 @@ ndescribe = ->
 lib = '../lib/'
 {isTaiji, baseFileName} = utils = require lib+'utils'
 
-describe "utils.coffee: ",  ->
+ndescribe "utils.coffee: ",  ->
   describe "isTaiji filename: ",  ->
     it ' 1.tj', ->
       expect(isTaiji '1.tj').to.equal true

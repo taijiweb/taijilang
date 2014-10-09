@@ -1,4 +1,4 @@
-var chai, command, expect, idescribe, iit, lib;
+var chai, command, expect, idescribe, iit, lib, ndescribe;
 
 chai = require("chai");
 
@@ -8,13 +8,15 @@ iit = it.only;
 
 idescribe = describe.only;
 
+ndescribe = function() {};
+
 lib = '../lib/';
 
 command = require(lib + 'command');
 
 command.testing = true;
 
-describe('test command:', function() {
+ndescribe('test command:', function() {
   var compile, parse, run, transform;
   describe("taiji command utilities: ", function() {
     return describe("taiji information: ", function() {

@@ -16,7 +16,7 @@ _ref = require(lib + 'utils'), str = _ref.str, extend = _ref.extend;
 
 taiji = require(lib + 'taiji');
 
-describe("parse dyanmic syntax: ", function() {
+ndescribe("parse dyanmic syntax: ", function() {
   var head, parse;
   head = 'taiji language 0.1\n';
   parse = function(text) {

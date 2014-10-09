@@ -1,4 +1,4 @@
-var chai, expect, idescribe, iit;
+var chai, expect, idescribe, iit, ndescribe;
 
 chai = require("chai");
 
@@ -8,9 +8,11 @@ iit = it.only;
 
 idescribe = describe.only;
 
+ndescribe = function() {};
+
 require('shelljs/global');
 
-describe("taiji shell command: ", function() {
+ndescribe("taiji shell command: ", function() {
   describe("experiment with shelljs: ", function() {
     return it('should pwd', function() {
       var x;

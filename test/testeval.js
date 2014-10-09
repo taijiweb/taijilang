@@ -20,7 +20,7 @@ evaltj = function(code) {
   return taiji["eval"](head + code, taiji.rootModule, taiji.builtins, {});
 };
 
-describe("eval: ", function() {
+ndescribe("eval: ", function() {
   describe("eval simple: ", function() {
     it('should eval 1', function() {
       return expect(evaltj('1')).to.equal(1);

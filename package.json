@@ -1,23 +1,31 @@
 {
   "name": "taiji",
   "description": "taiji language",
-  "keywords": ["javascript", "language", "taijilang", "compiler", "taiji"],
+  "keywords": [
+    "javascript",
+    "language",
+    "taijilang",
+    "compiler",
+    "taiji"
+  ],
   "author": "曹星明(Caoxingming, or Taiji Zhenren, simeon.chaos@gmail.com)",
   "version": "0.1.0",
-  "licenses": [{
-    "type": "MIT",
-    "url": "https://raw.github.com/taijilang/taijilang/master/LICENSE"
-  }],
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://raw.github.com/taijilang/taijilang/master/LICENSE"
+    }
+  ],
   "engines": {
     "node": ">=0.8.0"
   },
-  "directories" : {
-    "lib" : "./lib",
-     "bin": "./bin",
-     "doc": "./doc",
-     "example": "./samples"
+  "directories": {
+    "lib": "./lib",
+    "bin": "./bin",
+    "doc": "./doc",
+    "example": "./samples"
   },
-  "main" : "./lib/taiji.js",
+  "main": "./lib/taiji.js",
   "bin": {
     "taiji": "./bin/taiji"
   },
@@ -28,7 +36,8 @@
     "url": "git://github.com/taijiweb/taijilang.git"
   },
   "dependencies": {
-    "mkdirp": "~0.3.5"
+    "mkdirp": "~0.3.5",
+    "colors": "~1.0.2"
   },
   "devDependencies": {
     "coffee-script": "1.7.1",
@@ -38,17 +47,15 @@
     "gulp": "^3.6.2",
     "gulp-util": "^2.2.19",
     "gulp-coffee": "~1.4.1",
-    "gulp-mocha": "~0.3.0",
+    "gulp-mocha": "~0.4.1",
     "gulp-changed": "~0.2.1",
     "gulp-cached": "0.0.2",
-    "gulp-plumber": "~0.5.6",  
-    "gulp-mocha": "~0.4.1",
+    "gulp-plumber": "~0.5.6",
     "gulp-shell": "~0.2.4",
     "gulp-rename": "~0.2.2",
     "gulp-clean": "~0.2.4",
-     "run-sequence": "~0.3.6"
+    "run-sequence": "~0.3.6"
   },
-  "scripts": {
-  },
+  "scripts": {},
   "preferGlobal": true
 }

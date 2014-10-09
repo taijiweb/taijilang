@@ -2,6 +2,7 @@ chai = require("chai")
 expect = chai.expect
 iit = it.only
 idescribe = describe.only
+ndescribe = ->
 nit = ndescribe = ->
 
 lib = '../../lib/'
@@ -42,7 +43,7 @@ expectParse = (srcCode, result) -> expect(parse(srcCode)).to.have.string result
 itParse = (srcCode, result) -> it 'should parse '+srcCode, ->  expectParse(srcCode, result)
 iitParse = (srcCode, result) -> iit 'should parse '+srcCode, ->  expectParse(srcCode, result)
 
-describe "compile: ",  ->
+ndescribe "compile: ",  ->
   describe "simple: ",  ->
     itCompile 'var a', "var a;\na"
     itCompile '1', '1'

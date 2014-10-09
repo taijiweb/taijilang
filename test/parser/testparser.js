@@ -1,4 +1,4 @@
-var Parser, chai, constant, expect, idescribe, iit, isArray, lib, nit, str, _ref;
+var Parser, chai, constant, expect, idescribe, iit, isArray, lib, ndescribe, nit, str, _ref;
 
 chai = require("chai");
 
@@ -8,6 +8,8 @@ iit = it.only;
 
 idescribe = describe.only;
 
+ndescribe = function() {};
+
 nit = function() {};
 
 lib = '../../lib/';
@@ -16,7 +18,7 @@ Parser = require(lib + 'parser').Parser;
 
 _ref = require(lib + 'parser/base'), constant = _ref.constant, isArray = _ref.isArray, str = _ref.str;
 
-describe("parse: ", function() {
+ndescribe("parse: ", function() {
   describe("clause: ", function() {
     var parse;
     parse = function(text) {

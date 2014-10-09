@@ -20,7 +20,7 @@ getOperatorExpression = require(lib + 'parser/operator').getOperatorExpression;
 
 Parser = require(lib + 'parser').Parser;
 
-describe("parse operator expression: ", function() {
+ndescribe("parse operator expression: ", function() {
   var parse;
   parse = function(text) {
     var parser, x;

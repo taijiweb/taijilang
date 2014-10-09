@@ -34,7 +34,7 @@ compileNoOptimize = function(code) {
   return realCode(taiji.compileNoOptimize(head + code, taiji.rootModule, taiji.builtins, {}));
 };
 
-describe("compile operator expression: ", function() {
+ndescribe("compile operator expression: ", function() {
   describe("atom: ", function() {
     it("compile 1", function() {
       return expect(compile('1')).to.have.string('1');

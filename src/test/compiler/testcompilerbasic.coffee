@@ -32,7 +32,7 @@ expectParse = (srcCode, result) -> expect(parse(srcCode)).to.have.string result
 itParse = (srcCode, result) -> it 'should parse'+srcCode, ->  expectParse(srcCode, result)
 iitParse = (srcCode, result) -> iit 'should parse '+srcCode, ->  expectParse(srcCode, result)
 
-describe "compiler basic: ",  ->
+ndescribe "compiler basic: ",  ->
   describe "compile number: ",  ->
     it "compile 1", ->
       expect(compile('1')).to.have.string '1'

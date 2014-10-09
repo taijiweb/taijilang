@@ -2,6 +2,7 @@ chai = require("chai")
 expect = chai.expect
 iit = it.only
 idescribe = describe.only
+ndescribe = ->
 nit = ndescribe = ->
 
 lib = '../../lib/'
@@ -15,7 +16,7 @@ compileNoOptimize = (code) -> compileExpNoOptimize(exp, initEnv(builtins, rootMo
 transform = (exp) ->
   compiler.transform(exp,  initEnv(builtins, rootModule, {}))
 
-describe "compile expression: ",  ->
+ndescribe "compile expression: ",  ->
   describe "simple: ",  ->
     it 'should compile 1', ->
       expect(compile(1)).to.equal '1'

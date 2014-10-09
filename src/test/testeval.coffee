@@ -11,7 +11,7 @@ evaltj = (code) ->
   head = 'taiji language 0.1\n'
   taiji.eval(head+code, taiji.rootModule, taiji.builtins, {})
 
-describe "eval: ",  ->
+ndescribe "eval: ",  ->
   describe "eval simple: ",  ->
     it 'should eval 1', ->
       expect(evaltj('1')).to.equal 1

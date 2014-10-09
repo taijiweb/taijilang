@@ -71,7 +71,7 @@ iitParse = function(srcCode, result) {
   });
 };
 
-describe("compiler basic: ", function() {
+ndescribe("compiler basic: ", function() {
   describe("compile number: ", function() {
     it("compile 1", function() {
       return expect(compile('1')).to.have.string('1');

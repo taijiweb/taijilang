@@ -2,6 +2,7 @@ chai = require("chai")
 expect = chai.expect
 iit = it.only
 idescribe = describe.only
+ndescribe =  ->
 nit = ->
 
 lib = '../../lib/'
@@ -18,7 +19,7 @@ compileNoOptimize = (code) ->
   head = 'taiji language 0.1\n'
   realCode taiji.compileNoOptimize(head+code, taiji.rootModule, taiji.builtins, {})
 
-describe "compile dyanmic syntax: ",  ->
+ndescribe "compile dyanmic syntax: ",  ->
   describe "compile parser attribute: ",  ->
     it 'should compile %xyz[0]()', ->
       expect(compile('%xyz[0]()')).to.have.string "__$taiji_$_$parser__.xyz[0]()"

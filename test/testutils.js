@@ -14,7 +14,7 @@ lib = '../lib/';
 
 _ref = utils = require(lib + 'utils'), isTaiji = _ref.isTaiji, baseFileName = _ref.baseFileName;
 
-describe("utils.coffee: ", function() {
+ndescribe("utils.coffee: ", function() {
   describe("isTaiji filename: ", function() {
     it(' 1.tj', function() {
       return expect(isTaiji('1.tj')).to.equal(true);

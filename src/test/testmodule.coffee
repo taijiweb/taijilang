@@ -23,7 +23,7 @@ run = (code) ->
   code = taiji.compile(head+code, taiji.rootModule, taiji.builtins, {})
   str eval code
 
-describe "taiji module: ",  ->
+ndescribe "taiji module: ",  ->
   describe "path: ",  ->
     it '__dirname', ->
       expect(__dirname).to.match /test/

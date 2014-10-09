@@ -8,6 +8,8 @@ iit = it.only;
 
 idescribe = describe.only;
 
+ndescribe = function() {};
+
 nit = ndescribe = function() {};
 
 lib = '../../lib/';
@@ -84,7 +86,7 @@ iitParse = function(srcCode, result) {
   });
 };
 
-describe("compile: ", function() {
+ndescribe("compile: ", function() {
   describe("simple: ", function() {
     itCompile('var a', "var a;\na");
     itCompile('1', '1');

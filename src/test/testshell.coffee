@@ -2,10 +2,11 @@ chai = require("chai")
 expect = chai.expect
 iit = it.only
 idescribe = describe.only
+ndescribe = ->
 
 require('shelljs/global')
 
-describe "taiji shell command: ",  ->
+ndescribe "taiji shell command: ",  ->
   describe "experiment with shelljs: ",  ->
     it 'should pwd', ->
       x = pwd()

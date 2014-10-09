@@ -8,6 +8,8 @@ iit = it.only;
 
 idescribe = describe.only;
 
+ndescribe = function() {};
+
 nit = ndescribe = function() {};
 
 lib = '../../lib/';
@@ -30,7 +32,7 @@ transform = function(exp) {
   return compiler.transform(exp, initEnv(builtins, rootModule, {}));
 };
 
-describe("compile expression: ", function() {
+ndescribe("compile expression: ", function() {
   return describe("simple: ", function() {
     it('should compile 1', function() {
       return expect(compile(1)).to.equal('1');

@@ -1,4 +1,4 @@
-var Parser, chai, compile, compileNoOptimize, constant, expect, idescribe, iit, isArray, lib, nit, realCode, str, taiji, _ref;
+var Parser, chai, compile, compileNoOptimize, constant, expect, idescribe, iit, isArray, lib, ndescribe, nit, realCode, str, taiji, _ref;
 
 chai = require("chai");
 
@@ -7,6 +7,8 @@ expect = chai.expect;
 iit = it.only;
 
 idescribe = describe.only;
+
+ndescribe = function() {};
 
 nit = function() {};
 
@@ -32,7 +34,7 @@ compileNoOptimize = function(code) {
   return realCode(taiji.compileNoOptimize(head + code, taiji.rootModule, taiji.builtins, {}));
 };
 
-describe("compile dyanmic syntax: ", function() {
+ndescribe("compile dyanmic syntax: ", function() {
   describe("compile parser attribute: ", function() {
     it('should compile %xyz[0]()', function() {
       return expect(compile('%xyz[0]()')).to.have.string("__$taiji_$_$parser__.xyz[0]()");

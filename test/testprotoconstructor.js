@@ -7,7 +7,7 @@ var lib = '../lib/';
 var _ref = require(lib + 'utils'), str = _ref.str, extend = _ref.extend;
 var taiji = require(lib + 'taiji');
 
-describe("prototype constructor: ", function() {
+ndescribe("prototype constructor: ", function() {
     it('should constructor and instanceof', function () {
         var A = function(){}
         var B = function(){}

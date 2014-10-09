@@ -1,6 +1,13 @@
 2014
 
 2014-9
+9-28->10-1
+refactor parser for better performace and better design
+space token under new lexical analysis and parser based on token
+
+it's coded that the framework of new lexical analysis and parser based on token
+space token and pass some tests
+
 9-1: 
   regexp: /.../  --> /!.../
   parse {} as [hash!]
