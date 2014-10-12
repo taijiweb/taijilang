@@ -17,136 +17,11 @@ PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION, O
 matchRule = (parser, rule) -> -> parser.matchToken(); rule()
 
 describe "parser basic: ",  ->
-  xdescribe "newline and indent: ",  ->
-    it "parse 1", ->
-      parser = new Parser()
-      parser.init('1', 0)
-      parser.preparse()
-      expect(parser.lineInfo.length).to.equal 3
-      expect(parser.lineInfo[1].indentColumn).to.equal 0
-    it "parse \n", ->
-      parser = new Parser()
-      parser.init('\n', 0)
-      parser.preparse()
-      expect(parser.lineInfo.length).to.equal 4
-      expect(parser.lineInfo[1].indentColumn).to.equal 0
-      expect(parser.lineInfo[2].indentColumn).to.equal undefined
-    it "parse 1\n", ->
-      parser = new Parser()
-      parser.init('1\n', 0)
-      parser.preparse()
-      expect(parser.lineInfo.length).to.equal 4
-      expect(parser.lineInfo[1].indentColumn).to.equal 0
-      expect(parser.lineInfo[2].indentColumn).to.equal undefined
-    it "parse \n1", ->
-      parser = new Parser()
-      parser.init('\n1', 0)
-      parser.preparse()
-      expect(parser.lineInfo.length).to.equal 4
-      expect(parser.lineInfo[1].empty).to.equal true
-      expect(parser.lineInfo[1].indentColumn).to.equal 0
-      expect(parser.lineInfo[2].indentColumn).to.equal 0
-    it "parse \n 1", ->
-      parser = new Parser()
-      parser.init('\n 1', 0)
-      parser.preparse()
-      expect(parser.lineInfo.length).to.equal 4
-      expect(parser.lineInfo[1].empty).to.equal true
-      expect(parser.lineInfo[1].indentColumn).to.equal 0
-      expect(parser.lineInfo[2].indentColumn).to.equal 1
-
-    it "parse \n 1\n  2", ->
-      parser = new Parser()
-      parser.init('\n 1\n  2', 0)
-      parser.preparse()
-      expect(parser.lineInfo.length).to.equal 5
-      expect(parser.lineInfo[1].empty).to.equal true
-      expect(parser.lineInfo[1].indentColumn).to.equal 0
-      expect(parser.lineInfo[2].indentColumn).to.equal 1
-      expect(parser.lineInfo[2].indent).to.equal 0
-      expect(parser.lineInfo[2].undent).to.equal undefined
-      expect(parser.lineInfo[3].indentColumn).to.equal 2
-      expect(parser.lineInfo[3].indent).to.equal 2
-      expect(parser.lineInfo[3].prevLine).to.equal undefined
-
-    it "parse \n  1\n 2", ->
-      parser = new Parser()
-      parser.init('\n  1\n 2', 0)
-      parser.preparse()
-      expect(parser.lineInfo.length).to.equal 5
-      expect(parser.lineInfo[1].empty).to.equal true
-      expect(parser.lineInfo[1].indentColumn).to.equal 0
-      expect(parser.lineInfo[2].indentColumn).to.equal 2
-      expect(parser.lineInfo[2].indent).to.equal 0
-      expect(parser.lineInfo[2].undent).to.equal undefined
-      expect(parser.lineInfo[3].indentColumn).to.equal 1
-      expect(parser.lineInfo[3].undent).to.equal 2
-      expect(parser.lineInfo[3].indent).to.equal 0
-      expect(parser.lineInfo[3].prevLine).to.equal undefined
-
-    it "parse \n  1\n 2\n3", ->
-      parser = new Parser()
-      parser.init('\n  1\n 2\n3', 0)
-      parser.preparse()
-      expect(parser.lineInfo.length).to.equal 6
-      expect(parser.lineInfo[1].empty).to.equal true
-      expect(parser.lineInfo[1].indentColumn).to.equal 0
-      expect(parser.lineInfo[2].indentColumn).to.equal 2
-      expect(parser.lineInfo[2].indent).to.equal 0
-      expect(parser.lineInfo[2].undent).to.equal undefined
-      expect(parser.lineInfo[3].indentColumn).to.equal 1
-      expect(parser.lineInfo[3].undent).to.equal 2
-      expect(parser.lineInfo[3].indent).to.equal 0
-      expect(parser.lineInfo[3].prevLine).to.equal undefined
-      expect(parser.lineInfo[4].indentColumn).to.equal 0
-      expect(parser.lineInfo[4].undent).to.equal 3
-      expect(parser.lineInfo[4].indent).to.equal undefined
-      expect(parser.lineInfo[4].prevLine).to.equal 0
-
-    it "parse \n      1\n    2\n  3", ->
-      parser = new Parser()
-      parser.init('\n      1\n    2\n  3', 0)
-      parser.preparse()
-      expect(parser.lineInfo.length).to.equal 6
-      expect(parser.lineInfo[1].empty).to.equal true
-      expect(parser.lineInfo[1].indentColumn).to.equal 0
-      expect(parser.lineInfo[2].indentColumn).to.equal 6
-      expect(parser.lineInfo[2].indent).to.equal 0
-      expect(parser.lineInfo[2].undent).to.equal undefined
-      expect(parser.lineInfo[3].indentColumn).to.equal 4
-      expect(parser.lineInfo[3].undent).to.equal 2
-      expect(parser.lineInfo[3].indent).to.equal 0
-      expect(parser.lineInfo[3].prevLine).to.equal undefined
-      expect(parser.lineInfo[4].indentColumn).to.equal 2
-      expect(parser.lineInfo[4].undent).to.equal 3
-      expect(parser.lineInfo[4].indent).to.equal 0
-      expect(parser.lineInfo[4].prevLine).to.equal undefined
-
-    it "parse \n 1\n  2\n3", ->
-      parser = new Parser()
-      parser.init('\n 1\n  2\n3', 0)
-      parser.preparse()
-      expect(parser.lineInfo.length).to.equal 6
-      expect(parser.lineInfo[1].empty).to.equal true
-      expect(parser.lineInfo[1].indentColumn).to.equal 0
-      expect(parser.lineInfo[2].indentColumn).to.equal 1
-      expect(parser.lineInfo[2].indent).to.equal 0
-      expect(parser.lineInfo[2].undent).to.equal undefined
-      expect(parser.lineInfo[3].indentColumn).to.equal 2
-      expect(parser.lineInfo[3].undent).to.equal undefined
-      expect(parser.lineInfo[3].indent).to.equal 2
-      expect(parser.lineInfo[3].prevLine).to.equal undefined
-      expect(parser.lineInfo[4].indentColumn).to.equal 0
-      expect(parser.lineInfo[4].undent).to.equal 2
-      expect(parser.lineInfo[4].indent).to.equal undefined
-      expect(parser.lineInfo[4].prevLine).to.equal 0
-
-  xdescribe "parse number: ",  ->
+  ndescribe "parse number: ",  ->
     parser = new Parser()
     parse = (text) ->
-      x = parser.parse(text, parser.number, 0)
-      #      console.log JSON.stringify x
-      x and x.value
+      parser.parse(text, parser.matchToken, 0)
+      parser.token().value
 
     describe "is number: ",  ->
       it "parse 1", ->
@@ -213,26 +88,25 @@ describe "parser basic: ",  ->
       it "parse -.", ->
         expect(parse('-.')).to.equal undefined
 
-  xdescribe "parse identifier: ",  ->
+  describe "parse identifier: ",  ->
+    parser = new Parser()
     describe "parse parser.identifier: ",  ->
       parse = (text) ->
-        parser = new Parser()
-        x = parser.parse(text, parser.identifier, 0)
-        #      console.log JSON.stringify x
-        x.value
+        x = parser.parse(text, parser.matchToken, 0)
+        parser.token().value
 
       it "parse a", ->
         expect(parse('a')).to.equal 'a'
+        expect(parser.token().type).to.equal IDENTIFIER
       it "parse ?", ->
-        expect(-> parse('?')).to.throw /Cannot read property 'value' of undefined/
+        parse('?'); expect(parser.token().type).to.not.equal IDENTIFIER
       it "parse #", ->
-        expect(-> parse('#')).to.throw /Cannot read property 'value' of undefined/
+        parse('?'); expect(parser.token().type).to.not.equal IDENTIFIER
       it "parse !ds", ->
-        expect(-> parse('!ds')).to.throw /Cannot read property 'value' of undefined/
+        parse('?'); expect(parser.token().type).to.not.equal IDENTIFIER
 
-    describe "parse taijiIdentifier: ",  ->
+    ndescribe "parse taijiIdentifier: ",  ->
       parse = (text) ->
-        parser = new Parser()
         x = parser.parse(text, parser.taijiIdentifier, 0)
         #      console.log JSON.stringify x
         x and x.value
@@ -264,14 +138,16 @@ describe "parser basic: ",  ->
   describe "parse escaped string symbol:",  ->
     parse = (text) ->
       parser = new Parser()
-      x = parser.parse(text, matchRule(parser.atom), 0).value
+      x = parser.parse(text, matchRule(parser, parser.atom), 0).value
     it "parse \\\"x...\"", ->
       expect(str parse('\\\"x...\"')).to.equal 'x...'
 
-  xdescribe "parse string: ",  ->
+  describe "parse string: ",  ->
     parse = (text) ->
       parser = new Parser()
-      x = parser.parse(text, parser.string, 0).value
+      parser.parse(text, parser.matchToken, 0)
+      x = parser.token()
+      x
 
     describe "parse interpolate string: ",  ->
       it "parse a", ->
@@ -297,32 +173,39 @@ describe "parser basic: ",  ->
 
     describe "parse raw string without interpolation: ",  ->
       it "parse '''a\\b'''", ->
-        expect(parse("'''a\\b'''")).to.equal '"a\\b"'
+        expect(str parse("'''a\\b'''")).to.equal '"a\\\\b"'
+      it "parse '''\\\na\\b'''", ->
+        expect(str parse("'''\\\na\\b'''")).to.equal '"a\\\\b"'
       it "parse '''a\\b\ncd'''", ->
-        expect(parse("'''a\\b\ncd'''")).to.equal '"a\\b\\ncd"'
+        expect(str parse("'''a\\b\ncd'''")).to.equal "\"a\\\\b\\ncd\""
+      it "parse '''a\\b\n\rcd'''", ->
+        expect(str parse("'''a\\b\n\rcd'''")).to.equal "\"a\\\\b\\n\\rcd\""
       it "parse '''a\"'\\n'''", ->
-        expect(parse("'''a\"'\\n'''")).to.equal '"a\\"\'\\n"'
+        expect(str parse("'''a\"'\\n'''")).to.equal "\"a\"'\\\\n\""
 
     describe "parse escape string without interpolation: ",  ->
       it "parse 'a\\b'", ->
-        expect(parse("'a\\b'")).to.equal '"a\\b"'
+        expect(str parse("'a\\b'")).to.equal '"a\\b"'
       it "parse 'a\\b\ncd'", ->
-        expect(parse("'a\\b\ncd'")).to.equal '"a\\b\\ncd"'
+        expect(str parse("'a\\b\ncd'")).to.equal '"a\\b\\ncd"'
+      it "parse 'a\\b\\\ncd'", ->
+        expect(str parse("'a\\b\\\ncd'")).to.equal '"a\\bcd"'
       it "parse 'a\"\\\"\'\\n'", ->
-        expect(parse("'a\"\\\"\\'\\n'")).to.equal '"a\\\"\\\"\\\'\\n"'
+        expect(str parse("'a\"\\\"\\'\\n'")).to.equal '"a\"\\\"\'\\n"'
       it "parse 'a\"\\\"\\'\\n\n'", ->
-        expect(parse("'a\"\\\"\\'\\n\n'")).to.equal '"a\\\"\\\"\\\'\\n\\n"'
+        expect(str parse("'a\"\\\"\\'\\n\n'")).to.equal '"a\"\\\"\'\\n\\n"'
       it "parse 'a\"\\\"\n\'\\n'", ->
-        expect(parse("'a\"\\\"\n\\'\\n\n'")).to.equal '"a\\\"\\\"\\n\\\'\\n\\n"'
+        expect(str parse("'a\"\\\"\n\\'\\n\n'")).to.equal '"a\"\\\"\\n\'\\n\\n"'
 
-  xdescribe "parse regexp: ",  ->
+  describe "parse regexp: ",  ->
     describe "parse regexp: ",  ->
       parse = (text) ->
         parser = new Parser()
-        x = parser.parse(text, parser.regexp, 2)
-        x and x.value
-      it "parse 1,/!-h\b|-r\b|-v\b|-b\b/", ->
-        expect(str parse('1,/!-h\b|-r\b|-v\b|-b\b/')).to.equal '/-h\b|-r\b|-v\b|-b\b/'
+        parser.parse(text, parser.matchToken, 0)
+        x = parser.token()
+        x
+      it "parse /!-h\b|-r\b|-v\b|-b\b/", ->
+        expect(str parse('/!-h\b|-r\b|-v\b|-b\b/')).to.equal "[regexp! /-h\b|-r\b|-v\b|-b\b/]"
 
   describe "prefixOperator: ",  ->
     parse = (text) ->
@@ -411,32 +294,35 @@ describe "parser basic: ",  ->
     it 'should parse and 1', ->
       expect(parse(' and 1')).to.equal '&&'
 
-  xdescribe "symbol: ",  ->
+  describe "symbol: ",  ->
     parse = (text) ->
       parser = new Parser()
-      x = parser.parse(text, parser.symbol, 0)
-      if x then x.value else x
+      parser.parse(text, parser.matchToken, 0)
+      x = parser.token()
+      x
     it 'should parse ==1', ->
-      expect(parse('==1')).to.equal '=='
+      expect(str parse('==1')).to.equal '=='
     it 'should parse @@@1', ->
-      expect(parse('@@@1')).to.equal '@@@'
+      expect(str parse('@@@1')).to.equal '@@@'
     it 'should parse +.1', ->
-      expect(parse('+.1')).to.equal '+'
+      expect(str parse('+.1')).to.equal '+'
     it 'should parse .1', ->
-      expect(parse('.1')).to.equal '.'
+      expect(str parse('.1')).to.equal '.'
     it 'should parse ../', ->
-      expect(parse('../')).to.equal '..'
+      expect(str parse('../')).to.equal '..'
     it 'should parse :::1', ->
-      expect(parse(':::1')).to.equal ':::'
-    it 'should parse (++', ->
-      expect(parse('(++')).to.equal undefined
+      expect(str parse(':::1')).to.equal ':::'
+    xit 'should parse (++', ->
+      expect(str parse('(++')).to.equal undefined
 
   describe "matchToken: ",  ->
     parser = new Parser()
     parse = (text) ->
       parser.init(text, 0)
-      x = parser.matchToken()
+      parser.matchToken()
+      x = parser.token()
       x
+
     describe "simple token: ",  ->
       it "parse toString", ->
         expect(str parse('toString')).to.equal 'toString'
@@ -445,7 +331,7 @@ describe "parser basic: ",  ->
       it "parse 123.5", ->
         expect(str parse('123.5')).to.equal '123.5'
       it "parse 123.5e4", ->
-        expect(str parse('123.5e4')).to.equal "123.5e4"
+        expect(str parse('123.5e4')).to.equal "1235000"
       it "parse @@@", ->
         expect(str parse('@@@')).to.equal '@@@'
       it "parse :::", ->
@@ -472,39 +358,45 @@ describe "parser basic: ",  ->
         parser = new Parser()
         parser.init('123   /*sfadl*/', 0)
         parser.matchToken()
-        x = parser.matchToken()
+        parser.matchToken()
+        x = parser.token()
         expect(x.value).to.equal '   /*sfadl*/'
       it "parse multiple line space comment", ->
         parser = new Parser()
         parser.init('123   /*sfadl*/ \n // line comment \n something', 0)
         parser.matchToken()
-        x = parser.matchToken()
+        parser.matchToken()
+        x = parser.token()
         expect(x.value).to.equal "   /*sfadl*/ \n "
       it "parse multiple line space comment 2", ->
         parser = new Parser()
         parser.init('123   /*sfadl*/ \n// line comment \n// line comment 2\n something', 0)
         parser.matchToken()
-        x = parser.matchToken()
+        parser.matchToken()
+        x = parser.token()
         expect(x.value).to.equal "   /*sfadl*/ \n// line comment \n// line comment 2\n "
       it "parse multiple line space comment 3", ->
         parser = new Parser()
         parser.init('123   // line comment // line comment 2\n/*fds;j*/ something', 0)
         parser.matchToken()
-        x = parser.matchToken()
+        parser.matchToken()
+        x = parser.token()
         expect(x.value).to.equal "   // line comment // line comment 2\n/*fds;j*/ "
       it "parse multiple line space comment 4", ->
         parser = new Parser()
         parser.init('123   // line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  something', 0)
         parser.matchToken()
-        x = parser.matchToken()
+        parser.matchToken()
+        x = parser.token()
         expect(x.value).to.equal "   // line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  "
       it "parse c style block comment leads more space lines", ->
         parser = new Parser()
         parser.init('/*fdsafdsa*/// line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  something', 0)
-        x = parser.matchToken()
+        parser.matchToken()
+        x = parser.token()
         expect(x.value).to.equal "/*fdsafdsa*/// line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  "
 
-  describe "parse atom: ",  ->
+  idescribe "parse atom: ",  ->
     parser = new Parser()
     parse = (text) ->
       x = parser.parse(text, matchRule(parser, parser.atom), 0)
@@ -512,7 +404,7 @@ describe "parser basic: ",  ->
 
     describe "toString: ",  ->
       it "parse toString", ->
-        expect(parse('toString')).to.equal '[identifier! toString]'
+        expect(parse('toString')).to.equal "toString"
 
   xdescribe "parenthesis: ",  ->
     parse = (text) ->

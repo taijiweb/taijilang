@@ -30,152 +30,12 @@ matchRule = function(parser, rule) {
 };
 
 describe("parser basic: ", function() {
-  xdescribe("newline and indent: ", function() {
-    it("parse 1", function() {
-      var parser;
-      parser = new Parser();
-      parser.init('1', 0);
-      parser.preparse();
-      expect(parser.lineInfo.length).to.equal(3);
-      return expect(parser.lineInfo[1].indentColumn).to.equal(0);
-    });
-    it("parse \n", function() {
-      var parser;
-      parser = new Parser();
-      parser.init('\n', 0);
-      parser.preparse();
-      expect(parser.lineInfo.length).to.equal(4);
-      expect(parser.lineInfo[1].indentColumn).to.equal(0);
-      return expect(parser.lineInfo[2].indentColumn).to.equal(void 0);
-    });
-    it("parse 1\n", function() {
-      var parser;
-      parser = new Parser();
-      parser.init('1\n', 0);
-      parser.preparse();
-      expect(parser.lineInfo.length).to.equal(4);
-      expect(parser.lineInfo[1].indentColumn).to.equal(0);
-      return expect(parser.lineInfo[2].indentColumn).to.equal(void 0);
-    });
-    it("parse \n1", function() {
-      var parser;
-      parser = new Parser();
-      parser.init('\n1', 0);
-      parser.preparse();
-      expect(parser.lineInfo.length).to.equal(4);
-      expect(parser.lineInfo[1].empty).to.equal(true);
-      expect(parser.lineInfo[1].indentColumn).to.equal(0);
-      return expect(parser.lineInfo[2].indentColumn).to.equal(0);
-    });
-    it("parse \n 1", function() {
-      var parser;
-      parser = new Parser();
-      parser.init('\n 1', 0);
-      parser.preparse();
-      expect(parser.lineInfo.length).to.equal(4);
-      expect(parser.lineInfo[1].empty).to.equal(true);
-      expect(parser.lineInfo[1].indentColumn).to.equal(0);
-      return expect(parser.lineInfo[2].indentColumn).to.equal(1);
-    });
-    it("parse \n 1\n  2", function() {
-      var parser;
-      parser = new Parser();
-      parser.init('\n 1\n  2', 0);
-      parser.preparse();
-      expect(parser.lineInfo.length).to.equal(5);
-      expect(parser.lineInfo[1].empty).to.equal(true);
-      expect(parser.lineInfo[1].indentColumn).to.equal(0);
-      expect(parser.lineInfo[2].indentColumn).to.equal(1);
-      expect(parser.lineInfo[2].indent).to.equal(0);
-      expect(parser.lineInfo[2].undent).to.equal(void 0);
-      expect(parser.lineInfo[3].indentColumn).to.equal(2);
-      expect(parser.lineInfo[3].indent).to.equal(2);
-      return expect(parser.lineInfo[3].prevLine).to.equal(void 0);
-    });
-    it("parse \n  1\n 2", function() {
-      var parser;
-      parser = new Parser();
-      parser.init('\n  1\n 2', 0);
-      parser.preparse();
-      expect(parser.lineInfo.length).to.equal(5);
-      expect(parser.lineInfo[1].empty).to.equal(true);
-      expect(parser.lineInfo[1].indentColumn).to.equal(0);
-      expect(parser.lineInfo[2].indentColumn).to.equal(2);
-      expect(parser.lineInfo[2].indent).to.equal(0);
-      expect(parser.lineInfo[2].undent).to.equal(void 0);
-      expect(parser.lineInfo[3].indentColumn).to.equal(1);
-      expect(parser.lineInfo[3].undent).to.equal(2);
-      expect(parser.lineInfo[3].indent).to.equal(0);
-      return expect(parser.lineInfo[3].prevLine).to.equal(void 0);
-    });
-    it("parse \n  1\n 2\n3", function() {
-      var parser;
-      parser = new Parser();
-      parser.init('\n  1\n 2\n3', 0);
-      parser.preparse();
-      expect(parser.lineInfo.length).to.equal(6);
-      expect(parser.lineInfo[1].empty).to.equal(true);
-      expect(parser.lineInfo[1].indentColumn).to.equal(0);
-      expect(parser.lineInfo[2].indentColumn).to.equal(2);
-      expect(parser.lineInfo[2].indent).to.equal(0);
-      expect(parser.lineInfo[2].undent).to.equal(void 0);
-      expect(parser.lineInfo[3].indentColumn).to.equal(1);
-      expect(parser.lineInfo[3].undent).to.equal(2);
-      expect(parser.lineInfo[3].indent).to.equal(0);
-      expect(parser.lineInfo[3].prevLine).to.equal(void 0);
-      expect(parser.lineInfo[4].indentColumn).to.equal(0);
-      expect(parser.lineInfo[4].undent).to.equal(3);
-      expect(parser.lineInfo[4].indent).to.equal(void 0);
-      return expect(parser.lineInfo[4].prevLine).to.equal(0);
-    });
-    it("parse \n      1\n    2\n  3", function() {
-      var parser;
-      parser = new Parser();
-      parser.init('\n      1\n    2\n  3', 0);
-      parser.preparse();
-      expect(parser.lineInfo.length).to.equal(6);
-      expect(parser.lineInfo[1].empty).to.equal(true);
-      expect(parser.lineInfo[1].indentColumn).to.equal(0);
-      expect(parser.lineInfo[2].indentColumn).to.equal(6);
-      expect(parser.lineInfo[2].indent).to.equal(0);
-      expect(parser.lineInfo[2].undent).to.equal(void 0);
-      expect(parser.lineInfo[3].indentColumn).to.equal(4);
-      expect(parser.lineInfo[3].undent).to.equal(2);
-      expect(parser.lineInfo[3].indent).to.equal(0);
-      expect(parser.lineInfo[3].prevLine).to.equal(void 0);
-      expect(parser.lineInfo[4].indentColumn).to.equal(2);
-      expect(parser.lineInfo[4].undent).to.equal(3);
-      expect(parser.lineInfo[4].indent).to.equal(0);
-      return expect(parser.lineInfo[4].prevLine).to.equal(void 0);
-    });
-    return it("parse \n 1\n  2\n3", function() {
-      var parser;
-      parser = new Parser();
-      parser.init('\n 1\n  2\n3', 0);
-      parser.preparse();
-      expect(parser.lineInfo.length).to.equal(6);
-      expect(parser.lineInfo[1].empty).to.equal(true);
-      expect(parser.lineInfo[1].indentColumn).to.equal(0);
-      expect(parser.lineInfo[2].indentColumn).to.equal(1);
-      expect(parser.lineInfo[2].indent).to.equal(0);
-      expect(parser.lineInfo[2].undent).to.equal(void 0);
-      expect(parser.lineInfo[3].indentColumn).to.equal(2);
-      expect(parser.lineInfo[3].undent).to.equal(void 0);
-      expect(parser.lineInfo[3].indent).to.equal(2);
-      expect(parser.lineInfo[3].prevLine).to.equal(void 0);
-      expect(parser.lineInfo[4].indentColumn).to.equal(0);
-      expect(parser.lineInfo[4].undent).to.equal(2);
-      expect(parser.lineInfo[4].indent).to.equal(void 0);
-      return expect(parser.lineInfo[4].prevLine).to.equal(0);
-    });
-  });
-  xdescribe("parse number: ", function() {
+  ndescribe("parse number: ", function() {
     var parse, parser;
     parser = new Parser();
     parse = function(text) {
-      var x;
-      x = parser.parse(text, parser.number, 0);
-      return x && x.value;
+      parser.parse(text, parser.matchToken, 0);
+      return parser.token().value;
     };
     describe("is number: ", function() {
       it("parse 1", function() {
@@ -269,39 +129,37 @@ describe("parser basic: ", function() {
       });
     });
   });
-  xdescribe("parse identifier: ", function() {
+  describe("parse identifier: ", function() {
+    var parser;
+    parser = new Parser();
     describe("parse parser.identifier: ", function() {
       var parse;
       parse = function(text) {
-        var parser, x;
-        parser = new Parser();
-        x = parser.parse(text, parser.identifier, 0);
-        return x.value;
+        var x;
+        x = parser.parse(text, parser.matchToken, 0);
+        return parser.token().value;
       };
       it("parse a", function() {
-        return expect(parse('a')).to.equal('a');
+        expect(parse('a')).to.equal('a');
+        return expect(parser.token().type).to.equal(IDENTIFIER);
       });
       it("parse ?", function() {
-        return expect(function() {
-          return parse('?');
-        }).to["throw"](/Cannot read property 'value' of undefined/);
+        parse('?');
+        return expect(parser.token().type).to.not.equal(IDENTIFIER);
       });
       it("parse #", function() {
-        return expect(function() {
-          return parse('#');
-        }).to["throw"](/Cannot read property 'value' of undefined/);
+        parse('?');
+        return expect(parser.token().type).to.not.equal(IDENTIFIER);
       });
       return it("parse !ds", function() {
-        return expect(function() {
-          return parse('!ds');
-        }).to["throw"](/Cannot read property 'value' of undefined/);
+        parse('?');
+        return expect(parser.token().type).to.not.equal(IDENTIFIER);
       });
     });
-    return describe("parse taijiIdentifier: ", function() {
+    return ndescribe("parse taijiIdentifier: ", function() {
       var parse;
       parse = function(text) {
-        var parser, x;
-        parser = new Parser();
+        var x;
         x = parser.parse(text, parser.taijiIdentifier, 0);
         return x && x.value;
       };
@@ -345,18 +203,20 @@ describe("parser basic: ", function() {
     parse = function(text) {
       var parser, x;
       parser = new Parser();
-      return x = parser.parse(text, matchRule(parser.atom), 0).value;
+      return x = parser.parse(text, matchRule(parser, parser.atom), 0).value;
     };
     return it("parse \\\"x...\"", function() {
       return expect(str(parse('\\\"x...\"'))).to.equal('x...');
     });
   });
-  xdescribe("parse string: ", function() {
+  describe("parse string: ", function() {
     var parse;
     parse = function(text) {
       var parser, x;
       parser = new Parser();
-      return x = parser.parse(text, parser.string, 0).value;
+      parser.parse(text, parser.matchToken, 0);
+      x = parser.token();
+      return x;
     };
     describe("parse interpolate string: ", function() {
       it("parse a", function() {
@@ -392,44 +252,54 @@ describe("parser basic: ", function() {
     });
     describe("parse raw string without interpolation: ", function() {
       it("parse '''a\\b'''", function() {
-        return expect(parse("'''a\\b'''")).to.equal('"a\\b"');
+        return expect(str(parse("'''a\\b'''"))).to.equal('"a\\\\b"');
+      });
+      it("parse '''\\\na\\b'''", function() {
+        return expect(str(parse("'''\\\na\\b'''"))).to.equal('"a\\\\b"');
       });
       it("parse '''a\\b\ncd'''", function() {
-        return expect(parse("'''a\\b\ncd'''")).to.equal('"a\\b\\ncd"');
+        return expect(str(parse("'''a\\b\ncd'''"))).to.equal("\"a\\\\b\\ncd\"");
+      });
+      it("parse '''a\\b\n\rcd'''", function() {
+        return expect(str(parse("'''a\\b\n\rcd'''"))).to.equal("\"a\\\\b\\n\\rcd\"");
       });
       return it("parse '''a\"'\\n'''", function() {
-        return expect(parse("'''a\"'\\n'''")).to.equal('"a\\"\'\\n"');
+        return expect(str(parse("'''a\"'\\n'''"))).to.equal("\"a\"'\\\\n\"");
       });
     });
     return describe("parse escape string without interpolation: ", function() {
       it("parse 'a\\b'", function() {
-        return expect(parse("'a\\b'")).to.equal('"a\\b"');
+        return expect(str(parse("'a\\b'"))).to.equal('"a\\b"');
       });
       it("parse 'a\\b\ncd'", function() {
-        return expect(parse("'a\\b\ncd'")).to.equal('"a\\b\\ncd"');
+        return expect(str(parse("'a\\b\ncd'"))).to.equal('"a\\b\\ncd"');
+      });
+      it("parse 'a\\b\\\ncd'", function() {
+        return expect(str(parse("'a\\b\\\ncd'"))).to.equal('"a\\bcd"');
       });
       it("parse 'a\"\\\"\'\\n'", function() {
-        return expect(parse("'a\"\\\"\\'\\n'")).to.equal('"a\\\"\\\"\\\'\\n"');
+        return expect(str(parse("'a\"\\\"\\'\\n'"))).to.equal('"a\"\\\"\'\\n"');
       });
       it("parse 'a\"\\\"\\'\\n\n'", function() {
-        return expect(parse("'a\"\\\"\\'\\n\n'")).to.equal('"a\\\"\\\"\\\'\\n\\n"');
+        return expect(str(parse("'a\"\\\"\\'\\n\n'"))).to.equal('"a\"\\\"\'\\n\\n"');
       });
       return it("parse 'a\"\\\"\n\'\\n'", function() {
-        return expect(parse("'a\"\\\"\n\\'\\n\n'")).to.equal('"a\\\"\\\"\\n\\\'\\n\\n"');
+        return expect(str(parse("'a\"\\\"\n\\'\\n\n'"))).to.equal('"a\"\\\"\\n\'\\n\\n"');
       });
     });
   });
-  xdescribe("parse regexp: ", function() {
+  describe("parse regexp: ", function() {
     return describe("parse regexp: ", function() {
       var parse;
       parse = function(text) {
         var parser, x;
         parser = new Parser();
-        x = parser.parse(text, parser.regexp, 2);
-        return x && x.value;
+        parser.parse(text, parser.matchToken, 0);
+        x = parser.token();
+        return x;
       };
-      return it("parse 1,/!-h\b|-r\b|-v\b|-b\b/", function() {
-        return expect(str(parse('1,/!-h\b|-r\b|-v\b|-b\b/'))).to.equal('/-h\b|-r\b|-v\b|-b\b/');
+      return it("parse /!-h\b|-r\b|-v\b|-b\b/", function() {
+        return expect(str(parse('/!-h\b|-r\b|-v\b|-b\b/'))).to.equal("[regexp! /-h\b|-r\b|-v\b|-b\b/]");
       });
     });
   });
@@ -584,38 +454,35 @@ describe("parser basic: ", function() {
       return expect(parse(' and 1')).to.equal('&&');
     });
   });
-  xdescribe("symbol: ", function() {
+  describe("symbol: ", function() {
     var parse;
     parse = function(text) {
       var parser, x;
       parser = new Parser();
-      x = parser.parse(text, parser.symbol, 0);
-      if (x) {
-        return x.value;
-      } else {
-        return x;
-      }
+      parser.parse(text, parser.matchToken, 0);
+      x = parser.token();
+      return x;
     };
     it('should parse ==1', function() {
-      return expect(parse('==1')).to.equal('==');
+      return expect(str(parse('==1'))).to.equal('==');
     });
     it('should parse @@@1', function() {
-      return expect(parse('@@@1')).to.equal('@@@');
+      return expect(str(parse('@@@1'))).to.equal('@@@');
     });
     it('should parse +.1', function() {
-      return expect(parse('+.1')).to.equal('+');
+      return expect(str(parse('+.1'))).to.equal('+');
     });
     it('should parse .1', function() {
-      return expect(parse('.1')).to.equal('.');
+      return expect(str(parse('.1'))).to.equal('.');
     });
     it('should parse ../', function() {
-      return expect(parse('../')).to.equal('..');
+      return expect(str(parse('../'))).to.equal('..');
     });
     it('should parse :::1', function() {
-      return expect(parse(':::1')).to.equal(':::');
+      return expect(str(parse(':::1'))).to.equal(':::');
     });
-    return it('should parse (++', function() {
-      return expect(parse('(++')).to.equal(void 0);
+    return xit('should parse (++', function() {
+      return expect(str(parse('(++'))).to.equal(void 0);
     });
   });
   describe("matchToken: ", function() {
@@ -624,7 +491,8 @@ describe("parser basic: ", function() {
     parse = function(text) {
       var x;
       parser.init(text, 0);
-      x = parser.matchToken();
+      parser.matchToken();
+      x = parser.token();
       return x;
     };
     describe("simple token: ", function() {
@@ -638,7 +506,7 @@ describe("parser basic: ", function() {
         return expect(str(parse('123.5'))).to.equal('123.5');
       });
       it("parse 123.5e4", function() {
-        return expect(str(parse('123.5e4'))).to.equal("123.5e4");
+        return expect(str(parse('123.5e4'))).to.equal("1235000");
       });
       it("parse @@@", function() {
         return expect(str(parse('@@@'))).to.equal('@@@');
@@ -677,7 +545,8 @@ describe("parser basic: ", function() {
         parser = new Parser();
         parser.init('123   /*sfadl*/', 0);
         parser.matchToken();
-        x = parser.matchToken();
+        parser.matchToken();
+        x = parser.token();
         return expect(x.value).to.equal('   /*sfadl*/');
       });
       it("parse multiple line space comment", function() {
@@ -685,7 +554,8 @@ describe("parser basic: ", function() {
         parser = new Parser();
         parser.init('123   /*sfadl*/ \n // line comment \n something', 0);
         parser.matchToken();
-        x = parser.matchToken();
+        parser.matchToken();
+        x = parser.token();
         return expect(x.value).to.equal("   /*sfadl*/ \n ");
       });
       it("parse multiple line space comment 2", function() {
@@ -693,7 +563,8 @@ describe("parser basic: ", function() {
         parser = new Parser();
         parser.init('123   /*sfadl*/ \n// line comment \n// line comment 2\n something', 0);
         parser.matchToken();
-        x = parser.matchToken();
+        parser.matchToken();
+        x = parser.token();
         return expect(x.value).to.equal("   /*sfadl*/ \n// line comment \n// line comment 2\n ");
       });
       it("parse multiple line space comment 3", function() {
@@ -701,7 +572,8 @@ describe("parser basic: ", function() {
         parser = new Parser();
         parser.init('123   // line comment // line comment 2\n/*fds;j*/ something', 0);
         parser.matchToken();
-        x = parser.matchToken();
+        parser.matchToken();
+        x = parser.token();
         return expect(x.value).to.equal("   // line comment // line comment 2\n/*fds;j*/ ");
       });
       it("parse multiple line space comment 4", function() {
@@ -709,19 +581,21 @@ describe("parser basic: ", function() {
         parser = new Parser();
         parser.init('123   // line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  something', 0);
         parser.matchToken();
-        x = parser.matchToken();
+        parser.matchToken();
+        x = parser.token();
         return expect(x.value).to.equal("   // line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  ");
       });
       return it("parse c style block comment leads more space lines", function() {
         var x;
         parser = new Parser();
         parser.init('/*fdsafdsa*/// line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  something', 0);
-        x = parser.matchToken();
+        parser.matchToken();
+        x = parser.token();
         return expect(x.value).to.equal("/*fdsafdsa*/// line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  ");
       });
     });
   });
-  describe("parse atom: ", function() {
+  idescribe("parse atom: ", function() {
     var parse, parser;
     parser = new Parser();
     parse = function(text) {
