@@ -595,7 +595,7 @@ describe("parser basic: ", function() {
       });
     });
   });
-  idescribe("parse atom: ", function() {
+  describe("parse atom: ", function() {
     var parse, parser;
     parser = new Parser();
     parse = function(text) {
@@ -605,7 +605,7 @@ describe("parser basic: ", function() {
     };
     return describe("toString: ", function() {
       return it("parse toString", function() {
-        return expect(parse('toString')).to.equal('[identifier! toString]');
+        return expect(parse('toString')).to.equal("toString");
       });
     });
   });
@@ -668,10 +668,13 @@ describe("parser basic: ", function() {
     it('should parse a::b ', function() {
       return expect(str(parse('a::b'))).to.equal('[attribute! [attribute! a ::] b]');
     });
+    it('should parse ^1', function() {
+      return expect(str(parse('`.^1'))).to.equal("[quasiquote! [unquote! 1]]");
+    });
     it('should parse `.^1', function() {
       return expect(str(parse('`.^1'))).to.equal("[quasiquote! [unquote! 1]]");
     });
-    it('should parse Object.prototype.toString.call(obj)', function() {
+    iit('should parse Object.prototype.toString.call(obj)', function() {
       return expect(str(parse('Object.prototype.toString.call(obj)'))).to.equal("[call! [attribute! [attribute! [attribute! Object prototype] toString] call] [obj]]");
     });
     it('should parse Object.prototype.toString', function() {

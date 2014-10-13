@@ -396,7 +396,7 @@ describe "parser basic: ",  ->
         x = parser.token()
         expect(x.value).to.equal "/*fdsafdsa*/// line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  "
 
-  idescribe "parse atom: ",  ->
+  describe "parse atom: ",  ->
     parser = new Parser()
     parse = (text) ->
       x = parser.parse(text, matchRule(parser, parser.atom), 0)
@@ -448,10 +448,12 @@ describe "parser basic: ",  ->
       expect(str parse('a()')).to.equal '[call! a []]'
     it 'should parse a::b ', ->
       expect(str parse('a::b')).to.equal '[attribute! [attribute! a ::] b]'
+    it 'should parse ^1', ->
+      expect(str parse('`.^1')).to.equal "[quasiquote! [unquote! 1]]"
     it 'should parse `.^1', ->
       expect(str parse('`.^1')).to.equal "[quasiquote! [unquote! 1]]"
     # gotcha: prefixOperator['toString'] == Object.toString function!!!
-    it 'should parse Object.prototype.toString.call(obj)', ->
+    iit 'should parse Object.prototype.toString.call(obj)', ->
       expect(str parse('Object.prototype.toString.call(obj)')).to.equal "[call! [attribute! [attribute! [attribute! Object prototype] toString] call] [obj]]"
     it 'should parse Object.prototype.toString', ->
       expect(str parse('Object.prototype.toString')).to.equal "[attribute! [attribute! Object prototype] toString]"

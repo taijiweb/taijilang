@@ -68,7 +68,7 @@ exports.Parser = ->
   cursor = 0 # position pointer while do lexical parsing, use cur for local position pointer
   char = '' # current character, should assure char is the value of text[cursor] whenerver entering or leaving a function
   lineno = 0 # current line number, use line for local line number
-  column = 0 # current column, use col for local column
+  lineStart = 0 # start cursor of current line
   indent = 0 # global indent column of current line, use dent for local indent column
   atLineHead = true # global indicator to tell whether cursor is at the head of a line before any non space character
 
@@ -85,29 +85,11 @@ exports.Parser = ->
   eof = {type:EOI, value:'', cursor: textLength, column: -1, indent: -1} # lineno wait to be filled
   eof.next = eof  # eof.next is always itself
 
-  # to maintain the balance of delimterStack with memo function, it's the duty of programer who are extending the parser
-  @memo = memo = (fn) ->
-    tag = memoIndex++
-    ->
-      if (m=memoMap[tag]) and hasOwnProperty.call(m, cursor)
-        if x=m[cursor] then cursor = x.stop; lineno = x.line
-        return x
-      else
-        if not memoMap[tag] then memoMap[tag] = m = {}
-        m[cursor] = fn()
-
-  parser.saveMemo = saveMemo = (tag, start, result) ->
-    if not memoMap[tag] then memoMap[tag] = {}
-    result.stop = cursor; result.line = lineno
-    memoMap[tag][start] = result
-
-  # garbage collector: do this in some proper time, e.g. when starting to parse a sentence
-  @clearMemo = -> memoMap = {}
-
   nextToken = ->
     if token.next then token = token.next
     else matchToken()
 
+  #  tokenFnMap[char](char) and tokenOnSymbolChar should change the token
   @matchToken = matchToken = ->
     if not char
       eof.lineno = lineno+1
@@ -124,7 +106,7 @@ exports.Parser = ->
   tokenFnMap = {}
 
   tokenOnSymbolChar = ->
-    cur = cursor; col = column
+    cur = cursor
     while char
       if symbolStopChars[char] then break
 
@@ -136,24 +118,21 @@ exports.Parser = ->
       #else if char=='\\' and ((c2=text[cursor+1])=='\n'  or c2=='\r') then break
       cursor++; char = text[cursor]
 
-    column += cursor-cur
     chainToken {type:SYMBOL, value: text.slice(cur, cursor),
     cursor:cur, stopCursor:cursor, line: lineno, column:col, indent:indent}
 
   symbolStopChars = extend charset(' \t\v\n\r()[]{},;:\'\".@\\'), identifierCharSet
 
   tokenFnMap['@'] = tokenFnMap['.'] = tokenOnAtChar = tokenOnDotChar = repeatedCharToken = ->
-    cur = cursor; col = column; first = char; char = text[++cursor]
+    cur = cursor; col = cursor-lineStart; first = char; char = text[++cursor]
     while char==first then char = text[++cursor]
-    column += cursor-cur
     chainToken {type: SYMBOL, value: text.slice(cur, cursor),
     cursor:cur, stopCursor:cursor,
     line: lineno, column:col, indent:indent}
 
   tokenFnMap[':'] = tokenOnColonChar = ->
-    cur = cursor; col = column; first = char; char = text[++cursor]
+    cur = cursor; col = cursor-lineStart; first = char; char = text[++cursor]
     while char==first then char = text[++cursor]
-    column += cursor-cur
     if cursor==cur+1 then type==PUNCT else type = SYMBOL
     chainToken {type: type, value: text.slice(cur, cursor),
     cursor:cur, stopCursor:cursor,
@@ -164,13 +143,14 @@ exports.Parser = ->
 
   # token started with ' ' and '\t'
   tokenFnMap[' '] = tokenFnMap['\t'] = tokenOnSpaceChar = ->
-    cur = cursor; line = lineno; col = column; dent = indent
-    char = text[++cursor]; ++column; skipInlineSpace(dent)
+    cur = cursor; line = lineno; col = cursor-lineStart; dent = indent
+    char = text[++cursor]; skipInlineSpace(dent)
     # skip concatenated line
     if char=='\\' and newline()
-      while (c=text[cursor]) and c==' ' then cursor++; column++
+      while (c=text[cursor]) and c==' ' then cursor++
       if c=='\n' or c=='\r' then error 'should not follow empty line as concatenated line'
       else if not c then unexpectedEOI('after concatenated line symbol "\"')
+      column = cursor-lineStart
       if concatenating
         if column!=dent then error 'expect the same indent for the second and more concatenated lines'
       else if column<=dent then expectMoreIndent(dent, 'in the following concatenated line')
@@ -179,18 +159,18 @@ exports.Parser = ->
       if (c=text[cursor])=='\n' or c=='\r'
         error 'concatenated line should not have only spaces and comments'
       return chainToken {type: SPACE, value: text[cur...cursor], cursor:cur, stopCursor: cursor,
-      line:line, stopLine:lineno, column:col, stopColumn: column, indent: dent}
+      line:line, stopLine:lineno, column:col, stopColumn: cursor-lineStart, indent: dent}
     # skip empty lines, space lines, comment lines
     if newline()
-      skipSpaceLines(dent); indent = column
+      skipSpaceLines(dent); indent = cursor-lineStart
       tkn = {type: SPACE, value: text[cur...cursor], cursor:cur, stopCursor: cursor,
-      line:line, stopLine:lineno, column:col, stopColumn: column, indent: dent}
+      line:line, stopLine:lineno, column:col, stopColumn: cursor-lineStart, indent: dent}
       if indent>dent then tkn.isIndent = true
       else if indent<dent then tkn.isUndent = false
       else tkn.isNewline = true
       return chainToken tkn
     else return  chainToken {type: SPACE, value: text[cur...cursor], cursor:cur, stopCursor: cursor,
-    line:line, stopLine:lineno, column:col, stopColumn: column, indent: dent}
+    line:line, stopLine:lineno, column:col, stopColumn: cursor-lineStart, indent: dent}
 
   # the lexical matcher skipSomething, leftSomething do not process global variable "char"
   #  so instead of using char, please use local c, ch etc as character in text to be parsed
@@ -199,18 +179,18 @@ exports.Parser = ->
   skipSpaceLines = (dent) ->
     while 1
       if not char then return
-      while char and char==' ' then cursor++; char = text[cursor]; column++
+      while char and char==' ' then cursor++; char = text[cursor]
       if char=='\t' then unexpectedTabCharAtLineHead()
       else if char=='\n'
         if char=='\r' then cursor += 2 else cursor++
-        char = text[cursor];  lineno++; column = 0
+        char = text[cursor];  lineno++; lineStart = cursor
         continue
       else if char=='\r'
         if char=='\n' then cursor += 2 else cursor++
-        char = text[cursor];  lineno++; column = 0
+        char = text[cursor];  lineno++; lineStart = cursor
         continue
       else if not char then break
-      else if column!=dent then break
+      else if cursor-lineStart!=dent then break
       else if char=='/'
         if (c2=text[cursor+1])=='/'
           cursor += 2; char = text[cursor]
@@ -226,11 +206,11 @@ exports.Parser = ->
           skipInlineSpace()
           if char=='\n'
             if char=='\r' then cursor += 2 else cursor++
-            char = text[cursor];  lineno++; column = 0
+            char = text[cursor];  lineno++; lineStart = cursor
             continue
           else if char=='\r'
             if char=='\n' then cursor += 2 else cursor++
-            char = text[cursor];  lineno++; column = 0
+            char = text[cursor];  lineno++; lineStart = cursor
             continue
           else break
 
@@ -247,7 +227,7 @@ exports.Parser = ->
     while 1
       while char==' ' or char=='\t' then char = text[++cursor]
       if char=='/'
-        if (c2=text[cursor+1])=='*' then cursor +=2; char = text[cursor]; column += 2; leftCBlockComment(dent); continue
+        if (c2=text[cursor+1])=='*' then cursor +=2; char = text[cursor]; leftCBlockComment(dent); continue
         if c2=='/'
           # don't need to process column here, because want to skip characters until reaching new line
           cursor += 2; char = text[cursor]          
@@ -260,11 +240,11 @@ exports.Parser = ->
     if (c=char)=='\r'
       cursor++;
       if (c2=text[cursor])=='\n' then cursor++; c2 = '\n'
-      char = text[cursor]; lineno++; column = 0
+      char = text[cursor]; lineno++; lineStart = cursor
     else if char=='\n'
       cursor++
       if (c2=text[cursor])=='\r' then cursor++; c2 = '\r'
-      char = text[cursor]; lineno++; column = 0
+      char = text[cursor]; lineno++; lineStart = cursor
     else return
     c+(c2 or '')
 
@@ -277,66 +257,68 @@ exports.Parser = ->
     while 1
       if char=='\n'
         if text[cursor+1]=='\r' then cursor+=2 else cursor++
-        char = text[cursor]; lineno++; column = 0
-        while char==' ' then cursor++; char = text[cursor]; column++
+        char = text[cursor]; lineno++; lineStart = cursor
+        while char==' ' then cursor++; char = text[cursor]
         if char=='\n' or char=='\r' then continue
         if char=='\t' then unexpectedTabCharAtLineHead()
-        if column<=dent then break
+        if cursor-lineStart<=dent then break
       else if char=='\r'
         if text[cursor+1]=='\n' then cursor+=2 else cursor+=1
-        char = text[cursor]; lineno++; column = 0
-        while char==' ' then cursor++; char = text[cursor]; column++
+        char = text[cursor]; lineno++; lineStart = cursor
+        while char==' ' then cursor++; char = text[cursor]
         if char=='\n' or char=='\r' then continue
         if char=='\t' then unexpectedTabCharAtLineHead()
-        if column<=dent then break
+        if cursor-lineStart<=dent then break
       else if not char then break
 
   # default /* some content */, can cross lines
   leftCBlockComment = (dent) ->
     # dent: the indent column of the line of '/*'
     while 1
-      if char=='*' and text[cursor+1]=='/' then cursor += 2;  char = text[cursor]; column += 2; break
+      if char=='*' and text[cursor+1]=='/' then cursor += 2;  char = text[cursor]; break
       else if char=='\n'
-        cursor++;  char = text[cursor]; lineno++; column = 0
+        cursor++;  char = text[cursor]; lineno++
         if char=='\r' then cursor++;  char = text[cursor];
-        while char==' ' then cursor++;  char = text[cursor]; column++
+        lineStart = cursor
+        while char==' ' then cursor++;  char = text[cursor]
         if char=='\t' then unexpectedTabCharAtLineHead()
         if char=='\n' or char=='\r' then continue
         else if not char then unexpectedEOI('while parsing c style block comment /* */')
-        if column<dent then expectMoreIndent(dent, 'while parsing c style block comment /* */')
+        if lineStart-cursor<dent then expectMoreIndent(dent, 'while parsing c style block comment /* */')
       else if char=='\r'
-        cursor++;  char = text[cursor]; lineno++; column = 0
-        if char=='\n' then cursor++; char = text[cursor];
-        while char==' ' then cursor++;  char = text[cursor]; column++
+        cursor++;  char = text[cursor]; lineno++
+        if char=='\n' then cursor++; char = text[cursor]
+        lineStart = cursor
+        while char==' ' then cursor++;  char = text[cursor]
         if char=='\t' then unexpectedTabCharAtLineHead()
         if char=='\n' or char=='\r' then continue
         else if not char then unexpectedEOI('while parsing c style block comment /* */')
-        if column<dent then expectMoreIndent(dent)
+        if lineStart-cursor<dent then expectMoreIndent(dent)
       else if not char
         unexpectedEOI('while parsing c style block comment /* */')
-      else cursor++;  char = text[cursor]; column++
+      else cursor++;  char = text[cursor]
 
   leftRegexp = ->
     while char
       if char=='\\'
-        if (c2=text[cursor+1]=='/') or c2=='\\' then cursor += 2; char = text[cursor]; column += 2
-        else char = text[cursor++]; column++
+        if (c2=text[cursor+1]=='/') or c2=='\\' then cursor += 2; char = text[cursor]
+        else char = text[cursor++]
       else if char=='\n' or char=='\r'
         error 'meet unexpected new line while parsing regular expression'
       else if char=='/'
-        i = 0; cursor++; column++
+        i = 0; cursor++
         # console.log text.slice(cursor)
         while char
-          if char=='i' or char=='g'or char=='m' then char = text[++cursor]; column++; ++i
+          if char=='i' or char=='g'or char=='m' then char = text[++cursor]; ++i
           else break
         if i>3 then 'too many modifiers after regexp'
         break
-      else char = text[++cursor]; column++
+      else char = text[++cursor]
     if not char then error 'unexpected end of input while parsing regexp'
 
   # back slash \ can be used to escape keyword, conjunction, symbol
   tokenFnMap['\\'] = tokenOnBackSlashChar = ->
-    char = text[++cursor]; column++
+    char = text[++cursor]
     if char=='\n' or char=='\r'
       concatline
     else if firstIdentifierCharSet[char]
@@ -359,7 +341,7 @@ exports.Parser = ->
       token.escaped = true
     # don't permit escape interpolated string
     # else if char=='"'
-    else char = text[--cursor]; column--; repeatedCharToken()
+    else char = text[--cursor]; repeatedCharToken()
 
   tokenFnMap['/'] = tokenOnForwardSlashChar = ->
     # // start a line comment
@@ -387,7 +369,7 @@ exports.Parser = ->
       return chainToken {type: t, value: text[cur...cursor]}
     # /! start a regexp
     else if char=='!'
-      cur = cursor; cursor += 2; char = text[cursor]; col = column; column += 2
+      cur = cursor; cursor += 2; char = text[cursor]; col = cursor-lineStart
       leftRegexp()
       return chainToken {type:REGEXP, value:['regexp!', '/'+text[cur+1...cursor]]
       cursor:cur, stopCursor:cursor, line:lineno, column: col}
@@ -416,9 +398,10 @@ exports.Parser = ->
 
   # the token leaded by '\n', '\r', maybe return token with type NEWLINE, INDENT, UNDENT, EOI
   tokenFnMap['\n'] = tokenFnMap['\r'] = tokenOnNewlineChar = ->
-    cur = cursor; line = lineno; col = column; ind = indent
+    cur = cursor; line = lineno; col = cursor-lineStart; ind = indent
     char = text[cursor+1]
     if char=='\n' or char=='\r' then cursor += 2 else cursor++
+    lineStart = cursor
     char = text[cursor]
     skipSpaceLines(ind)
     if not char then type = EOI
@@ -432,9 +415,9 @@ exports.Parser = ->
     indent: ind, stopIndent: indent}
 
   tokenOnIdentifierChar = ->
-    cur = cursor; char = text[++cursor]; col = column
+    cur = cursor; char = text[++cursor]; col = cursor-lineStart
     while char and identifierCharSet[char] then char=text[++cursor]
-    txt=text.slice(cur, cursor); column += cursor-cur
+    txt=text.slice(cur, cursor)
     if keywordHasOwnProperty(txt) then type = KEYWORD
     else if conjunctionHasOwnProperty(txt) then type = CONJUNCTION
     else type = IDENTIFIER
@@ -445,7 +428,7 @@ exports.Parser = ->
   for c of firstIdentifierCharSet then tokenFnMap[c] = tokenOnIdentifierChar
 
   tokenOnNumberChar = ->
-    cur = cursor; col = column; base = 10
+    cur = cursor; base = 10; col = cursor-lineStart
     if char=='0' and c2 = text[cursor+1]
       if c2=='b' or c2=='B' then base = 2; baseStart = cursor += 2; char = text[cursor]
       else if c2=='x' or c2=='X' then base = 16; baseStart = cursor += 2; char = text[cursor]
@@ -467,7 +450,7 @@ exports.Parser = ->
     if base!=10
       if cursor==baseStart
         # e.g 0x+3, 0x(1+2)
-        cursor--; char = text[cursor]; column += cursor-cur
+        cursor--; char = text[cursor]
         return chainToken { type: NUMBER, value: text[cur...cursor], value:0,
         cursor:cur, line:lineno, column:col, indent:indent}
       else
@@ -487,7 +470,7 @@ exports.Parser = ->
         else meetDigit = true; char = text[++cursor]
     dotCursor = cursor-1
     if not meetDigit and char!='e' and char!='E'
-      cursor = dotCursor; char = text[cursor]; column += cursor-cur
+      cursor = dotCursor; char = text[cursor]
       return chainToken { type: NUMBER, value:parseInt(text[baseStart...cursor], base),
       cursor:cur, line:lineno, column: col, indent:indent}
     if char=='e' or char=='E'
@@ -495,7 +478,7 @@ exports.Parser = ->
       if char=='+' or char=='-'
         char = text[++cursor]
         if not char or char<'0' or '9'<char
-          cursor = dotCursor; char = text[cursor]; column += cursor-cur
+          cursor = dotCursor; char = text[cursor]
           return chainToken { type: NUMBER, value:parseInt(text[cur...dotCursor], base),
           cursor:cur, line:lineno, column: col, indent:indent}
         else
@@ -503,13 +486,12 @@ exports.Parser = ->
             char = text[++cursor]
             if  char<'0' or '9'<char then break
       else if not char or char<'0' or '9'<char
-        cursor = dotCursor; char = text[cursor]; column += cursor-cur
+        cursor = dotCursor; char = text[cursor]
         return chainToken { type: NUMBER, value:parseInt(text[cur...dotCursor], base),
         cursor:cur, line:lineno, column: col, indent:indent}
       else while char
           if  char<'0' or '9'<char then break
           char = text[++cursor]
-    column += cursor-cur
     chainToken { type: NUMBER, value:parseFloat(text[cur...cursor], base),
     cursor:cur, line:lineno, column: col, indent:indent}
 
@@ -524,14 +506,14 @@ exports.Parser = ->
   concatenating = false
 
   tokenFnMap["'"] = tokenOnSingleQuoteChar = ->
-    char = text[++cursor]; column++
+    char = text[++cursor]; col = cursor-lineStart
     if char=="'"
       if text[cursor+1]=="'"
-        cursor += 2; char = text[cursor]; column += 2
+        cursor += 2; char = text[cursor]
         return chainToken leftRawNonInterpolatedString()
       else
-        char = text[++cursor]; column++
-        return chainToken {value:'""', type:NON_INTERPOLATE_STRING, cursor:cursor-2, line:lineno, column: column-2}
+        char = text[++cursor]
+        return chainToken {value:'""', type:NON_INTERPOLATE_STRING, cursor:cursor-2, line:lineno, column:col}
     else return chainToken leftNonInterpolatedString()
 
   leftRawNonInterpolatedString = ->
@@ -548,8 +530,8 @@ exports.Parser = ->
         # the '\' at end of line will not in the result string
         if (c=text[cursor+1])=='\n' or c=='\r'
           char = text[++cursor]; concatenating = true; break
-        else str += '\\\\'; char = text[++cursor]; column++
-      else if char!='\n' and char!='\r' then str += char; char = text[++cursor]; column++
+        else str += '\\\\'; char = text[++cursor]
+      else if char!='\n' and char!='\r' then str += char; char = text[++cursor]
       else break
     while char
       if char=="'" and text[cursor+1]=="'" and text[cursor+2]=="'"
@@ -574,8 +556,9 @@ exports.Parser = ->
         if not concatenating then result += '\\n'
         char = text[++cursor]
     concatenating = false
-    lineno++; column = 0; cur = cursor
-    while char==' ' then char = text[++cursor]; column++
+    lineno++; cur = cursor
+    while char==' ' then char = text[++cursor]
+    column = cursor-lineStart
     if char=='\t' then error 'unexpected tab character "\t" at the head of line'
     else if char=='\n' or char=='\r' then result += text[cur...cursor]; return result
     else if (ind=indentInfo.value)!=undefined then indentInfo.value = column
@@ -587,33 +570,33 @@ exports.Parser = ->
       else if char=='\\'
         char = text[++cursor]
         if char=='\n' or char=='\r' then return result
-        if char then result += '\\\\'; result += char; char = text[++cursor]; column += 2
+        if char then result += '\\\\'; result += char; char = text[++cursor]
         else error 'unexpected end of input while parsing non interpolated string'
       # '"' must be escaped, because all the string is wrapped in "..."
-      else if char=='"'  then result += '\\"'; char = text[++cursor]; column++
-      else result += char; char = text[++cursor]; column++
+      else if char=='"'  then result += '\\"'; char = text[++cursor]
+      else result += char; char = text[++cursor]
     error 'unexpected end of input while parsing non interpolated string'
 
   leftNonInterpolatedString = ->
-    cur = cursor-1; line = lineno; col = column-1
+    cur = cursor-1; line = lineno; col = cur-lineStart
     if cursor=indent+1 then indentInfo = {value:indent}
     else indentInfo = {}
     str = ''
     # the left characters of the same line after '''
     while char
       if char=="'"
-        char = text[++cursor]; column++
+        char = text[++cursor]
         return {type: NON_INTERPOLATE_STRING, value: '"'+str+'"', start:cur, stop:cursor, line:line, stopLine: line, column: col}
       else if char=='\\'
         # the '\' at end of line will not in the result string
         if (c=text[cursor+1])=='\n' or c=='\r' then char = text[++cursor]; concatenating = true; break
-        else if c=="'" then str += "'"; cursor += 2; char = text[cursor]; column += 2
-        else str += '\\'; char = text[++cursor]; column++
-      else if char!='\n' and char!='\r' then str += char; char = text[++cursor]; column++
+        else if c=="'" then str += "'"; cursor += 2; char = text[cursor]
+        else str += '\\'; char = text[++cursor]
+      else if char!='\n' and char!='\r' then str += char; char = text[++cursor]
       else break
     while char
       if char=="'"
-        char = text[++cursor]; column++
+        char = text[++cursor]
         return {type: NON_INTERPOLATE_STRING, value: '"'+str+'"', start:cur, stop:cursor, line:line, stopLine: lineno, column: col}
       str += nonInterpolatedStringLine(indentInfo)
     if not char then error 'expect '+quote+', unexpected end of input while parsing interpolated string'
@@ -633,8 +616,9 @@ exports.Parser = ->
         if not concatenating then result += '\\n'
         char = text[++cursor]
     concatenating = false
-    lineno++; column = 0; cur = cursor
-    while char==' ' then char = text[++cursor]; column++
+    lineno++; cur = cursor
+    while char==' ' then char = text[++cursor]
+    column = cursor-lineStart
     if char=='\t' then error 'unexpected tab character "\t" at the head of line'
     else if char=='\n' or char=='\r' then result += text[cur...cursor]; return result
     else if (ind=indentInfo.value)!=undefined then indentInfo.value = column
@@ -647,31 +631,31 @@ exports.Parser = ->
         char = text[++cursor]
         # '\' at the end of line is omitted
         if char=='\n' or char=='\r' then return result
-        else if char=="'" then result += "'"; char = text[++cursor]; column++
-        else if char then result += '\\'; result += char; char = text[++cursor]; column += 2
+        else if char=="'" then result += "'"; char = text[++cursor]
+        else if char then result += '\\'; result += char; char = text[++cursor]
         else error 'unexpected end of input while parsing non interpolated string'
-      else if char=='"'  then result += '\\"'; char = text[++cursor]; column++
-      else result += char; char = text[++cursor]; column++
+      else if char=='"'  then result += '\\"'; char = text[++cursor]
+      else result += char; char = text[++cursor]
     error 'unexpected end of input while parsing non interpolated string'
 
   tokenFnMap['"'] = tokenOnDoubleQuoteChar = ->
-    char = text[++cursor]; column++
+    char = text[++cursor]
     if char=='"'
       if [cursor+1]=='"'
-        cursor += 2; char = text[cursor]; column += 2
+        cursor += 2; char = text[cursor]
         return chainToken leftRawInterpolateString()
       else
-        char = text[++cursor]; column++
-        return chainToken {value:'""', type:NON_INTERPOLATE_STRING, lineno:lineno, cursor:cursor-2, column:column-2}
+        char = text[++cursor]
+        return chainToken {value:'""', type:NON_INTERPOLATE_STRING, lineno:lineno, cursor:cursor-2, column:cursor-2-lineStart}
     else return chainToken leftInterpolatedString()
 
   @leftRawInterpolatedString = leftRawInterpolatedString = ->
     cur = cursor; line = lineno
-    if column==indent+3 then indentInfo = {value:indent} else indentInfo = {}
+    if cursor-lineStart==indent+3 then indentInfo = {value:indent} else indentInfo = {}
     pieces = []
     while char
       if char=='"' and text[cursor+1]=='"' and text[cursor+2]=='"'
-        cursor += 3; column += 3
+        cursor += 3
         return {type: INTERPOLATE_STRING, value: ['string!'].concat(pieces),
         cursor:cur, stopCursor: cursor,
         line:line, stopLineno: line}
@@ -698,7 +682,7 @@ exports.Parser = ->
       if char=='"'
         if text[cursor+1]=='"'
           if text[cursor+2]=='"' then return str+'"'
-          else cursor += 2; column += 2; char = text[cursor]
+          else cursor += 2; char = text[cursor]
       else if char=='\n'
         if not concatenating then str += '\\n'
         char = text[++cursor]
@@ -707,8 +691,8 @@ exports.Parser = ->
           char = text[++cursor]
         concatenating = false
         while 1
-          lineno++; column = 0
-          while char==' ' then str += char; char = text[++cursor]; column++
+          lineno++
+          while char==' ' then str += char; char = text[++cursor]
           if char=='\n'
             str += '\\n'; char = text[++cursor]
             if char=='\r' then str += '\\r'; char = text[++cursor]
@@ -718,6 +702,7 @@ exports.Parser = ->
             if char=='\n' then str += '\\n'; char = text[++cursor]
             continue
           else break
+        column = cursor-lineStart
         if char=='\t' then error 'unexpected tab character "\t" in the head of line'
         else if (ind=indentInfo.value)!=undefined then indentInfo.value = column
         else if ind>column then i = 0; n = column-ind; while i++<n then result += ' '
@@ -730,8 +715,8 @@ exports.Parser = ->
           char = text[++cursor]
         concatenating = false
         while 1
-          lineno++; column = 0
-          while char==' ' then str += char; char = text[++cursor]; column++
+          lineno++
+          while char==' ' then str += char; char = text[++cursor]
           if char=='\n'
             str += '\\n'; char = text[++cursor]
             if char=='\r' then str += '\\r'; char = text[++cursor]
@@ -741,6 +726,7 @@ exports.Parser = ->
             if char=='\n' then str += '\\n'; char = text[++cursor]
             continue
           else break
+        column = cursor-lineStart
         if char=='\t' then error 'unexpected tab character "\t" in the head of line'
         else if (ind=indentInfo.value)!=undefined then indentInfo.value = column
         else if ind>column then i = 0; n = column-ind; while i++<n then result += ' '
@@ -750,22 +736,22 @@ exports.Parser = ->
       else if char=='\\'
         if not (c2=text[cursor+1]) then error 'unexpected end of input while parsing interpolated string'
         else if c2=='\n' or c2=='\r' then cursor++ #; str += '\\'
-        else cursor += 2; char += text[cursor]; column += 2; str += '\\'+c2
-      else str += char; char = text[++cursor]; column++
+        else cursor += 2; char += text[cursor]; str += '\\'+c2
+      else str += char; char = text[++cursor]
     error 'unexpected end of input while parsing interpolated string'
 
   leftInterpolatedString = ->
     cur = cursor-1; line = lineno
-    if column==indent+1 then indentInfo = {value:indent} else indentInfo = {}
+    if cursor-1-lineStart==indent+1 then indentInfo = {value:indent} else indentInfo = {}
     pieces = []
     while char
       if char=='"'
-        char = text[++cursor]; column++
+        char = text[++cursor]
         return {type: INTERPOLATE_STRING, value: ['string!'].concat(pieces),
         cursor:cur, stopCursor:cursor,
         line:line, stopLine: lineno}
       if char=='$'
-        literalStart = ++cursor; char = text[cursor]; column++
+        literalStart = ++cursor; char = text[cursor]
         x = parser.interpolateExpression()
         if x
           x = getOperatorExpression x
@@ -794,8 +780,8 @@ exports.Parser = ->
           char = text[++cursor]
         concatenating = false
         while 1
-          lineno++; column = 0
-          while char==' ' then str += char; char = text[++cursor]; column++
+          lineno++
+          while char==' ' then str += char; char = text[++cursor]
           if char=='\n'
             str += char; char = text[++cursor]
             if char=='\r' then str += char; char = text[++cursor]
@@ -805,6 +791,7 @@ exports.Parser = ->
             if char=='\n' then str += char; char = text[++cursor]
             continue
           else break
+        column = cursor-lineStart
         if char=='\t' then error 'unexpected tab character "\t" in the head of line'
         else if (ind=indentInfo.value)!=undefined then indentInfo.value = column
         else if ind>column then i = 0; n = column-ind; while i++<n then result += ' '
@@ -817,8 +804,8 @@ exports.Parser = ->
           char = text[++cursor]
         concatenating = false
         while 1
-          lineno++; column = 0
-          while char==' ' then str += char; char = text[++cursor]; column++
+          lineno++
+          while char==' ' then str += char; char = text[++cursor]
           if char=='\n'
             str += char; char = text[++cursor]
             if char=='\r' then str += char; char = text[++cursor]
@@ -828,6 +815,7 @@ exports.Parser = ->
             if char=='\n' then str += char; char = text[++cursor]
             continue
           else break
+        column = cursor-lineStart
         if char=='\t' then error 'unexpected tab character "\t" in the head of line'
         else if (ind=indentInfo.value)!=undefined then indentInfo.value = column
         else if ind>column then i = 0; n = column-ind; while i++<n then result += ' '
@@ -837,15 +825,15 @@ exports.Parser = ->
       else if char=='\\'
         if not (c2=text[cursor+1]) then break
         else if c2=='\n' or c2=='\r' then char = text[++cursor]
-        else cursor += 2; column += 2; str += '\\'+c2
-      else str += char; char = text[++cursor]; column++
+        else cursor += 2; str += '\\'+c2
+      else str += char; char = text[++cursor]
     error 'unexpected end of input while parsing interpolated string'
 
   # for efficiency, in tokenOnLeftParenChar, tokenOnLeftBracketChar, tokenOnLeftCurveChar
   # do not match next token while matching delimiter token (...), [...], {...}
   tokenFnMap['('] = tokenOnLeftParenChar = ->
     # skip "("
-    cur = cursor; line = lineno; col = column; char = text[++cursor]; column++; ind = indent
+    cur = cursor; line = lineno; col = cursor-lineStart; char = text[++cursor]; ind = indent
     start = token; matchToken()
     if (parenVariantFn=parenVariantMap[token.value]) then return parenVariantFn()
     if (type=token.type)==UNDENT then error 'unexpected undent while parsing parenethis "(...)"'
@@ -864,7 +852,7 @@ exports.Parser = ->
   }
 
   tokenFnMap['['] = tokenOnLeftBracketChar = ->
-    cur = cursor; cursor++; line = lineno; col = column; column++; ind = indent; start = token; matchToken()
+    cur = cursor; cursor++; line = lineno; col = cursor-lineStart; ind = indent; start = token; matchToken()
     if (bracketVariantFn=bracketVariantMap[token.value]) then return bracketVariantFn()
     if token.value!='[' then return
     matchToken()
@@ -883,7 +871,7 @@ exports.Parser = ->
   bracketVariantMap = {}
 
   tokenFnMap['{'] = ->
-    cur = cursor; cursor++; line = lineno; col = column; column++; ind = indent; start = token; matchToken()
+    cur = cursor; cursor++; line = lineno; col = cursor-lineStart ind = indent; start = token; matchToken()
     if (curveVariantFn=curveVariantFnMap[token.value]) then return curveVariantFn()
     if token.value=='}'
       matchToken();
@@ -901,7 +889,7 @@ exports.Parser = ->
   curveVariantMap =
     '.': ->  matchToken(); return hash()
 
-  @hash = memo ->
+  @hash = ->
     cur = cursor; line1 = lineno; indentCol = lineInfo[lineno].indentCol
     if text[cursor...cursor+2]!='{.' then return else cursor += 2
     items = parser.hashBlock()
@@ -909,8 +897,8 @@ exports.Parser = ->
     if text[cursor...cursor+2]!='.}' then error 'expect .}' else cursor += 2
     wrapResult ['hash!'].concat(items), {start:cur, stop:cursor, line1:line1, line:lineno}
 
-  @hashBlock = memo ->
-    cur = cursor; line1 = lineno; column1 = lineInfo[lineno].indentCol
+  @hashBlock = ->
+    cur = cursor; line1 = lineno
     if (spac=bigSpace()) and spac.undent then return
     result = []; if spac.indent then indentCol = lineInfo[lineno].indentCol
     while (x=parser.hashItem()) and result.push x
@@ -930,7 +918,7 @@ exports.Parser = ->
       else if col<column1 then rollbackToken space2; return
     result.start = cur; result.stop = cursor; result
 
-  @hashItem = memo ->
+  @hashItem = ->
     if isIndent(token) then error 'unexpected indent'
     else if isUndent(token) then return
     if key=parser.compactClauseExpression()
@@ -995,13 +983,13 @@ exports.Parser = ->
 
   wrapResult = (result, info) -> result.info = info; result
 
-  @decimal = decimal = memo ->
+  @decimal = decimal = ->
     cur = cursor
     while c = text[cursor] then (if  '0'<=c<='9' then cursor++ else break)
     if cursor==cur then return
     {value: text[cur...cursor], cursor:cur}
 
-  @delimiterExpression = memo -> parser.paren() or parser.dataBracket() or parser.bracket() or parser.curve() or parser.hash()
+  @delimiterExpression = -> parser.paren() or parser.dataBracket() or parser.bracket() or parser.curve() or parser.hash()
 
   @escapeSymbol = escapeSymbol = ->
     cur = cursor; line1 = lineno
@@ -1032,7 +1020,9 @@ exports.Parser = ->
     else text[cur...cursor]
 
   @symbolOrIdentifier = -> parser.symbol() or parser.identifier()
-  atomTokenTypes = dict(IDENTIFIER,1,  NUMBER,1,  REGEXP,1,  CURVE,1,  HASH,1,  BRACKET,1,  PAREN,1,  SYMBOL,1)
+
+  atomTokenTypes = dict(IDENTIFIER,1,  NUMBER,1,  REGEXP,1,  PAREN,1, BRACKET,1, CURVE,1,  HASH,1,  BRACKET,1,  PAREN,1,  SYMBOL,1)
+
   @atom = (mode) ->
     if atomTokenTypes[token.type]
       atomToken = token; nextToken(); atomToken.priority = 1000;
@@ -1045,7 +1035,7 @@ exports.Parser = ->
     if not hasOwnProperty.call(prefixOperatorDict, tokenText) or  not (op=prefixOperatorDict[tokenText]) then return
     if token.escaped then return
     opToken = token; matchToken()
-    if tokenText=='.'
+    if token.value=='.'
       matchToken()
       if (type=token.type)==SPACE or type==INDENT or type==UNDENT or type==NEWLINE
         if mode==OPERATOR_EXPRESSION then error 'unexpected spaces after :'
@@ -1057,7 +1047,7 @@ exports.Parser = ->
     else if type==SPACE then matchToken(); priInc = 300
     else priInc = 600
     opToken.symbol = op.symbol; opToken.priority = op.priority+priInc
-    wrapResult opToken, {start:opToken, token}
+    wrapResult opToken, {start:opToken}
 
   canFollowSuffix = ->
     if (type=token.type)==SPACE or type==INDENT or type==UNDENT or type==NEWLINE or type==SYMBOL or type==EOI then return true
@@ -1095,13 +1085,20 @@ exports.Parser = ->
 
   @binaryOperator = (mode, x) ->
     if m=token[binaryOperatorMemoIndex+mode] then token = m.next; return m.result
-    if token.type==EOI then return
-    op = binaryDictOperator(mode, x) or parser.customBinaryOperator(mode, x)
-    token[binaryOperatorMemoIndex+mode] = {result:op, next:token}
-    return op
+    if (type=token.type)==EOI or type==UNDENT or type==RIGHT_DELIMITER
+      token[binaryOperatorMemoIndex+mode] = {result:null, next:token}
+      return
+    start = token
+    if op=binaryDictOperator(mode, x)
+      token[binaryOperatorMemoIndex+mode] = {result:op, next:token}
+      return op
+    token = start
+    if (fn=customBinaryOperatorFnMap[type]) and (op=fn(mode, x))
+      token[binaryOperatorMemoIndex+mode] = {result:op, next:token}
+      return op
+    else token = start; return
 
   binaryDictOperator = (mode, x) ->
-    start = token
     if (type1=token.type)==SPACE
       if mode==COMPACT_CLAUSE_EXPRESSION or mode==INTERPOLATE_EXPRESSION then return
       priInc = 300; matchToken()
@@ -1111,7 +1108,7 @@ exports.Parser = ->
     else priInc = 600; if token.value=='.' then matchToken()
     opValue = token.value
     if not hasOwnProperty.call(binaryOperatorDict, opValue) or not (op=binaryOperatorDict[opValue])
-      token = start; return
+       return
     opToken = token; matchToken()
     txt2 = token.value
     if txt2=='.'
@@ -1152,7 +1149,7 @@ exports.Parser = ->
 
   indentExpression = ->
     indentStart = token
-    indentExp = parser.recursiveExpression(mode, 0, true)
+    indentExp = parser.expression(mode, 0, true)
     tkn = matchToken()
     if (type=tkn.type)!=UNDENT and type!=EOI and type.text!=')'
       error 'expect an undent after a indented block expression'
@@ -1160,61 +1157,36 @@ exports.Parser = ->
     matchToken()
     token = indentStart
 
-  @followParenArguments = -> # use the private paren
-    start = cursor; line1 = lineno
-    x=paren()
-    #always rollback, because just followParenArguments
-    rollback start, line1; return  x
+  customBinaryOperatorFnMap = {}
 
-  @binaryCallOperator = (mode, x) ->
-    if token.type==PAREN
-      {symbol:'call()', type: SYMBOL, priority: 800, start:start}
+  customBinaryOperatorFnMap[PAREN] = (mode, x) ->
+    {symbol:'call()', type: SYMBOL, priority: 800, start:start}
 
-  @binaryMacroCallOperator = (mode, x) ->
-    if token.value!='#' then return
-    start = token; nextToken()
-    if token.type!=PAREN() then token = start; return
-    return {symbol:'#()', type: SYMBOL, priority: 800, start:start}
+  customBinaryOperatorFnMap[BRACKET] = (mode, x) ->
+    {symbol:'index[]', type: SYMBOL, priority: 800, start:start}
 
+  customBinaryOperatorFnMap[IDENTIFIER] = (mode, x) ->
+    cur = token.cursor
+    if (x.value=='@' and x.stopCursor==cur-1) or (text[cur-2...cur]=='::' and text[cur-3]!=':')
+      {symbol:'attribute!', type: SYMBOL, priority: 800, start:token}
 
-  @binaryIndexOperator = (mode, x) ->
-    if token.type==BRACKET
-      {symbol:'index[]', type: SYMBOL, priority: 800, start:start}
-
-  # a.b, fn(x, y).b
-  @binaryAttributeOperator = (mode, x) ->
-    if token.type==SPACE
-      start = token; nextToken()
-      if token.value!='.' then token = start; return
+  customBinaryOperatorFnMap[SYMBOL] = (mode, x) ->
+    tkn = token
+    if (value=tkn.value)=='#'
       nextToken()
-      if token.type!=SPACE then error 'expect spaces after "." because there are spaces before it'
-      return {symbol:'attribute!', type: SYMBOL, priority: 500}
-    else if token.value=='.'
-      nextToken()
-      if token.type==SPACE then  error 'unexpected spaces after "." because there are no space before it'
-      return {symbol:'attribute!', type: SYMBOL, priority: 800}
-
-  # @attr, @[1], @['ads']
-  @binaryAtThisAttributeIndexOperator = (mode, x) ->
-    if x.stop!=token then return
-    if follow('jsIdentifier')
-      {symbol:'attribute!', type: SYMBOL, start: cursor, stop:cursor, line: lineno, priority: 800}
-    else if follow 'bracket'
-      {symbol:'index!', type: SYMBOL, start: cursor, stop:cursor, line: lineno, priority: 800}
-
-  # @::, obj::, obj::y
-  @binaryPrototypeAttributeOperator = (mode, x) ->
-    if (x.type==IDENTIFIER or x.text=='@') and token.value=='::'
-      {symbol:'attribute!', type: SYMBOL, start: cursor, stop:cursor, line: lineno, priority: 800}
-    else if  (cur=token.cursor) and text[cur-3]!=':' and text[cur-2...cur]=='::'
-      {symbol:'attribute!', type: SYMBOL, start: cursor, stop:cursor, line: lineno, priority: 800}
-
-  @customBinaryOperators = [@binaryAttributeOperator, @binaryCallOperator, @binaryMacroCallOperator, @binaryIndexOperator,
-                            @binaryAtThisAttributeIndexOperator, @binaryPrototypeAttributeOperator]
-
-  @customBinaryOperator = (mode, x) ->
-    for fn in parser.customBinaryOperators then if op = fn(mode, x)  then return op
-    return
+      return {symbol:'#()', type: SYMBOL, priority: 800, start:tkn}
+    else if value=='::'
+      tkn = token; nextToken()
+      if token.type==IDENTIFIER
+        token = tkn
+        return {symbol:'attribute!', type: SYMBOL, start:tkn, priority: 800}
+      else if token.type==BRACKET
+        token = tkn
+        return {symbol:'index!', type: SYMBOL, start:tkn, priority: 800}
+    else if value=="."
+      tkn = token; nextToken()
+      if token.type==IDENTIFIER
+        return {symbol:'attribute!', type: SYMBOL, start:tkn, priority: 800}
 
 #  # any binary function can be used as binary exports, and the priority to be used actually is set here.
 #  @binaryFunctionPriority = 35
@@ -1224,40 +1196,37 @@ exports.Parser = ->
     # current global prority doesn't affect prefixOperator
     if op=parser.prefixOperator(mode)
       pri = if priority>op.priority then priority else op.priority
-      x = parser.recursiveExpression(mode, pri, true)
+      x = parser.expression(mode, pri, true)
       if x then wrapResult makeOperatorExpression('prefix!', op, x), {start:start, stop:token}
 
-  recursiveExpressionMemoIndex = memoIndex
+  expressionMemoIndex = memoIndex
   memoIndex += 4
-  @recursiveExpression = recursive = (mode, priority, leftAssoc) ->
-    if result=token[memoIndex+mode] then token = result.next; return result.value
-    start = token; x = null
-    expression = ->
-      if not x
-        if not x = parser.prefixExpression(mode, priority)
-          if not x = parser.atom(mode) then start[memoIndex] = {value:null, next:token}; return
-      if (op = parser.suffixOperator(mode, x)) and op.priority>=priority
-        x = wrapResult makeOperatorExpression('suffix!', op, x), {start:start, stop:token}
-        # the priority and association of suffix operator does not affect the following expression
-      if (op=parser.binaryOperator(mode, x)) and ((leftAssoc and op.priority>priority) or (not leftAssoc and op.priority>=priority))
+  @expression = expression = (mode, priority, leftAssoc) ->
+    indexMode = expressionMemoIndex+mode; start = token
+    if result=start[indexMode] then token = result.next; return result.value
+    if not x = parser.prefixExpression(mode, priority)
+      if not x = parser.atom(mode) then start[memoIndex+mode] = {value:null, next:token}; return
+    while (op = parser.suffixOperator(mode, x)) and op.priority>=priority
+      x = wrapResult makeOperatorExpression('suffix!', op, x), {start:start, stop:token}
+    # the priority and association of suffix operator does not affect the following expression
+    while (op=parser.binaryOperator(mode, x)) and ((leftAssoc and (opPri=op.priority)>priority) or (not leftAssoc and opPri>=priority))
         # should assure that a right operand is here while parsing binary operator
-        y = recursive(mode, op.priority, not op.rightAssoc)
+        y = expression(mode, opPri, not op.rightAssoc)
         x = wrapResult makeOperatorExpression('binary!', op, x, y), {start:start, stop:token}
-        return expression()
-      start[memoIndex+mode] = {value:x, next:token}
-      x
-    expression()
+    while (op = parser.suffixOperator(mode, x)) and op.priority>=priority
+      x = wrapResult makeOperatorExpression('suffix!', op, x), {start:start, stop:token}
+    start[indexMode] = {value:x, next:token}
 
   # the priority of operator vary from 0 to 300,
   # if there is no space between them, then add 600, if there is spaces, then add 300.
   # if meet newline, add 0.
-  @operatorExpression = operatorExpression = -> parser.recursiveExpression(OPERATOR_EXPRESSION, 0, true)
+  @operatorExpression = operatorExpression = -> parser.expression(OPERATOR_EXPRESSION, 0, true)
   # compact expression as clause item.
-  @compactClauseExpression = -> parser.recursiveExpression(COMPACT_CLAUSE_EXPRESSION, 600, true)
+  @compactClauseExpression = -> parser.expression(COMPACT_CLAUSE_EXPRESSION, 600, true)
   # space expression as clause item.
-  @spaceClauseExpression = spaceClauseExpression = -> parser.recursiveExpression(SPACE_CLAUSE_EXPRESSION, 300, true)
+  @spaceClauseExpression = spaceClauseExpression = -> parser.expression(SPACE_CLAUSE_EXPRESSION, 300, true)
   # interpolate expression embedded in string
-  @interpolateExpression = -> parser.recursiveExpression(INTERPOLATE_EXPRESSION, 600, true)
+  @interpolateExpression = -> parser.expression(INTERPOLATE_EXPRESSION, 600, true)
 
   @isIdentifier = isIdentifier = (item) -> item.type==IDENTIFIER
 
@@ -1776,7 +1745,7 @@ exports.Parser = ->
       else body = parser.lineBlock()
       ['#call!', 'class', [name, superClass, body]]
 
-  @statement = memo ->
+  @statement = ->
     start = cursor; line1 = lineno
     if not (keyword = symbol() or taijiIdentifier()) then return
     if stmtFn = parser.keywordToStatementMap[keyword.text]
@@ -1785,7 +1754,7 @@ exports.Parser = ->
         return extend stmt, {start:start, stop:cursor, line1:line1, line:lineno}
     return rollback start, line1
 
-  @defaultAssignLeftSide = memo ->
+  @defaultAssignLeftSide = ->
     start = cursor; line1 = lineno
     if not (x=parser.spaceClauseExpression()) then return
     if x.type==PAREN or x.type==BRACKET or x.type==DATA_BRACKET or x.type==CURVE
@@ -1801,7 +1770,7 @@ exports.Parser = ->
 
   @defaultAssignSymbol = -> (x=parser.symbol()) and parser.isAssign(x.text) and x
 
-  @defaultAssignRightSide = memo ->
+  @defaultAssignRightSide = ->
     space2 = bigSpace()
     if space2.undent then error 'unexpected undent after assign symbol'+symbol.text
     else if space2.newline then error 'unexpected new line after assign symbol'+symbol.text
@@ -1828,11 +1797,11 @@ exports.Parser = ->
 
   @customAssignClauses = []
 
-  @assignClause = memo ->
+  @assignClause = ->
     for matcher in parser.customAssignClauses then if x=matcher() then return x
     parser.defaultAssignClause()
 
-  @colonClause = memo ->
+  @colonClause = ->
     start = cursor; line1 = lineno
     if not (result = parser.sequenceClause()) then return
     space()
@@ -1849,7 +1818,7 @@ exports.Parser = ->
       result
     else return rollback start, line1
 
-  @indentClause = memo ->
+  @indentClause = ->
     start = cursor; line1 = lineno
     if not (head=parser.sequenceClause()) then return
     spac = bigSpace(); if not spac.indent then return rollback start, line1
@@ -1859,7 +1828,7 @@ exports.Parser = ->
     head.push.apply head, blk
     extend head, {stop:cursor, line:lineno}
 
-  @macroCallClause = memo ->
+  @macroCallClause = ->
     start = cursor; line1 = lineno
     if (head=parser.compactClauseExpression())
        if (space1=space()) and not space1.text then return rollback(start, line1)
@@ -1874,7 +1843,7 @@ exports.Parser = ->
   # print 1 + 2*5
   # console.log x+7 and z or others
   # it's ambiguous while the first item is identifier, caller, accessor, etc
-  @unaryExpressionClause = memo ->
+  @unaryExpressionClause = ->
     start = cursor; line1 = lineno
     if (head=parser.compactClauseExpression()) and space() and (x=parser.spaceClauseExpression()) and parser.clauseEnd()
       if text[cursor]==',' then cursor++
@@ -1883,7 +1852,7 @@ exports.Parser = ->
 
   # a expression may be not wrapped in parenthesis
   # it's ambiguous while the first item is identifier, caller, accessor, etc
-  @expressionClause = memo ->
+  @expressionClause = ->
     start = cursor; line1 = lineno
     if (x=parser.spaceClauseExpression())
       if parser.clauseEnd() then return getOperatorExpression x
@@ -1905,7 +1874,7 @@ exports.Parser = ->
   # a = -> x; b = -> y should be [= a [-> x [= b [-> y]]]]
   @defaultDefinitionBody = -> begin(parser.lineBlock()) or 'undefined'
 
-  @makeDefinition = (parameterList, symbolOfDefinition, definitionBody) -> memo ->
+  @makeDefinition = (parameterList, symbolOfDefinition, definitionBody) -> ->
     start = cursor; line1 = lineno
     if not (parameters=parameterList()) then parameters = []
     space()
@@ -1918,7 +1887,7 @@ exports.Parser = ->
 
   @customDefinition = []
 
-  @definition = memo ->
+  @definition = ->
     for matcher in parser.customDefinition
       if x=matcher() then break
     if x or (x=parser.defaultDefinition()) then return x
@@ -1932,7 +1901,7 @@ exports.Parser = ->
     item = parser.compactClauseExpression()
     if item then return extend getOperatorExpression(item), {start:start, stop:cursor, line1:line1, line:lineno}
 
-  @sequenceClause = memo ->
+  @sequenceClause = ->
     start = cursor; line1 = lineno; clause = []
     while item = parser.clauseItem() then clause.push item
     if text[cursor]==',' then meetComma = true; cursor++
@@ -1943,7 +1912,7 @@ exports.Parser = ->
     'leadWordClause', 'assignClause', 'colonClause', 'macroCallClause', 'indentClause',
     'expressionClause', 'unaryExpressionClause']
 
-  @clause = memo ->
+  @clause = ->
     start = cursor; line1 = lineno
     if (parser.clauseEnd()) then return
     for matcher in parser.customClauseList
@@ -1960,13 +1929,13 @@ exports.Parser = ->
     if parser.lineEnd() then return true
     if not spac.inline then rollbackToken(spac); return true
 
-  @sentence = memo ->
+  @sentence = ->
     start = cursor; line1 = lineno
     if parser.sentenceEnd() then return
     if text[cursor]==';' then cursor++; return []
     extend parser.clauses(), {start:start, stop:cursor, line1:line1, line:lineno}
 
-  @lineCommentBlock = memo ->
+  @lineCommentBlock = ->
     start = cursor
     if comment=parser.lineComment()
       if comment.indent
@@ -1977,7 +1946,7 @@ exports.Parser = ->
           [extend(['directLineComment!', comment.text], {start:start, stop:cursor, line: lineno})]
         else [extend(['lineComment!', comment.text], {start:start, stop:cursor, line: lineno})]
 
-  @codeCommentBlockComment = memo ->
+  @codeCommentBlockComment = ->
     if cursor!=lineInfo[lineno].start+lineInfo[lineno].indentCol then return
     if text[cursor]!='/' then return
     if (c=text[cursor+1])=='.' or c=='/' or c=='*' then return
@@ -2051,7 +2020,7 @@ exports.Parser = ->
     wrapResult ['module!', scriptDirective, parser.moduleHeader(), parser.moduleBody()], {type: MODULE}
 
   @init = (data, cur, env) ->
-    @text = text = data; cursor = cur; char = text[cursor]; lineno = 1; column = 0
+    @text = text = data; cursor = cur; char = text[cursor]; lineno = 1; lineStart = 0
     token = {} # an empty token, {}.next is undefined, so nextToken will call matchToken
     # should not call matchToken() here, because the head of module need be processed differently
     # matchToken() should be called in moduleBody() instead

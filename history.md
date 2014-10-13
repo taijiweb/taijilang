@@ -1,16 +1,18 @@
 2014
 
-2014-9
-9-28->10-1
-refactor parser for better performace and better design
-space token under new lexical analysis and parser based on token
+2014-10
 
-it's coded that the framework of new lexical analysis and parser based on token
-space token and pass some tests
+  2014-9
+  9-28->10-1
+  refactor parser for better performace and better design
+  space token under new lexical analysis and parser based on token
 
-9-1: 
-  regexp: /.../  --> /!.../
-  parse {} as [hash!]
+  it's coded that the framework of new lexical analysis and parser based on token
+  space token and pass some tests
+
+  9-1: 
+    regexp: /.../  --> /!.../
+    parse {} as [hash!]
 
 2014-8
   8-19-8-31 personal private affairs
