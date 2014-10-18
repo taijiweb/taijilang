@@ -660,7 +660,7 @@ describe("parser basic: ", function() {
       return expect(str(parse('a&/b&/c'))).to.equal('[index! [index! a b] c]');
     });
     it('should parse a(b)', function() {
-      return expect(str(parse('a(b)'))).to.equal('[call! a [b]]');
+      return expect(str(parse('a(b)'))).to.equal('[call() a [b]]');
     });
     it('should parse a()', function() {
       return expect(str(parse('a()'))).to.equal('[call! a []]');
@@ -674,8 +674,8 @@ describe("parser basic: ", function() {
     it('should parse `.^1', function() {
       return expect(str(parse('`.^1'))).to.equal("[quasiquote! [unquote! 1]]");
     });
-    iit('should parse Object.prototype.toString.call(obj)', function() {
-      return expect(str(parse('Object.prototype.toString.call(obj)'))).to.equal("[call! [attribute! [attribute! [attribute! Object prototype] toString] call] [obj]]");
+    it('should parse (a)', function() {
+      return expect(str(parse('(a)'))).to.equal("a");
     });
     it('should parse Object.prototype.toString', function() {
       return expect(str(parse('Object.prototype.toString'))).to.equal("[attribute! [attribute! Object prototype] toString]");
@@ -693,7 +693,7 @@ describe("parser basic: ", function() {
       return expect(str(parse('1,/-h\b|-r\b|-v\b|-b\b/'))).to.equal('1');
     });
     it("parse 1+./!1/.test('1')", function() {
-      return expect(str(parse("1+./!1/.test('1')"))).to.equal("[+ 1 [call! [attribute! [regexp! /1/] test] [\"1\"]]]");
+      return expect(str(parse("1+./!1/.test('1')"))).to.equal("[+ 1 [call() [attribute! [regexp! /1/] test] [\"1\"]]]");
     });
     it("parse x=./!1/", function() {
       return expect(str(parse('x=./!1/'))).to.equal("[= x [regexp! /1/]]");
@@ -702,24 +702,24 @@ describe("parser basic: ", function() {
       return expect(str(parse('x=./!1/g'))).to.equal("[= x [regexp! /1/g]]");
     });
   });
-  xdescribe("space clause expression:", function() {
+  describe("space clause expression:", function() {
     var parse;
     parse = function(text) {
       var parser, x;
       parser = new Parser();
-      x = parser.parse(text, parser.spaceClauseExpression, 0);
+      x = parser.parse(text, matchRule(parser, parser.spaceClauseExpression), 0);
       return getOperatorExpression(x);
     };
     return it('should parse require.extensions[".tj"] = ->', function() {
       return expect(str(parse('require.extensions[".tj"] = ->'))).to.equal("[index! [attribute! require extensions] [string! \".tj\"]]");
     });
   });
-  xdescribe("@ as this", function() {
+  describe("@ as this", function() {
     var parse;
     parse = function(text) {
       var parser, x;
       parser = new Parser();
-      x = parser.parse(text, parser.operatorExpression, 0);
+      x = parser.parse(text, matchRule(parser, parser.operatorExpression), 0);
       return getOperatorExpression(x);
     };
     it('should parse @', function() {
@@ -732,67 +732,42 @@ describe("parser basic: ", function() {
       return expect(str(parse('@ a'))).to.equal('@');
     });
   });
-  xdescribe("@ as this clause", function() {
+  describe("clause: ", function() {
     var parse;
     parse = function(text) {
       var parser, x;
       parser = new Parser();
-      x = parser.parse(text, parser.clause, 0);
+      x = parser.parse(text, matchRule(parser, parser.clause), 0);
       return x;
     };
-    it('should parse @', function() {
-      return expect(str(parse('@'))).to.equal('@');
+    describe("@ as this clause", function() {
+      it('should parse @', function() {
+        return expect(str(parse('@'))).to.equal('@');
+      });
+      it('should parse @a', function() {
+        return expect(str(parse('@a'))).to.equal('[attribute! @ a]');
+      });
+      return it('should parse @ a', function() {
+        return expect(str(parse('@ a'))).to.equal('[@ a]');
+      });
     });
-    it('should parse @a', function() {
-      return expect(str(parse('@a'))).to.equal('[attribute! @ a]');
+    describe("expressionClause", function() {
+      it('should parse 1\n2', function() {
+        return expect(str(parse('1\n2'))).to.equal('1');
+      });
+      return it('should parse 1 + 2', function() {
+        return expect(str(parse('1 + 2'))).to.equal("[+ 1 2]");
+      });
     });
-    return it('should parse @ a', function() {
-      return expect(str(parse('@ a'))).to.equal('[@ a]');
+    describe("unaryExpressionClause", function() {
+      return iit('should parse print 1', function() {
+        return expect(str(parse('print 1\n2'))).to.equal("[print 1]");
+      });
     });
-  });
-  xdescribe("expressionClause", function() {
-    var parse;
-    parse = function(text) {
-      var parser, x;
-      parser = new Parser();
-      x = parser.parse(text, parser.expressionClause, 1);
-      return x;
-    };
-    it('should parse 1\n2', function() {
-      return expect(str(parse(' 1\n2'))).to.equal('1');
-    });
-    return it('should parse 1 + 2', function() {
-      return expect(str(parse(' 1 + 2'))).to.equal("[+ 1 2]");
-    });
-  });
-  xdescribe("unaryExpressionClause", function() {
-    var parse;
-    parse = function(text) {
-      var parser, x;
-      parser = new Parser();
-      x = parser.parse(text, parser.unaryExpressionClause, 1);
-      return x;
-    };
-    it('should parse print 1', function() {
-      return expect(str(parse(' print 1\n2'))).to.equal("[print 1]");
-    });
-    it('should parse print 1 + 2', function() {
-      return expect(str(parse(' print 1 + 2'))).to.equal("[print [+ 1 2]]");
-    });
-    return it('should parse  if! x==0 0 even(x-1)\n even = (x) -> if! x==0 1 odd(x-1) \nthen odd(3)', function() {
-      return expect(str(parse(' if! x==0 0 even(x-1)\n even = (x) -> if! x==0 1 odd(x-1) \nthen odd(3)'))).to.equal("undefined");
-    });
-  });
-  xdescribe("sequenceClause", function() {
-    var parse;
-    parse = function(text) {
-      var parser, x;
-      parser = new Parser();
-      x = parser.parse(text, parser.sequenceClause, 0);
-      return x;
-    };
-    return it('should parse print 1 2', function() {
-      return expect(str(parse('print 1 2'))).to.equal("[print 1 2]");
+    return describe("sequenceClause", function() {
+      return it('should parse print 1 2', function() {
+        return expect(str(parse('print 1 2'))).to.equal("[print 1 2]");
+      });
     });
   });
   xdescribe("colonClause", function() {

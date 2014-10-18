@@ -1,8 +1,12 @@
 2014
 
 2014-10
+10-14
+  pass more tests of expression
+10-13 
+  compact clause expression pass several tests: a.b.c, `.^1
 
-  2014-9
+2014-9
   9-28->10-1
   refactor parser for better performace and better design
   space token under new lexical analysis and parser based on token

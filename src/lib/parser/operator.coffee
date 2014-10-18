@@ -4,7 +4,8 @@
 {NUMBER,  STRING,  IDENTIFIER, SYMBOL, REGEXP,  HEAD_SPACES, CONCAT_LINE, PUNCT, FUNCTION, PAREN, BRACKET, INDENT_EXPRESSION
 NEWLINE,  SPACES,  INLINE_COMMENT, SPACES_INLINE_COMMENT, LINE_COMMENT, BLOCK_COMMENT, CODE_BLOCK_COMMENT,
 NON_INTERPOLATE_STRING, INTERPOLATE_STRING, DATA_BRACKET
-INDENT, UNDENT, HALF_DENT, CURVE} = constant
+INDENT, UNDENT, HALF_DENT, CURVE,
+PREFIX, SUFFIX, BINARY} = constant
 
 exports.prefixOperatorDict = prefixOperatorDict =
   '#':  {priority: 200}, # preprocess, conditional meta compilation operator
@@ -111,18 +112,14 @@ do -> for op in exports.assignOperators
 exports.binaryFunctionPriority = 35
 
 exports.makeOperatorExpression = (type, op, x, y) ->
-  if type=='binary!'
+  if type==BINARY
     result = [op, x, y]; result.type = type
-    result.priority = op.priority; result.rightAssoc = op.rightAssoc
+    result.type = type; result.priority = op.priority; result.rightAssoc = op.rightAssoc
     wrapInfo2 result, x, y
-  else if type=='prefix!'
+  else # PREFIX, SUFFIX
     result = [op, x]; result.type = type
     result.priority = op.priority; result.rightAssoc = op.rightAssoc
     wrapInfo2 result, op, x
-  else #'suffix'
-    result = [op, x]; result.type = type
-    result.priority = op.priority; result.rightAssoc = op.rightAssoc
-    wrapInfo2 result, x, op
 
 error = (message) -> throw message
 

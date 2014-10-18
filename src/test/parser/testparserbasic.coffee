@@ -443,7 +443,7 @@ describe "parser basic: ",  ->
       expect(str parse('a&/b&/c')).to.equal '[index! [index! a b] c]'
 
     it 'should parse a(b)', ->
-      expect(str parse('a(b)')).to.equal  '[call! a [b]]'
+      expect(str parse('a(b)')).to.equal  '[call() a [b]]'
     it 'should parse a()', ->
       expect(str parse('a()')).to.equal '[call! a []]'
     it 'should parse a::b ', ->
@@ -453,8 +453,8 @@ describe "parser basic: ",  ->
     it 'should parse `.^1', ->
       expect(str parse('`.^1')).to.equal "[quasiquote! [unquote! 1]]"
     # gotcha: prefixOperator['toString'] == Object.toString function!!!
-    iit 'should parse Object.prototype.toString.call(obj)', ->
-      expect(str parse('Object.prototype.toString.call(obj)')).to.equal "[call! [attribute! [attribute! [attribute! Object prototype] toString] call] [obj]]"
+    it 'should parse (a)', ->
+      expect(str parse('(a)')).to.equal "a"
     it 'should parse Object.prototype.toString', ->
       expect(str parse('Object.prototype.toString')).to.equal "[attribute! [attribute! Object prototype] toString]"
     it 'should parse Object.prototype.toString.call', ->
@@ -466,24 +466,24 @@ describe "parser basic: ",  ->
     it "parse 1,/-h\b|-r\b|-v\b|-b\b/", ->
       expect(str parse('1,/-h\b|-r\b|-v\b|-b\b/')).to.equal '1'
     it "parse 1+./!1/.test('1')", ->
-      expect(str parse("1+./!1/.test('1')")).to.equal "[+ 1 [call! [attribute! [regexp! /1/] test] [\"1\"]]]"
+      expect(str parse("1+./!1/.test('1')")).to.equal "[+ 1 [call() [attribute! [regexp! /1/] test] [\"1\"]]]"
     it "parse x=./!1/", ->
       expect(str parse('x=./!1/')).to.equal "[= x [regexp! /1/]]"
     it "parse x=./!1/g", ->
       expect(str parse('x=./!1/g')).to.equal "[= x [regexp! /1/g]]"
 
-  xdescribe "space clause expression:", ->
+  describe "space clause expression:", ->
     parse = (text) ->
       parser = new Parser()
-      x = parser.parse(text, parser.spaceClauseExpression, 0)
+      x = parser.parse(text,  matchRule(parser, parser.spaceClauseExpression), 0)
       getOperatorExpression x
     it 'should parse require.extensions[".tj"] = ->', ->
       expect(str parse('require.extensions[".tj"] = ->')).to.equal "[index! [attribute! require extensions] [string! \".tj\"]]"
 
-  xdescribe "@ as this", ->
+  describe "@ as this", ->
     parse = (text) ->
       parser = new Parser()
-      x = parser.parse(text, parser.operatorExpression, 0)
+      x = parser.parse(text, matchRule(parser, parser.operatorExpression), 0)
       getOperatorExpression x
     it 'should parse @', ->
       expect(str parse('@')).to.equal '@'
@@ -492,47 +492,34 @@ describe "parser basic: ",  ->
     it 'should parse @ a', ->
       expect(str parse('@ a')).to.equal '@'
 
-  xdescribe "@ as this clause", ->
+  describe "clause: ", ->
     parse = (text) ->
       parser = new Parser()
-      x = parser.parse(text, parser.clause, 0)
+      x = parser.parse(text, matchRule(parser, parser.clause), 0)
       x
-    it 'should parse @', ->
-      expect(str parse('@')).to.equal '@'
-    it 'should parse @a', ->
-      expect(str parse('@a')).to.equal '[attribute! @ a]'
-    it 'should parse @ a', ->
-      expect(str parse('@ a')).to.equal '[@ a]'
+    describe "@ as this clause", ->
+      it 'should parse @', ->
+        expect(str parse('@')).to.equal '@'
+      it 'should parse @a', ->
+        expect(str parse('@a')).to.equal '[attribute! @ a]'
+      it 'should parse @ a', ->
+        expect(str parse('@ a')).to.equal '[@ a]'
 
-  xdescribe "expressionClause", ->
-    parse = (text) ->
-      parser = new Parser()
-      x = parser.parse(text, parser.expressionClause, 1)
-      x
-    it 'should parse 1\n2', ->
-      expect(str parse(' 1\n2')).to.equal '1'
-    it 'should parse 1 + 2', ->
-      expect(str parse(' 1 + 2')).to.equal "[+ 1 2]"
+    describe "expressionClause", ->
+      it 'should parse 1\n2', ->
+        expect(str parse('1\n2')).to.equal '1'
+      it 'should parse 1 + 2', ->
+        expect(str parse('1 + 2')).to.equal "[+ 1 2]"
 
-  xdescribe "unaryExpressionClause", ->
-    parse = (text) ->
-      parser = new Parser()
-      x = parser.parse(text, parser.unaryExpressionClause, 1)
-      x
-    it 'should parse print 1', ->
-      expect(str parse(' print 1\n2')).to.equal "[print 1]"
-    it 'should parse print 1 + 2', ->
-      expect(str parse(' print 1 + 2')).to.equal "[print [+ 1 2]]"
-    it 'should parse  if! x==0 0 even(x-1)\n even = (x) -> if! x==0 1 odd(x-1) \nthen odd(3)', ->
-      expect(str parse(' if! x==0 0 even(x-1)\n even = (x) -> if! x==0 1 odd(x-1) \nthen odd(3)')).to.equal "undefined"
+    describe "unaryExpressionClause", ->
+      iit 'should parse print 1', ->
+        expect(str parse('print 1\n2')).to.equal "[print 1]"
+#      it 'should parse  if! x==0 0 even(x-1)\n even = (x) -> if! x==0 1 odd(x-1) \nthen odd(3)', ->
+#        expect(str parse('if! x==0 0 even(x-1)\n even = (x) -> if! x==0 1 odd(x-1) \nthen odd(3)')).to.equal "undefined"
 
-  xdescribe "sequenceClause", ->
-    parse = (text) ->
-      parser = new Parser()
-      x = parser.parse(text, parser.sequenceClause, 0)
-      x
-    it 'should parse print 1 2', ->
-      expect(str parse('print 1 2')).to.equal "[print 1 2]"
+    describe "sequenceClause", ->
+      it 'should parse print 1 2', ->
+        expect(str parse('print 1 2')).to.equal "[print 1 2]"
 
   xdescribe "colonClause", ->
     parse = (text) ->
