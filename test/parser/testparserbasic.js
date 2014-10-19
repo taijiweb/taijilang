@@ -1,4 +1,4 @@
-var BLOCK_COMMENT, COMPACT_CLAUSE_EXPRESSION, EOI, HALF_DENT, IDENTIFIER, INDENT, NEWLINE, NUMBER, OPERATOR_EXPRESSION, PAREN, PAREN_OPERATOR_EXPRESSION, Parser, SPACE_CLAUSE_EXPRESSION, UNDENT, chai, constant, expect, getOperatorExpression, idescribe, iit, isArray, lib, matchRule, ndescribe, nit, str, _ref;
+var BLOCK_COMMENT, COMPACT_CLAUSE_EXPRESSION, EOI, HALF_DENT, IDENTIFIER, INDENT, NEWLINE, NUMBER, OPERATOR_EXPRESSION, PAREN, PAREN_OPERATOR_EXPRESSION, Parser, SPACE, SPACE_CLAUSE_EXPRESSION, UNDENT, chai, constant, expect, getOperatorExpression, idescribe, iit, isArray, lib, matchRule, ndescribe, nit, str, _ref;
 
 chai = require("chai");
 
@@ -20,11 +20,18 @@ getOperatorExpression = require(lib + 'parser/operator').getOperatorExpression;
 
 Parser = require(lib + 'parser/parser').Parser;
 
-IDENTIFIER = constant.IDENTIFIER, NUMBER = constant.NUMBER, NEWLINE = constant.NEWLINE, INDENT = constant.INDENT, UNDENT = constant.UNDENT, HALF_DENT = constant.HALF_DENT, PAREN = constant.PAREN, BLOCK_COMMENT = constant.BLOCK_COMMENT, EOI = constant.EOI, PAREN_OPERATOR_EXPRESSION = constant.PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION = constant.COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION = constant.SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION = constant.OPERATOR_EXPRESSION;
+IDENTIFIER = constant.IDENTIFIER, NUMBER = constant.NUMBER, NEWLINE = constant.NEWLINE, INDENT = constant.INDENT, UNDENT = constant.UNDENT, HALF_DENT = constant.HALF_DENT, PAREN = constant.PAREN, BLOCK_COMMENT = constant.BLOCK_COMMENT, EOI = constant.EOI, SPACE = constant.SPACE, PAREN_OPERATOR_EXPRESSION = constant.PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION = constant.COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION = constant.SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION = constant.OPERATOR_EXPRESSION;
 
 matchRule = function(parser, rule) {
   return function() {
-    parser.matchToken();
+    var token;
+    token = parser.matchToken();
+    if (token.type === NEWLINE) {
+      parser.matchToken();
+    }
+    if (token.type === SPACE) {
+      parser.matchToken();
+    }
     return rule();
   };
 };
@@ -732,6 +739,36 @@ describe("parser basic: ", function() {
       return expect(str(parse('@ a'))).to.equal('@');
     });
   });
+  describe("definition parameter", function() {
+    var parse;
+    parse = function(text) {
+      var parser, x;
+      parser = new Parser();
+      x = parser.parse(text, matchRule(parser, parser.parameterList), 0);
+      return x;
+    };
+    it('should parse (a)', function() {
+      return expect(str(parse('(a)'))).to.equal("[a]");
+    });
+    it('should parse (a, b)', function() {
+      return expect(str(parse('(a, b)'))).to.equal("[a b]");
+    });
+    return it('should parse (a..., b)', function() {
+      return expect(str(parse('(a..., b)'))).to.equal("[[x... a] b]");
+    });
+  });
+  describe("definition", function() {
+    var parse;
+    parse = function(text) {
+      var parser, x;
+      parser = new Parser();
+      x = parser.parse(text, matchRule(parser, parser.definition), 0);
+      return x;
+    };
+    return iit('should parse -> 1', function() {
+      return expect(str(parse('-> 1'))).to.equal("[-> [] 1]");
+    });
+  });
   describe("clause: ", function() {
     var parse;
     parse = function(text) {
@@ -760,56 +797,19 @@ describe("parser basic: ", function() {
       });
     });
     describe("unaryExpressionClause", function() {
-      return iit('should parse print 1', function() {
+      return it('should parse print 1', function() {
         return expect(str(parse('print 1\n2'))).to.equal("[print 1]");
       });
     });
-    return describe("sequenceClause", function() {
+    describe("sequenceClause", function() {
       return it('should parse print 1 2', function() {
         return expect(str(parse('print 1 2'))).to.equal("[print 1 2]");
       });
     });
-  });
-  xdescribe("colonClause", function() {
-    var parse;
-    parse = function(text) {
-      var parser, x;
-      parser = new Parser();
-      x = parser.parse(text, parser.colonClause, 0);
-      return x;
-    };
-    return it('should parse print: 1 + 2, 3', function() {
-      return expect(str(parse('print: 1 + 2, 3'))).to.equal("[print [+ 1 2] 3]");
-    });
-  });
-  xdescribe("definition parameter", function() {
-    var parse;
-    parse = function(text) {
-      var parser, x;
-      parser = new Parser();
-      x = parser.parse(text, parser.defaultParameterList, 0);
-      return x;
-    };
-    it('should parse (a)', function() {
-      return expect(str(parse('(a)'))).to.equal("[a]");
-    });
-    it('should parse (a, b)', function() {
-      return expect(str(parse('(a, b)'))).to.equal("[a b]");
-    });
-    return it('should parse (a..., b)', function() {
-      return expect(str(parse('(a..., b)'))).to.equal("[[x... a] b]");
-    });
-  });
-  xdescribe("definition", function() {
-    var parse;
-    parse = function(text) {
-      var parser, x;
-      parser = new Parser();
-      x = parser.parse(text, parser.definition, 0);
-      return x;
-    };
-    return it('should parse -> 1', function() {
-      return expect(str(parse('-> 1'))).to.equal("[-> [] 1]");
+    return describe("colonClause", function() {
+      return it('should parse print: 1 + 2, 3', function() {
+        return expect(str(parse('print: 1 + 2, 3'))).to.equal("[print [+ 1 2] 3]");
+      });
     });
   });
   xdescribe(":: as prototype", function() {

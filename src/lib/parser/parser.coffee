@@ -138,7 +138,7 @@ exports.Parser = ->
   tokenFnMap[':'] = tokenOnColonChar = ->
     cur = cursor; col = cursor-lineStart; first = char; char = text[++cursor]
     while char==first then char = text[++cursor]
-    if cursor==cur+1 then type==PUNCTUATION else type = SYMBOL
+    if cursor==cur+1 then type = PUNCTUATION else type = SYMBOL
     token.next = {type: type, value: text.slice(cur, cursor),
     cursor:cur, stopCursor:cursor,
     line: lineno, column:col, indent: indent}
@@ -430,16 +430,15 @@ exports.Parser = ->
     lineStart = cursor
     char = text[cursor]
     skipSpaceLines(ind)
-    tkn = {value:text[cur...cursor],
+    if not char then type = EOI
+    else if indent>ind then type = INDENT
+    else if indent==ind then type = NEWLINE
+    else type = UNDENT
+    return token = token.next = {type:type, value:text[cur...cursor],
     cursor:cur, # stopCursor: cursor,
     line:line, stopLine: lineno,
     column:col, # stopColumn: column,
     indent: ind, stopIndent: indent}
-    if not char then token.type = EOI; token.clauseEnd = token.sentenceEnd = true
-    else if indent>ind then token.type = INDENT
-    else if indent==ind then token.type==NEWLINE; token.clauseEnd = token.sentenceEnd = true
-    else token.type = UNDENT; token.clauseEnd = token.sentenceEnd = true
-    return token.next = tkn
 
   tokenOnIdentifierChar = ->
     cur = cursor; char = text[++cursor]; col = cursor-lineStart
@@ -449,7 +448,7 @@ exports.Parser = ->
     else if conjunctionHasOwnProperty(txt) then type = CONJUNCTION
     else type = IDENTIFIER
     token.next = {type:type, value:txt
-    cursor:cur, #stopCursor: cursor,
+    cursor:cur, stopCursor: cursor,
     line: lineno, column: col, indent:indent}
 
   for c of firstIdentifierCharSet then tokenFnMap[c] = tokenOnIdentifierChar
@@ -479,7 +478,8 @@ exports.Parser = ->
         # e.g 0x+3, 0x(1+2)
         cursor--; char = text[cursor]
         return token.next = { type: NUMBER, value: text[cur...cursor], value:0,
-        cursor:cur, line:lineno, column:col, indent:indent}
+        cursor:cur, stopCursor:cursor
+        line:lineno, column:col, indent:indent}
       else
         return token.next = { type: NUMBER, value:parseInt(text[baseStart...cursor], base),
         cursor:cur, line:lineno, column: col, indent:indent}
@@ -499,7 +499,8 @@ exports.Parser = ->
     if not meetDigit and char!='e' and char!='E'
       cursor = dotCursor; char = text[cursor]
       return token.next = { type: NUMBER, value:parseInt(text[baseStart...cursor], base),
-      cursor:cur, line:lineno, column: col, indent:indent}
+      cursor:cur, stopCursor:cursor
+      line:lineno, column: col, indent:indent}
     if char=='e' or char=='E'
       char = text[++cursor]
       if char=='+' or char=='-'
@@ -507,7 +508,8 @@ exports.Parser = ->
         if not char or char<'0' or '9'<char
           cursor = dotCursor; char = text[cursor]
           return token.next = { type: NUMBER, value:parseInt(text[cur...dotCursor], base),
-          cursor:cur, line:lineno, column: col, indent:indent}
+          cursor:cur, stopCursor:cursor
+          line:lineno, column: col, indent:indent}
         else
           while char
             char = text[++cursor]
@@ -515,24 +517,26 @@ exports.Parser = ->
       else if not char or char<'0' or '9'<char
         cursor = dotCursor; char = text[cursor]
         return token.next = { type: NUMBER, value:parseInt(text[cur...dotCursor], base),
-        cursor:cur, line:lineno, column: col, indent:indent}
+        cursor:cur, stopCursor:cursor
+        line:lineno, column: col, indent:indent}
       else while char
           if  char<'0' or '9'<char then break
           char = text[++cursor]
     token.next = { type: NUMBER, value:parseFloat(text[cur...cursor], base),
-    cursor:cur, line:lineno, column: col, indent:indent}
+    cursor:cur, stopCursor:cursor
+    line:lineno, column: col, indent:indent}
 
   for c in '0123456789' then tokenFnMap[c] = tokenOnNumberChar
 
-  tokenFnMap[','] = tokenOnPunctuationChar = ->
+  tokenFnMap[','] =tokenOnCommaChar = ->
     cur = cursor; char = text[++cursor]
-    {value:char, type:PUNCTUATION, lineno:lineno, stopLineno: lineno,
+    token.next = {type:PUNCTUATION, value:',', line:lineno, stopLine: lineno,
     cursor:cursor, stopCursor:cursor, column: cur-lineStart
     clauseEnd: true}
 
-  tokenFnMap[';'] = tokenOnPunctuationChar = ->
+  tokenFnMap[';'] = tokenOnSemiColonChar = ->
     cur = cursor; char = text[++cursor]
-    {value:char, type:PUNCTUATION, lineno:lineno, stopLineno: lineno,
+    token.next = {value:';', type:PUNCTUATION, line:lineno, stopLine: lineno,
     cursor:cursor, stopCursor:cursor, column: cur-lineStart,
     clauseEnd:true, sentenceEnd: true
     }
@@ -694,7 +698,7 @@ exports.Parser = ->
         cursor += 3
         return {type: INTERPOLATE_STRING, value: ['string!'].concat(pieces),
         cursor:cur, stopCursor: cursor,
-        line:line, stopLineno: line}
+        line:line, stopLine: line}
       else if char=='$'
         literalStart = cursor++
         x = parser.interpolateExpression()
@@ -1038,10 +1042,10 @@ exports.Parser = ->
   BRACKET,  PAREN,  SYMBOL, NON_INTERPOLATE_STRING,  INTERPOLATE_STRING, COMPACT_CLAUSE_EXPRESSION)
 
   @atom = (mode) ->
-    if token.isCompactClauseExpression then atomToken = token; nextToken(); return atomToken
-    else if atomTokenTypes[token.type]
-      atomToken = token; nextToken(); atomToken.priority = 1000;
-      return atomToken
+    if token.isCompactClauseExpression
+      atomToken = token; nextToken(); return atomToken
+    else if atomTokenTypes[(type=token.type)]
+      atomToken = token; atomToken.priority = 1000; nextToken(); return atomToken
 
   # prefix operator don't need to be compared to current global priority
   @prefixOperator = (mode) ->
@@ -1063,21 +1067,17 @@ exports.Parser = ->
     opToken.symbol = op.symbol; opToken.priority = op.priority+priInc
     wrapResult opToken, {start:opToken}
 
-  canFollowSuffix = ->
-    if (type=token.type)==SPACE or type==INDENT or type==UNDENT or type==NEWLINE or type==SYMBOL or type==EOI then return true
-    if (value=token.value)==')' or value==']' or value=='}' or value==':' or value==',' or value==';' then return true
-    if type==IDENTIFIER then return false
-
   # suffix operator must be symbol, should follow space, right delimiters or punctuations.
   @suffixOperator = (mode, x) ->
     if token.type!=SYMBOL then return
     if (op=suffixOperatorDict[token.value])
       token.symbol = op.symbol; token.priority = op.priority+600
       opToken = token; matchToken()
-      if canFollowSuffix() then return wrapResult opToken, {start: opToken}
+      #  can not follow suffirx: SYMBOL IDENTIFIER  REGEXP PAREN BRACKET HASH etc
+      if (type=token.type)==SPACE or type==NEWLINE or type==INDENT or type==UNDENT or type==EOI or type==RIGHT_DELIMITER\
+          or (value=token.value)==':' or value==',' or value==';'
+        return wrapResult opToken, {start: opToken}
       else token = opToken; return
-
-  canFollowSufix = () -> (t=token.type)==SPACE or t==RIGHT_DELIMITER or t==PUNCTUATION or t==EOI
 
   parser.clauseEnd = (spac) ->
     cur = cursor; line1 = lineno
@@ -1087,66 +1087,53 @@ exports.Parser = ->
       cursor++; return true
     if parser.sentenceEnd(spac) or c==';' then  rollbackToken spac; return true
 
-  parser.expressionEnd = (mode) ->
-    (value=token.value)==',' or value==';' or value==':'  or (type=token.type)==NEWLINE or type==UNDENT or type==EOI\
-    or (mode==INTERPOLATE_EXPRESSION and (char=="'" or char=='"'))
-
   binaryOperatorMemoIndex = memoIndex
   memoIndex += 5
 
   @binaryOperator = (mode, x) ->
+    if token.isBinaryOperator then opToken = token; nextToken(); return opToken
     if m=token[binaryOperatorMemoIndex+mode] then token = m.next; return m.result
-    if (type=token.type)==EOI or type==UNDENT or type==RIGHT_DELIMITER
+    if (type=token.type)==EOI or type==UNDENT or type==RIGHT_DELIMITER \
+        or (mode!=OPERATOR_EXPRESSION and (type==NEWLINE or type==INDENT or type==PUNCTUATION))\
+        or ((mode==COMPACT_CLAUSE_EXPRESSION or mode==INTERPOLATE_EXPRESSION) and type==SPACE)\
+        or (mode==INTERPOLATE_EXPRESSION and (char=="'" or char=='"'))
       token[binaryOperatorMemoIndex+mode] = {result:null, next:token}
       return
     start = token
-    if op=binaryDictOperator(mode, x)
-      token[binaryOperatorMemoIndex+mode] = {result:op, next:token}
-      return op
-    token = start
-    if (fn=customBinaryOperatorFnMap[type]) and (op=fn(mode, x))
+    if (op=binaryDictOperator(mode, x)) \
+        or ((token=start) and (fn=customBinaryOperatorFnMap[type]) and (op=fn(mode, x)))
       token[binaryOperatorMemoIndex+mode] = {result:op, next:token}
       return op
     else token = start; return
 
   binaryDictOperator = (mode, x) ->
-    if (type1=token.type)==SPACE
-      if mode==INTERPOLATE_EXPRESSION then return
-      priInc = 300; nextToken()
-    else if type1==NEWLINE or type1==INDENT or type1==UNDENT
-      if mode!=OPERATOR_EXPRESSION then return
-      priInc = 0; nextToken()
+    if (type1=token.type)==SPACE then priInc = 300; nextToken()
+    else if type1==NEWLINE or type1==INDENT then priInc = 0; nextToken()
     else priInc = 600; if token.value=='.' then nextToken()
     opValue = token.value
-    if not hasOwnProperty.call(binaryOperatorDict, opValue) or not (op=binaryOperatorDict[opValue])
-       return
+    if not hasOwnProperty.call(binaryOperatorDict, opValue) or not (op=binaryOperatorDict[opValue]) then return
     opToken = token; nextToken()
-    txt2 = token.value
-    if txt2=='.'
-      if priInc==300 then error 'unexpected "." after binary operator '+opToken.value+', here should be spaces, comment or newline'
-      else
-        # assure token is not identifier while parsing custom binary attribute operator
-        nextToken()
-    if parser.expressionEnd(mode) then token = start; return
+    if token.value=='.'
+      if priInc!=600 then error 'unexpected "." after binary operator '+opToken.value+', here should be spaces, comment or newline'
+      else nextToken()
+    if (value=token.value)==',' or value==';' or value==':'  or (type=token.type)==NEWLINE or type==UNDENT or type==EOI\
+      or (mode==INTERPOLATE_EXPRESSION and (char=="'" or char=='"')) then return
     if (type=token.type)==UNDENT then error 'unexpected undent after binary operator "'+opToken.value+'"'
     else if type==EOI then error 'unexpected end of input, expect right operand after binary operator'
     else if token.type==RIGHT_DELIMITER then return
     if priInc==600
       if type==SPACE
-        if op.value==',' then priInc = 300
+        if op.value==',' then priInc = 300; nextToken()
         else if (c=text[cursor])==';' then error 'unexpected ;'
         else error 'unexpected spaces or new lines after binary operator "'+op.value+'" before which there is no space.'
-      pri = op.priority+priInc
-      extend {}, op, {priority: pri}
     else if priInc==300
       if type==UNDENT then error 'unexpceted undent after binary operator '+op.value
       else if type==NEWLINE then priInc = 0
       else if type==INDENT then priInc = 0; indentExpression()
-      else if type!=SPACE
+      else if type==SPACE then nextToken()
+      else
         if mode==OPERATOR_EXPRESSION then error 'binary operator '+op.value+' should have spaces at its right side.'
         else token = start
-      pri = op.priority+priInc
-      extend {priority: pri}, op
       # below must in operator expression (...) mode, not in clause mode.
     else
       # any operator near newline always have the priority 300, i.e. compute from up to down
@@ -1154,9 +1141,11 @@ exports.Parser = ->
         error 'binary operator '+op.symbol+' should not be at begin of line'
       if type==UNDENT then error 'binary operator should not be at end of block'
       else if type==NEWLINE then error 'a single binary operator should not occupy whole line.'
+      else if type==SPACE then nextToken()
       if type1==INDENT # the token before operator token is indent token
         priInc = 0; indentExpression()
-      extend {priority: 300}, op
+    opToken.symbol = op.symbol; opToken.priority = op.priority+priInc
+    opToken
 
   indentExpression = ->
     indentStart = token
@@ -1214,29 +1203,30 @@ exports.Parser = ->
     if not x = parser.prefixExpression(mode, priority)
       if not x = parser.atom(mode) then start[memoIndex+mode] = {value:null, next:token}; return
     while 1
-      tkn = token
+      tkn1 = token
       if (op = parser.suffixOperator(mode, x))
         if op.priority>=priority
           x = wrapResult makeOperatorExpression(SUFFIX, op, x), {start:start, stop:token}
-        else token = tkn; break
+        else token = tkn1; break
       else break
     # the priority and association of suffix operator does not affect the following expression
     while 1
-      tkn = token
+      tkn2 = token
       if (op=parser.binaryOperator(mode, x))
         if ((leftAssoc and (opPri=op.priority)>priority) or (not leftAssoc and opPri>=priority))
           # should assure that a right operand is here while parsing binary operator
           y = expression(mode, opPri, not op.rightAssoc)
           x = wrapResult makeOperatorExpression(BINARY, op, x, y), {start:start, stop:token}
-        else token = tkn; break
+        else token = tkn2; break
       else break
-    while 1
-      tkn = token
-      if (op = parser.suffixOperator(mode, x))
-        if op.priority>=priority
-          x = wrapResult makeOperatorExpression(SUFFIX, op, x), {start:start, stop:token}
-        else token = tkn; break
-      else break
+    if token!=tkn1
+      while 1
+        tkn = token
+        if (op = parser.suffixOperator(mode, x))
+          if op.priority>=priority
+            x = wrapResult makeOperatorExpression(SUFFIX, op, x), {start:start, stop:token}
+          else token = tkn; break
+        else break
     start[indexMode] = {value:x, next:token}
     x
 
@@ -1838,34 +1828,25 @@ exports.Parser = ->
           error 'illegal parameters list for function definition'
         else token = start; return
 
-  @definitionSymbol = ->
-    if token.type!=SYMBOL then return
-    if (value=token.value) and ((tail=value[value.length-2...])=='->' or tail=='=>') then return token
-
-  # a = -> x; b = -> y should be [= a [-> x [= b [-> y]]]]
-  @defaultDefinitionBody = -> begin(parser.lineBlock()) or 'undefined'
-
   @definition = ->
     start = token
     if not (parameters=parser.parameterList()) then parameters = []
     if token.type==SPACE then nextToken()
-    if not (token=parser.definitionSymbol()) then token = start; return
-    body = parser.definitionBody()
-    extend [token, parameters, body], {start:start, stop:token}
-
-  isClauseEnd = -> (type=token.type)==NEWLINE or type==UNDENT or type==EOI or token.value==',' or token.value==';'
+    if (value=token.value) and ((tail=value[(value.length-2)...])=='->' or tail=='=>')
+      body = begin(parser.lineBlock()) or 'undefined'
+      extend [token, parameters, body], {start:start, stop:token}
+    else token = start; return
 
   @clauseItem = ->
+    if token.type==SPACE then nextToken()
     if (item=parser.compactClauseExpression())
-      if token.type==PAREN and (item=parser.definition()) then return item
-      else return token
-    else if token.type==SPACE then nextToken(); return
+      if item.type==PAREN  and (d=parser.definition()) then return d
+      return item
 
   @sequenceClause = ->
     start = token; clause = []
     while item = parser.clauseItem() then clause.push item
-    if token.value==',' then meetComma = true; nextToken()
-    if not clause.length and not meetComma then return
+    if not clause.length then return
     extend clause, {start:start, stop:token}
 
   @customClauseList = ['assignClause', 'colonClause', 'macroCallClause', 'indentClause']
@@ -1940,14 +1921,14 @@ exports.Parser = ->
     if (type=token.type)==SPACE then nextToken(); type = token.type
     if type==KEYWORD then return keyword2statement[token.value]()
     else if type==IDENTIFIER and nextToken()
-      if token.value=='#' and (blk=parser.lineBlock())
+      if token.value=='#' and nextToken() and token.value==':' and nextToken() and (blk=parser.lineBlock())
         # label statement
         return ['label!', start, blk]
       else token = start
     else if type==SYMBOL and (fn=symbol2clause[token.value]) then return fn()
 
     if not (head=parser.compactClauseExpression())
-      if (op=prefixOperator())
+      if (op=parser.prefixOperator())
         if token.type==SPACE and nextToken() and (exp=parser.spaceClauseExpression())
           return [op, exp]
         else return op
@@ -1956,43 +1937,80 @@ exports.Parser = ->
       else  return {value:'undefined', start:start, stop:token}
 
     if op=parser.binaryOperator(SPACE_CLAUSE_EXPRESSION, 300)
-      originalToken = token; head.next = op; token = head;
+      originalToken = token; token = head; head.next = op; op.isBinaryOperator = true; op.next = originalToken
       if (exp=parser.spaceClauseExpression())
-        expectClauseEnd 'expect end of clause after space expression clause: ",", new line, undent or end of input etc.'
+        if (value=token.value)!=',' and value!=';' and (type=token.type)!=NEWLINE and type!=UNDENT and type!=EOI
+          error 'after space expression clause, expect stop symbol of clause like colon, semicolon, new line, undent or end of input etc.'
         return exp
       else token = originalToken
 
-    if (exp=parser.spaceClauseExpression()) and isCallable(head)
-      expectClauseEnd 'expect end of clause after caller leading clause: ",", new line, undent or end of input etc.'
-      return [head, exp]
+    tkn = token
+    if (exp=parser.spaceClauseExpression())
+      if exp.priority<=600 and isCallable(head)
+        if (value=token.value)!=',' and value!=';' and (type=token.type)!=NEWLINE and type!=UNDENT and type!=EOI
+          error 'after caller leading clause, expect stop symbol of clause like colon, semicolon, new line, undent or end of input etc.'
+        return [head, exp]
+      else token = tkn
 
-    if token.value=='#' and nextToken()
+    else if token.value=='#' and nextToken()
       if token.type==SPACE then clauses = parser.clauses()
       else if token.type==INDENT then clauses = parser.block()
       return [head].concat clauses
 
-    if token.value==':'
+    else if token.value==':'
       nextToken()
+      if token.type==SPACE then nextToken()
       clause = parser.clauses()
       clause.unshift head
       clause.start = head
-    else if clause = parser.sequenceClause()
+      return extend clause,  {start:start, stop:token}
+
+    if clause = parser.sequenceClause()
       clause.unshift head; clause.start = start
       if token.value==INDENT
         blk = parser.block()
         clause.push.apply clause, blk
-        clase.stop = blk.stop
+        clause.stop = blk.stop
     else clause = head
-    if typeof clause != 'object' then clause = {value: clause}
-    extend clause, {start:start, stop:token}
 
-  expectClauseEnd = (message) ->
-    if (value=token.value)!=',' and value!=';' and (type=token.type)!=NEWLINE and type!=UNDENT and type!=EOI
-      error message
+    if (value=token.value)==','
+      nextToken()
+      #if token.type==SPACE then nextToken()
+
+    else if value==':'
+      # head clause with colon leading clauses or colon leading indented block
+      # print: 1 + 2, 3
+      # withMethod # openWindow: 100x200 400x500
+      # getFn Math name:
+      #   abs 1
+      #   sin x
+      nextToken()
+      if token.type=='INDENT' then clauses = parser.block()
+      else
+        clauses = parser.clauses()
+      clauses.unshift clause
+      clauses.start = start; clauses.stop = token
+      clauses
+
+    else if token.type==INDENT
+      # head clause with indented block
+      # please pay attention to the difference between clause+':'+INDENT+block and clause+INDENT+block
+      clauses = parser.block()
+      clause.push.apply clause, clauses
+
+    extend clause, {start:start, stop:token}
 
   isCallable = (exp) -> return (type=exp.type)!=NUMBER and type!=NON_INTERPOLATE_STRING and type!=INTERPOLATE_STRING and type!=BRACKET and type!=HASH
 
-  @clauses = -> result = []; (while clause=parser.clause() then result.push clause); return result
+  @clauses = ->
+    result = []
+    while clause=parser.clause()
+      result.push clause
+      if token.value==','
+        nextToken()
+        if token.type==SPACE then nextToken()
+      else break
+    return result
 
   @sentenceEnd = (spac) ->
     spac = spac or bigSpace()
@@ -2063,6 +2081,9 @@ exports.Parser = ->
     line
 
   @moduleBody = ->
+    matchToken()
+    if token.type==NEWLINE then matchToken()
+    if token.type==SPACE then matchToken()
     body = []
     while 1
       if not x=parser.line() then break

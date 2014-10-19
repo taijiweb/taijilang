@@ -191,6 +191,7 @@ exports.wrapInfo1 = (exp, info) ->
 exports.wrapInfo2 = (exp, first, last) ->
   if typeof exp != 'object' then exp = {value: exp}
   exp.start = first.start; exp.line1 = first.line1
+  if not last then error 'wrapInfo2: last is undefined'
   exp.stop = last.stop; exp.line = last.line
   exp
 

@@ -11,10 +11,14 @@ lib = '../../lib/'
 {getOperatorExpression} = require lib+'parser/operator'
 {Parser} = require lib+'parser/parser'
 
-{IDENTIFIER, NUMBER, NEWLINE, INDENT, UNDENT, HALF_DENT, PAREN, BLOCK_COMMENT, EOI
+{IDENTIFIER, NUMBER, NEWLINE, INDENT, UNDENT, HALF_DENT, PAREN, BLOCK_COMMENT, EOI, SPACE
 PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION} = constant
 
-matchRule = (parser, rule) -> -> parser.matchToken(); rule()
+matchRule = (parser, rule) -> ->
+  token = parser.matchToken()
+  if token.type==NEWLINE then parser.matchToken()
+  if token.type==SPACE then parser.matchToken()
+  rule()
 
 describe "parser basic: ",  ->
   ndescribe "parse number: ",  ->
@@ -492,6 +496,26 @@ describe "parser basic: ",  ->
     it 'should parse @ a', ->
       expect(str parse('@ a')).to.equal '@'
 
+  describe "definition parameter", ->
+    parse = (text) ->
+      parser = new Parser()
+      x = parser.parse(text, matchRule(parser, parser.parameterList), 0)
+      x
+    it 'should parse (a)', ->
+      expect(str parse('(a)')).to.equal "[a]"
+    it 'should parse (a, b)', ->
+      expect(str parse('(a, b)')).to.equal "[a b]"
+    it 'should parse (a..., b)', ->
+      expect(str parse('(a..., b)')).to.equal "[[x... a] b]"
+
+  describe "definition", ->
+    parse = (text) ->
+      parser = new Parser()
+      x = parser.parse(text,  matchRule(parser, parser.definition), 0)
+      x
+    iit 'should parse -> 1', ->
+      expect(str parse('-> 1')).to.equal "[-> [] 1]"
+
   describe "clause: ", ->
     parse = (text) ->
       parser = new Parser()
@@ -512,7 +536,7 @@ describe "parser basic: ",  ->
         expect(str parse('1 + 2')).to.equal "[+ 1 2]"
 
     describe "unaryExpressionClause", ->
-      iit 'should parse print 1', ->
+      it 'should parse print 1', ->
         expect(str parse('print 1\n2')).to.equal "[print 1]"
 #      it 'should parse  if! x==0 0 even(x-1)\n even = (x) -> if! x==0 1 odd(x-1) \nthen odd(3)', ->
 #        expect(str parse('if! x==0 0 even(x-1)\n even = (x) -> if! x==0 1 odd(x-1) \nthen odd(3)')).to.equal "undefined"
@@ -521,33 +545,9 @@ describe "parser basic: ",  ->
       it 'should parse print 1 2', ->
         expect(str parse('print 1 2')).to.equal "[print 1 2]"
 
-  xdescribe "colonClause", ->
-    parse = (text) ->
-      parser = new Parser()
-      x = parser.parse(text, parser.colonClause, 0)
-      x
-    it 'should parse print: 1 + 2, 3', ->
-      expect(str parse('print: 1 + 2, 3')).to.equal "[print [+ 1 2] 3]"
-
-  xdescribe "definition parameter", ->
-    parse = (text) ->
-      parser = new Parser()
-      x = parser.parse(text, parser.defaultParameterList, 0)
-      x
-    it 'should parse (a)', ->
-      expect(str parse('(a)')).to.equal "[a]"
-    it 'should parse (a, b)', ->
-      expect(str parse('(a, b)')).to.equal "[a b]"
-    it 'should parse (a..., b)', ->
-      expect(str parse('(a..., b)')).to.equal "[[x... a] b]"
-
-  xdescribe "definition", ->
-    parse = (text) ->
-      parser = new Parser()
-      x = parser.parse(text, parser.definition, 0)
-      x
-    it 'should parse -> 1', ->
-      expect(str parse('-> 1')).to.equal "[-> [] 1]"
+    describe "colonClause", ->
+      it 'should parse print: 1 + 2, 3', ->
+        expect(str parse('print: 1 + 2, 3')).to.equal "[print [+ 1 2] 3]"
 
   xdescribe ":: as prototype", ->
     parse = (text) ->

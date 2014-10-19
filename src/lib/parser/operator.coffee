@@ -50,8 +50,7 @@ do -> for op, result of exports.prefixOperatorDict
 exports.suffixOperatorDict = suffixOperatorDict =
   '++': {symbol: 'x++', priority: 180}
   '--': {symbol: 'x--', priority: 180}
-  # implemented as custom parameterEllipsisSuffix originally, but now I want it more general
-  #'...': {symbol: 'x...', priority: 180}
+  '...': {symbol: 'x...', priority: 180}
 
 do -> for op, result of exports.suffixOperatorDict
   result.value = op
@@ -130,18 +129,18 @@ exports.getOperatorExpression = getExpression = (exp) ->
   if (value=exp.value)=='@' or value=='::' or value=='...' then return exp
   if type==PAREN or type==INDENT_EXPRESSION then return getExpression(exp.value)
   if type==REGEXP then return ['regexp!', exp.value]
-  if type=='prefix!'
+  if type==PREFIX
     if exp.value=='%'
       if exp[1] and exp[1].type==IDENTIFIER
         wrapInfo1 ['attribute!', 'parser!', getExpression(exp[1])], exp
       else wrapInfo1 ['index!', 'parser!', getExpression(exp[1])], exp
     else if exp.value=='\\' then return getExpression(exp[1])
     return wrapInfo1 [exp[0], getExpression(exp[1])], exp
-  if type=='suffix!'
+  if type==SUFFIX
 #    if exp[0]=='x...' then return wrapInfo1 getExpression(exp[1])+'...', exp
 #    else return wrapInfo1 [exp[0], getExpression(exp[1])], exp
     return wrapInfo1 [exp[0], getExpression(exp[1])], exp
-  if type=='binary!'
+  if type==BINARY
     # todo should  refactor to configurable by programmer
     head = exp[0].symbol; x = getExpression exp[1]; y = getExpression exp[2]
     if head=='?'
