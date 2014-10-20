@@ -593,9 +593,13 @@ exports.Parser = ->
     str = ''
     # the left characters of the same line after '''
     while char
-      if char=="'" and text[cursor+1]=="'" and text[cursor+2]=="'"
-        cursor += 3; char = text[cursor]
-        return {type:NON_INTERPOLATE_STRING, value:'"'+str+'"', start:cur, stop:cursor, line:line, stopLine: lineno}
+      if char=="'"
+        if text[cursor+1]=="'"
+          if text[cursor+2]=="'"
+            cursor += 3; char = text[cursor]
+            return {type:NON_INTERPOLATE_STRING, value:'"'+str+'"', start:cur, stop:cursor, line:line, stopLine: lineno}
+          else str += "''"; cursor += 2; char = text[cursor]
+        else str += "'"; char = text[++cursor]
       else if char=='\\'
         # the '\' at end of line will not in the result string
         if (c=text[cursor+1])=='\n' or c=='\r'
@@ -604,11 +608,15 @@ exports.Parser = ->
       else if char!='\n' and char!='\r' then str += char; char = text[++cursor]
       else break
     while char
-      if char=="'" and text[cursor+1]=="'" and text[cursor+2]=="'"
-        cursor += 3; char = text[cursor]
-        return {type: NON_INTERPOLATE_STRING, value: '"'+str+'"', start:cur, stop:cursor, line:line, stopLine: lineno}
-      str += rawNonInterpolatedStringLine(indentInfo)
-    if not text[cursor] then error 'expect '+quote+', unexpected end of input while parsing interpolated string'
+      if char=="'"
+        if text[cursor+1]=="'"
+          if text[cursor+2]=="'"
+            cursor += 3; char = text[cursor]
+            return {type: NON_INTERPOLATE_STRING, value: '"'+str+'"', start:cur, stop:cursor, line:line, stopLine: lineno}
+          else str += "''"; cursor += 2; char = text[cursor]
+        else str += "'"; char = text[++cursor]
+      else str += rawNonInterpolatedStringLine(indentInfo)
+    if not text[cursor] then error "expect ''', unexpected end of input while parsing interpolated string"
 
   rawNonInterpolatedStringLine = (indentInfo) ->
     result = ''
@@ -635,15 +643,18 @@ exports.Parser = ->
     else if ind>column then i = 0; n = column-ind; while i++<n then result += ' '
     else if ind<column then error 'expect equal to or more than the indent of first line of the string'
     while char
-      if char=="'" and text[cursor+1]=="'" and text[cursor+2]=="'" then return result
+      if char=="'"
+        if text[cursor+1]=="'"
+          if text[cursor+2]=="'" then return result
+          else result += '\\"\\"'; cursor += 2; char = text[cursor]
+        else result += '\\"'; char = text[++cursor]
       else if char=='\n' or char=='\r' then return result
       else if char=='\\'
         char = text[++cursor]
-        if char=='\n' or char=='\r' then return result
-        if char then result += '\\\\'; result += char; char = text[++cursor]
+        if char=='\n' or char=='\r' then concatenating = true; return result
+        if char then result += '\\\\'
         else error 'unexpected end of input while parsing non interpolated string'
       # '"' must be escaped, because all the string is wrapped in "..."
-      else if char=='"'  then result += '\\"'; char = text[++cursor]
       else result += char; char = text[++cursor]
     error 'unexpected end of input while parsing non interpolated string'
 
@@ -669,7 +680,7 @@ exports.Parser = ->
         char = text[++cursor]
         return {type: NON_INTERPOLATE_STRING, value: '"'+str+'"', start:cur, stop:cursor, line:line, stopLine: lineno, column: col}
       str += nonInterpolatedStringLine(indentInfo)
-    if not char then error 'expect '+quote+', unexpected end of input while parsing interpolated string'
+    if not char then error "expect \"'\", unexpected end of input while parsing interpolated string"
 
   nonInterpolatedStringLine = (indentInfo) ->
     result = ''
@@ -709,12 +720,9 @@ exports.Parser = ->
     error 'unexpected end of input while parsing non interpolated string'
 
   tokenFnMap['"'] = tokenOnDoubleQuoteChar = ->
-    if interolateStringNumber%2
-      return token.next = {type:END_INTERPOLATED_STRING, value:'"', cursor:cursor, stopCursor:cursor,
-      line:lineno, column:cursor-lineStart, indent:indent}
     char = text[++cursor]
     if char=='"'
-      if [cursor+1]=='"'
+      if text[cursor+1]=='"'
         cursor += 2; char = text[cursor]; tkn = token; interolateStringNumber++
         tkn2 = leftRawInterpolateString()
         interolateStringNumber--; tkn.next = tkn2
@@ -724,11 +732,11 @@ exports.Parser = ->
         return token.next = {value:'""', type:NON_INTERPOLATE_STRING, lineno:lineno, cursor:cursor-2, column:cursor-2-lineStart}
     else
       tkn = token;  interolateStringNumber++
-      tkn2 = leftInterpolatedString()
+      tkn2 = leftInterpolateString()
       interolateStringNumber--; tkn.next = tkn2
       return tkn2
 
-  @leftRawInterpolatedString = leftRawInterpolatedString = ->
+  @leftRawInterpolateString = leftRawInterpolateString = ->
     cur = cursor; line = lineno
     if cursor-lineStart==indent+3 then indentInfo = {value:indent} else indentInfo = {}
     pieces = []
@@ -741,7 +749,7 @@ exports.Parser = ->
       else if char=='$'
         literalStart = ++cursor; char = text[cursor]
         if not firstIdentifierCharSet[char]
-          pieces.push '$'+pieces.push rawInterpolateStringPiece(indentInfo)
+          char = text[--cursor]; pieces.push rawInterpolateStringPiece(indentInfo)
         else
           x = parser.interpolateExpression()
           if text[cursor]==':'
@@ -762,6 +770,7 @@ exports.Parser = ->
         if text[cursor+1]=='"'
           if text[cursor+2]=='"' then return str+'"'
           else cursor += 2; char = text[cursor]
+        else str += '"'; char = text[++cursor]
       else if char=='\n'
         if not concatenating then str += '\\n'
         char = text[++cursor]
@@ -814,16 +823,17 @@ exports.Parser = ->
       else if  char=='$'
         if (char=text[++cursor])
           if not firstIdentifierCharSet[char] then str += '$'
-          else --cursor; return str+'"'
+          else char = '$'; --cursor; return str+'"'
         else break
       else if char=='\\'
-        if not (c2=text[cursor+1]) then error 'unexpected end of input while parsing interpolated string'
-        else if c2=='\n' or c2=='\r' then cursor++ #; str += '\\'
-        else cursor += 2; char += text[cursor]; str += '\\'+c2
+        char = text[++cursor]
+        if char=='\n' or char=='\r' then concatenating = true
+        else if char then str += '\\\\'
+        else error 'unexpected end of input while parsing interpolated string'
       else str += char; char = text[++cursor]
     error 'unexpected end of input while parsing interpolated string'
 
-  leftInterpolatedString = ->
+  leftInterpolateString = ->
     cur = cursor-1; line = lineno
     if cursor-1-lineStart==indent+1 then indentInfo = {value:indent} else indentInfo = {}
     pieces = []
@@ -836,7 +846,7 @@ exports.Parser = ->
       if char=='$'
         literalStart = ++cursor; char = text[cursor]
         if not firstIdentifierCharSet[char]
-          pieces.push '$'+pieces.push rawInterpolateStringPiece(indentInfo)
+          char = '$'; --cursor; pieces.push interpolateStringPiece(indentInfo)
         else
           x = parser.interpolateExpression()
           if text[cursor]==':'
@@ -903,16 +913,16 @@ exports.Parser = ->
         else if ind>column then i = 0; n = column-ind; while i++<n then result += ' '
         else if ind<column then error 'expect equal to or more than the indent of first line of the string'
       # interpolate expression in string
-      else if char=='(' or char=='{' or char=='[' or char=='$' then return str+'"'
+      else if char=='(' or char=='{' or char=='[' then return str+'"'
       else if  char=='$'
         if (char=text[++cursor])
           if not firstIdentifierCharSet[char] then str += '$'
-          else --cursor; return str+'"'
+          else char = '$'; --cursor; return str+'"'
         else break
       else if char=='\\'
-        if not (c2=text[cursor+1]) then break
-        else if c2=='\n' or c2=='\r' then char = text[++cursor]
-        else cursor += 2; str += '\\'+c2
+        if not (char=text[++cursor]) then break
+        else if char=='\n' or char=='\r' then char = text[++cursor]
+        else str += '\\'+char; char = text[++cursor]
       else str += char; char = text[++cursor]
     error 'unexpected end of input while parsing interpolated string'
 

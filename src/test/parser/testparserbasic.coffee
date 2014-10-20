@@ -158,7 +158,7 @@ describe "parser basic: ",  ->
         expect(str parse('"a"')).to.equal '[string! "a"]'
       it "parse $a", ->
         expect(str parse('"$a"')).to.equal "[string! a]"
-      iit "parse $a:", ->
+      it "parse $a:", ->
         expect(str parse('"$a:"')).to.equal "[string! a: a]"
       it "parse $a\\:", ->
         expect(str parse('"$a\\:"')).to.equal "[string! a \"\\:\"]"
@@ -167,8 +167,8 @@ describe "parser basic: ",  ->
       it "parse a\\b", ->
         expect(str parse('"a\\b"')).to.equal '[string! "a\\b"]'
       it "parse '''a\"'\\n'''", ->
-        expect(str parse('"""a\\"\'\\n"""')).to.equal "[string! \"a\\\"'\\n\"]"
-      it """parse "a(1)" """, ->
+        expect(str parse('"""a\\"\'\\n"""')).to.equal "[string! \"a\\\\\"'\\\\n\"]"
+      iit """parse "a(1)" """, ->
         expect(str parse('"a(1)"')).to.equal "[string! \"a(\" 1 \")\"]"
       it """parse "a[1]" """, ->
         expect(str parse('"a[1]"')).to.equal "[string! \"a[\" [list! 1] \"]\"]"

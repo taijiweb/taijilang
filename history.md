@@ -1,6 +1,10 @@
 2014
 
 2014-10
+10-20
+  interpolate string that starts with $: identifier.identifier...identifier
+  interpolate string that starts with $: identifier.identifier...identifier
+  can not use matchToken in string, so use a simpler definition.
 10-14
   pass more tests of expression
 10-13 

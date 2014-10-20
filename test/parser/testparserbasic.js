@@ -232,7 +232,7 @@ describe("parser basic: ", function() {
       it("parse $a", function() {
         return expect(str(parse('"$a"'))).to.equal("[string! a]");
       });
-      iit("parse $a:", function() {
+      it("parse $a:", function() {
         return expect(str(parse('"$a:"'))).to.equal("[string! a: a]");
       });
       it("parse $a\\:", function() {
@@ -245,9 +245,9 @@ describe("parser basic: ", function() {
         return expect(str(parse('"a\\b"'))).to.equal('[string! "a\\b"]');
       });
       it("parse '''a\"'\\n'''", function() {
-        return expect(str(parse('"""a\\"\'\\n"""'))).to.equal("[string! \"a\\\"'\\n\"]");
+        return expect(str(parse('"""a\\"\'\\n"""'))).to.equal("[string! \"a\\\\\"'\\\\n\"]");
       });
-      it("parse \"a(1)\" ", function() {
+      iit("parse \"a(1)\" ", function() {
         return expect(str(parse('"a(1)"'))).to.equal("[string! \"a(\" 1 \")\"]");
       });
       it("parse \"a[1]\" ", function() {
