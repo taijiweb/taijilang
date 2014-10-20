@@ -143,8 +143,8 @@ describe "parser basic: ",  ->
     parse = (text) ->
       parser = new Parser()
       x = parser.parse(text, matchRule(parser, parser.atom), 0).value
-    it "parse \\\"x...\"", ->
-      expect(str parse('\\\"x...\"')).to.equal 'x...'
+    it "parse \\'x...'", ->
+      expect(str parse("\\'x...'")).to.equal "\"x...\""
 
   describe "parse string: ",  ->
     parse = (text) ->
@@ -158,8 +158,8 @@ describe "parser basic: ",  ->
         expect(str parse('"a"')).to.equal '[string! "a"]'
       it "parse $a", ->
         expect(str parse('"$a"')).to.equal "[string! a]"
-      it "parse $a:", ->
-        expect(str parse('"$a:"')).to.equal "[string! $a: a]"
+      iit "parse $a:", ->
+        expect(str parse('"$a:"')).to.equal "[string! a: a]"
       it "parse $a\\:", ->
         expect(str parse('"$a\\:"')).to.equal "[string! a \"\\:\"]"
       it "parse $", ->
@@ -209,7 +209,7 @@ describe "parser basic: ",  ->
         x = parser.token()
         x
       it "parse /!-h\b|-r\b|-v\b|-b\b/", ->
-        expect(str parse('/!-h\b|-r\b|-v\b|-b\b/')).to.equal "[regexp! /-h\b|-r\b|-v\b|-b\b/]"
+        expect(str parse('/!-h\b|-r\b|-v\b|-b\b/')).to.equal "/-h\b|-r\b|-v\b|-b\b/"
 
   describe "prefixOperator: ",  ->
     parse = (text) ->
@@ -447,7 +447,7 @@ describe "parser basic: ",  ->
       expect(str parse('a&/b&/c')).to.equal '[index! [index! a b] c]'
 
     it 'should parse a(b)', ->
-      expect(str parse('a(b)')).to.equal  '[call() a [b]]'
+      expect(str parse('a(b)')).to.equal  '[call! a [b]]'
     it 'should parse a()', ->
       expect(str parse('a()')).to.equal '[call! a []]'
     it 'should parse a::b ', ->
@@ -470,7 +470,7 @@ describe "parser basic: ",  ->
     it "parse 1,/-h\b|-r\b|-v\b|-b\b/", ->
       expect(str parse('1,/-h\b|-r\b|-v\b|-b\b/')).to.equal '1'
     it "parse 1+./!1/.test('1')", ->
-      expect(str parse("1+./!1/.test('1')")).to.equal "[+ 1 [call() [attribute! [regexp! /1/] test] [\"1\"]]]"
+      expect(str parse("1+./!1/.test('1')")).to.equal "[+ 1 [call! [attribute! [regexp! /1/] test] [\"1\"]]]"
     it "parse x=./!1/", ->
       expect(str parse('x=./!1/')).to.equal "[= x [regexp! /1/]]"
     it "parse x=./!1/g", ->
@@ -513,7 +513,7 @@ describe "parser basic: ",  ->
       parser = new Parser()
       x = parser.parse(text,  matchRule(parser, parser.definition), 0)
       x
-    iit 'should parse -> 1', ->
+    it 'should parse -> 1', ->
       expect(str parse('-> 1')).to.equal "[-> [] 1]"
 
   describe "clause: ", ->
@@ -529,23 +529,23 @@ describe "parser basic: ",  ->
       it 'should parse @ a', ->
         expect(str parse('@ a')).to.equal '[@ a]'
 
-    describe "expressionClause", ->
+    describe "expression clause", ->
       it 'should parse 1\n2', ->
         expect(str parse('1\n2')).to.equal '1'
       it 'should parse 1 + 2', ->
         expect(str parse('1 + 2')).to.equal "[+ 1 2]"
 
-    describe "unaryExpressionClause", ->
+    describe "caller expression clause", ->
       it 'should parse print 1', ->
         expect(str parse('print 1\n2')).to.equal "[print 1]"
 #      it 'should parse  if! x==0 0 even(x-1)\n even = (x) -> if! x==0 1 odd(x-1) \nthen odd(3)', ->
 #        expect(str parse('if! x==0 0 even(x-1)\n even = (x) -> if! x==0 1 odd(x-1) \nthen odd(3)')).to.equal "undefined"
 
-    describe "sequenceClause", ->
+    describe "sequence clause", ->
       it 'should parse print 1 2', ->
         expect(str parse('print 1 2')).to.equal "[print 1 2]"
 
-    describe "colonClause", ->
+    describe "colon clause: ", ->
       it 'should parse print: 1 + 2, 3', ->
         expect(str parse('print: 1 + 2, 3')).to.equal "[print [+ 1 2] 3]"
 
