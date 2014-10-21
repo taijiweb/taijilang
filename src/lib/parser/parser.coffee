@@ -675,12 +675,11 @@ exports.Parser = ->
         else str += '\\'; char = text[++cursor]
       else if char!='\n' and char!='\r' then str += char; char = text[++cursor]
       else break
-    while char
-      if char=="'"
-        char = text[++cursor]
-        return {type: NON_INTERPOLATE_STRING, value: '"'+str+'"', start:cur, stop:cursor, line:line, stopLine: lineno, column: col}
-      str += nonInterpolatedStringLine(indentInfo)
-    if not char then error "expect \"'\", unexpected end of input while parsing interpolated string"
+    while char and char!="'" then str += nonInterpolatedStringLine(indentInfo)
+    if char=="'"
+      char = text[++cursor]
+      return {type: NON_INTERPOLATE_STRING, value: '"'+str+'"', start:cur, stop:cursor, line:line, stopLine: lineno, column: col}
+    else error "expect \"'\", unexpected end of input while parsing interpolated string"
 
   nonInterpolatedStringLine = (indentInfo) ->
     result = ''
@@ -739,36 +738,16 @@ exports.Parser = ->
   @leftRawInterpolateString = leftRawInterpolateString = ->
     cur = cursor; line = lineno
     if cursor-lineStart==indent+3 then indentInfo = {value:indent} else indentInfo = {}
-    pieces = []
-    while char
-      if char=='"' and text[cursor+1]=='"' and text[cursor+2]=='"'
-        cursor += 3
-        return {type: INTERPOLATE_STRING, value: ['string!'].concat(pieces),
-        cursor:cur, stopCursor: cursor,
-        line:line, stopLine: line}
-      else if char=='$'
-        literalStart = ++cursor; char = text[cursor]
-        if not firstIdentifierCharSet[char]
-          char = text[--cursor]; pieces.push rawInterpolateStringPiece(indentInfo)
-        else
-          x = parser.interpolateExpression()
-          if text[cursor]==':'
-            char = text[++cursor]
-            pieces.push text[literalStart...cursor]
-          pieces.push x
-      else if char=='(' or char=='{' or char=='['
-        # for efficiency, do not match next token while matching delimiter token (...), [...], {...} in tokenOnLeftParenChar, tokenOnLeftBracketChar, tokenOnLeftCurveChar
-        matchToken()
-        pieces.push getOperatorExpression(token)
-      else pieces.push rawInterpolateStringPiece(indentInfo)
-    if not text[cursor] then error 'expect '+quote+', unexpected end of input while parsing interpolated string'
-
-  rawInterpolateStringPiece = (indentInfo) ->
-    str = '"'
+    pieces = []; str = '"'
     while char
       if char=='"'
         if text[cursor+1]=='"'
-          if text[cursor+2]=='"' then return str+'"'
+          if text[cursor+2]=='"'
+            cursor += 3
+            if str!='"' then pieces.push str += '"'
+            return {type: INTERPOLATE_STRING, value: ['string!'].concat(pieces),
+            cursor:cur, stopCursor: cursor,
+            line:line, stopLine: line}
           else cursor += 2; char = text[cursor]
         else str += '"'; char = text[++cursor]
       else if char=='\n'
@@ -792,9 +771,10 @@ exports.Parser = ->
           else break
         column = cursor-lineStart
         if char=='\t' then error 'unexpected tab character "\t" in the head of line'
-        else if (ind=indentInfo.value)!=undefined then indentInfo.value = column
-        else if ind>column then i = 0; n = column-ind; while i++<n then result += ' '
-        else if ind<column then error 'expect equal to or more than the indent of first line of the string'
+        if indentInfo.value==undefined then indentInfo.value = column
+        ind = indentInfo.value
+        if ind<column then error 'expect equal to or more than the indent of first line of the string'
+        else if ind>column then i = 0; n = column-ind; while i++<n then str += ' '
       else if char=='\r'
         if not concatenating then str += '\\r'
         char = text[++cursor]
@@ -817,53 +797,47 @@ exports.Parser = ->
         column = cursor-lineStart
         if char=='\t' then error 'unexpected tab character "\t" in the head of line'
         else if (ind=indentInfo.value)!=undefined then indentInfo.value = column
-        else if ind>column then i = 0; n = column-ind; while i++<n then result += ' '
+        else if ind>column then i = 0; n = column-ind; while i++<n then str += ' '
         else if ind<column then error 'expect equal to or more than the indent of first line of the string'
-      else if char=='(' or char=='{' or char=='[' then return str+'"'
+      else if char=='(' or char=='{' or char=='['
+        # for efficiency, do not match next token while matching delimiter token (...), [...], {...} in tokenOnLeftParenChar, tokenOnLeftBracketChar, tokenOnLeftCurveChar
+        str += char+'"'; pieces.push str; pieces = '"'; char = text[++cursor]
+        matchToken()
+        char = text[--cursor] # let )]} can be output into next piece
+        pieces.push getOperatorExpression(token)
       else if  char=='$'
         if (char=text[++cursor])
           if not firstIdentifierCharSet[char] then str += '$'
-          else char = '$'; --cursor; return str+'"'
+          else char = '$'; --cursor; pieces.push str+'"'; str = '"'
         else break
+      else if char=='$'
+        literalStart = ++cursor; char = text[cursor]
+        if not firstIdentifierCharSet[char] then str += '$'
+        else
+          x = parser.interpolateExpression()
+          if text[cursor]==':'
+            char = text[++cursor]
+            pieces.push str+text[literalStart...cursor]+'"'; str = '"'
+          else if str!='"' then pieces.push str+'"'; str = '"'
+          pieces.push x
       else if char=='\\'
         char = text[++cursor]
         if char=='\n' or char=='\r' then concatenating = true
         else if char then str += '\\\\'
         else error 'unexpected end of input while parsing interpolated string'
       else str += char; char = text[++cursor]
-    error 'unexpected end of input while parsing interpolated string'
+    if not text[cursor] then error 'expect \'"\', unexpected end of input while parsing interpolated string'
 
   leftInterpolateString = ->
     cur = cursor-1; line = lineno
     if cursor-1-lineStart==indent+1 then indentInfo = {value:indent} else indentInfo = {}
-    pieces = []
+    pieces = []; str = '"'
     while char
       if char=='"'
-        char = text[++cursor]
+        if str!='"' then pieces.push str+'"'; char = text[++cursor]
         return {type: INTERPOLATE_STRING, value: ['string!'].concat(pieces),
         cursor:cur, stopCursor:cursor,
         line:line, stopLine: lineno}
-      if char=='$'
-        literalStart = ++cursor; char = text[cursor]
-        if not firstIdentifierCharSet[char]
-          char = '$'; --cursor; pieces.push interpolateStringPiece(indentInfo)
-        else
-          x = parser.interpolateExpression()
-          if text[cursor]==':'
-            char = text[++cursor]
-            pieces.push text[literalStart...cursor]
-          pieces.push x
-      else if char=='(' or char=='{' or char=='['
-        # for efficiency, do not match next token while matching delimiter token (...), [...], {...} in tokenOnLeftParenChar, tokenOnLeftBracketChar, tokenOnLeftCurveChar
-        matchToken()
-        pieces.push getOperatorExpression(token)
-      else pieces.push interpolateStringPiece(indentInfo)
-    if not text[cursor] then error 'expect \'"\', but meet end of input while parsing interpolated string'
-
-  interpolateStringPiece = (indentInfo) ->
-    str = '"'
-    while char
-      if char=='"' then return str+'"'
       else if char=='\n'
         if not concatenating then str += char
         char = text[++cursor]
@@ -885,9 +859,11 @@ exports.Parser = ->
           else break
         column = cursor-lineStart
         if char=='\t' then error 'unexpected tab character "\t" in the head of line'
-        else if (ind=indentInfo.value)!=undefined then indentInfo.value = column
-        else if ind>column then i = 0; n = column-ind; while i++<n then result += ' '
-        else if ind<column then error 'expect equal to or more than the indent of first line of the string'
+        else if indentInfo.value==undefined then indentInfo.value = column
+        else
+          ind = indentInfo.value
+          if ind>column then i = 0; n = column-ind; while i++<n then result += ' '
+          else if ind<column then error 'expect equal to or more than the indent of first line of the string'
       else if char=='\r'
         if not concatenating then str += char
         char = text[++cursor]
@@ -909,29 +885,40 @@ exports.Parser = ->
           else break
         column = cursor-lineStart
         if char=='\t' then error 'unexpected tab character "\t" in the head of line'
-        else if (ind=indentInfo.value)!=undefined then indentInfo.value = column
-        else if ind>column then i = 0; n = column-ind; while i++<n then result += ' '
-        else if ind<column then error 'expect equal to or more than the indent of first line of the string'
-      # interpolate expression in string
-      else if char=='(' or char=='{' or char=='[' then return str+'"'
-      else if  char=='$'
-        if (char=text[++cursor])
-          if not firstIdentifierCharSet[char] then str += '$'
-          else char = '$'; --cursor; return str+'"'
-        else break
+        else if indentInfo.value==undefined then indentInfo.value = column
+        else
+          ind = indentInfo.value
+          if ind>column then i = 0; n = column-ind; while i++<n then result += ' '
+          else if ind<column then error 'expect equal to or more than the indent of first line of the string'
+      else if char=='$'
+        literalStart = ++cursor; char = text[cursor]
+        if not firstIdentifierCharSet[char] then str += '$'
+        else
+          x = parser.interpolateExpression()
+          if text[cursor]==':'
+            char = text[++cursor]
+            pieces.push str+text[literalStart...cursor]+'"'; str = '"'
+          else if str!='"' then pieces.push str+'"'; str = '"'
+          pieces.push x
+      else if char=='(' or char=='{' or char=='['
+        # for efficiency, do not match next token while matching delimiter token (...), [...], {...} in tokenOnLeftParenChar, tokenOnLeftBracketChar, tokenOnLeftCurveChar
+        pieces.push str+char+'"'; str = '"'
+        matchToken()
+        pieces.push getOperatorExpression(token)
+        str = '"'+text[cursor-1]
       else if char=='\\'
         if not (char=text[++cursor]) then break
-        else if char=='\n' or char=='\r' then char = text[++cursor]
+        else if char=='\n' or char=='\r' then char = text[++cursor]; concatenating = true
         else str += '\\'+char; char = text[++cursor]
       else str += char; char = text[++cursor]
-    error 'unexpected end of input while parsing interpolated string'
+    if not text[cursor] then error 'expect \'"\', but meet end of input while parsing interpolated string'
 
   # for efficiency, in tokenOnLeftParenChar, tokenOnLeftBracketChar, tokenOnLeftCurveChar
   # do not match next token while matching delimiter token (...), [...], {...}
   tokenFnMap['('] = tokenOnLeftParenChar = ->
     # skip "("
     cur = cursor; line = lineno; col = cursor-lineStart; char = text[++cursor]; ind = indent
-    start = token; interolateStringNumber *= 2; matchToken()
+    start = token; matchToken()
     if (parenVariantFn=parenVariantMap[token.value])
       token = parenVariantFn(); token.cursor = cursor; token.column = column; token.indent = ind
     else
@@ -948,6 +935,7 @@ exports.Parser = ->
         else matchToken()
       else if token.value!=')' then error 'expect )'
       #else matchToken() # do not match token here, so token.next==undefined, and nextToken() will matchToken instead.
+      char = text[++cursor]
       token = {type: PAREN, value:exp, cursor:cur, stopCursor: cursor, line:lineno, column:col}
     if interolateStringNumber%2 then  interolateStringNumber = (interolateStringNumber-1)/2
     else  interolateStringNumber %= 2
@@ -959,7 +947,7 @@ exports.Parser = ->
 
   tokenFnMap['['] = tokenOnLeftBracketChar = ->
     cur = cursor; char = text[++cursor]; line = lineno; col = cursor-lineStart; ind = indent
-    start = token; interolateStringNumber *= 2; matchToken()
+    start = token; matchToken()
     if (bracketVariantFn=bracketVariantMap[token.value])
       token = bracketVariantFn(); token.cursor = cursor; token.column = column; token.indent = ind
     else
@@ -970,9 +958,8 @@ exports.Parser = ->
       if token.value!=']' then error 'expect ]'
       if expList then expList.unshift 'list!'
       else expList = []
+      char = text[++cursor]
       token = {type: BRACKET, value:expList, cursor:cur, stopCursor: cursor, line:lineno, stopLine: lineno, column:col}
-    if interolateStringNumber%2 then  interolateStringNumber = (interolateStringNumber-1)/2
-    else  interolateStringNumber %= 2
     start.next = token
     token
 
@@ -980,7 +967,7 @@ exports.Parser = ->
 
   tokenFnMap['{'] = ->
     cur = cursor; cursor++; line = lineno; col = cursor-lineStart; ind = indent
-    start = token; interolateStringNumber *= 2; matchToken()
+    start = token; matchToken()
     if (curveVariantFn=curveVariantMap[token.value])
       token = curveVariantFn(); token.cursor = cursor; token.column = column; token.indent = ind
     else
@@ -991,11 +978,10 @@ exports.Parser = ->
       body = parser.lineBlock()
       if token.indent<ind then error 'unexpected undent while parsing parenethis "{...}"'
       if token.value!='}' then error 'expect }' else cursor++
+      char = text[++cursor]
       if body.length==0 then return {type: CURVE, value:'', start:cur, stop: token}
       if body.length==1 then body = body[0]
       else body.unshift 'begin!'
-    if interolateStringNumber%2 then  interolateStringNumber = (interolateStringNumber-1)/2
-    else  interolateStringNumber %= 2
     extend body, {type: CURVE, start:start, stop: cursor, line1:line1, line:lineno}
 
   curveVariantMap =
@@ -1319,10 +1305,16 @@ exports.Parser = ->
     exp.start = exp.stop = start = exp
     while 1
       cur = cursor
-      if text[cursor]!='.' then break
-      if char=text[++cursor] and firstIdentifierCharSet[char] and (id=tokenOnIdentifierChar())
-        exp = ['attribute!', exp, id]
-        id.start = id; id.stop = id; exp.start = start; exp.stop = id
+      if (char=text[cursor])=='.'
+        if char=text[++cursor] and firstIdentifierCharSet[char] and (id=tokenOnIdentifierChar())
+          exp = ['attribute!', exp, id]
+          id.start = id; id.stop = id; exp.start = start; exp.stop = id
+        else break
+      else if char=='['
+        if (tkn=tokenOnLeftBracketChar()) and token.type==BRACKET
+          exp = ['index!', exp, tkn]
+          exp.start = start; exp.stop = tkn
+        else error 'error while parsing "[" leading interpolate expression in double qoute string'
       else cursor = cur; break
     exp
 

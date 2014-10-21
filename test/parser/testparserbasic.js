@@ -233,7 +233,7 @@ describe("parser basic: ", function() {
         return expect(str(parse('"$a"'))).to.equal("[string! a]");
       });
       it("parse $a:", function() {
-        return expect(str(parse('"$a:"'))).to.equal("[string! a: a]");
+        return expect(str(parse('"$a:"'))).to.equal("[string! \"a:\" a]");
       });
       it("parse $a\\:", function() {
         return expect(str(parse('"$a\\:"'))).to.equal("[string! a \"\\:\"]");
@@ -247,14 +247,14 @@ describe("parser basic: ", function() {
       it("parse '''a\"'\\n'''", function() {
         return expect(str(parse('"""a\\"\'\\n"""'))).to.equal("[string! \"a\\\\\"'\\\\n\"]");
       });
-      iit("parse \"a(1)\" ", function() {
+      it("parse \"a(1)\" ", function() {
         return expect(str(parse('"a(1)"'))).to.equal("[string! \"a(\" 1 \")\"]");
       });
       it("parse \"a[1]\" ", function() {
         return expect(str(parse('"a[1]"'))).to.equal("[string! \"a[\" [list! 1] \"]\"]");
       });
       return it("str parse \"a[1] = $a[1]\" ", function() {
-        return expect(str(parse('"a[1] = $a[1]"'))).to.equal("[string! \"a[\" [list! 1] \"]\" \" = \" [index! a 1]]");
+        return expect(str(parse('"a[1] = $a[1]"'))).to.equal("[string! \"a[\" [list! 1] \"] = \" [index! a [list! 1]]]");
       });
     });
     describe("parse raw string without interpolation: ", function() {

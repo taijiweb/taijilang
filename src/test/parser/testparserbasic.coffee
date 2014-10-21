@@ -159,7 +159,7 @@ describe "parser basic: ",  ->
       it "parse $a", ->
         expect(str parse('"$a"')).to.equal "[string! a]"
       it "parse $a:", ->
-        expect(str parse('"$a:"')).to.equal "[string! a: a]"
+        expect(str parse('"$a:"')).to.equal "[string! \"a:\" a]"
       it "parse $a\\:", ->
         expect(str parse('"$a\\:"')).to.equal "[string! a \"\\:\"]"
       it "parse $", ->
@@ -168,12 +168,12 @@ describe "parser basic: ",  ->
         expect(str parse('"a\\b"')).to.equal '[string! "a\\b"]'
       it "parse '''a\"'\\n'''", ->
         expect(str parse('"""a\\"\'\\n"""')).to.equal "[string! \"a\\\\\"'\\\\n\"]"
-      iit """parse "a(1)" """, ->
+      it """parse "a(1)" """, ->
         expect(str parse('"a(1)"')).to.equal "[string! \"a(\" 1 \")\"]"
       it """parse "a[1]" """, ->
         expect(str parse('"a[1]"')).to.equal "[string! \"a[\" [list! 1] \"]\"]"
       it """str parse "a[1] = $a[1]" """, ->
-        expect(str parse('"a[1] = $a[1]"')).to.equal "[string! \"a[\" [list! 1] \"]\" \" = \" [index! a 1]]"
+        expect(str parse('"a[1] = $a[1]"')).to.equal "[string! \"a[\" [list! 1] \"] = \" [index! a [list! 1]]]"
 
     describe "parse raw string without interpolation: ",  ->
       it "parse '''a\\b'''", ->
