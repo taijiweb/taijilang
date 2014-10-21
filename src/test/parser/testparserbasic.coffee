@@ -280,7 +280,7 @@ describe "parser basic: ",  ->
     it 'should parse and 1', ->
       expect(parse(' and 1')).to.equal undefined
 
-  xdescribe "space clause binaryOperator: ",  ->
+  describe "space clause binaryOperator: ",  ->
     parse = (text) ->
       parser = new Parser()
       root = ->
@@ -316,8 +316,8 @@ describe "parser basic: ",  ->
       expect(str parse('../')).to.equal '..'
     it 'should parse :::1', ->
       expect(str parse(':::1')).to.equal ':::'
-    xit 'should parse (++', ->
-      expect(str parse('(++')).to.equal undefined
+    it 'should parse (++', ->
+      expect(-> parse('(++')).to.throw /expect \)/
 
   describe "matchToken: ",  ->
     parser = new Parser()
@@ -481,7 +481,7 @@ describe "parser basic: ",  ->
       parser = new Parser()
       x = parser.parse(text,  matchRule(parser, parser.spaceClauseExpression), 0)
       getOperatorExpression x
-    it 'should parse require.extensions[".tj"] = ->', ->
+    xit 'should parse require.extensions[".tj"] = ->', ->
       expect(str parse('require.extensions[".tj"] = ->')).to.equal "[index! [attribute! require extensions] [string! \".tj\"]]"
 
   describe "@ as this", ->
@@ -549,24 +549,16 @@ describe "parser basic: ",  ->
       it 'should parse print: 1 + 2, 3', ->
         expect(str parse('print: 1 + 2, 3')).to.equal "[print [+ 1 2] 3]"
 
-  xdescribe ":: as prototype", ->
-    parse = (text) ->
-      parser = new Parser()
-      x = parser.parse(text, parser.clause, 0)
-      x
-    it 'should parse @:: ', ->
-      expect(str parse('@::')).to.equal '[attribute! @ ::]'
-    it 'should parse a:: ', ->
-      expect(str parse('a::')).to.equal '[attribute! a ::]'
-    it 'should parse a::b ', ->
-      expect(str parse('a::b')).to.equal '[attribute! [attribute! a ::] b]'
-    it 'should parse ::a', ->
-      expect(str parse('::a')).to.equal '[attribute! :: a]'
+    describe ":: as prototype", ->
+      it 'should parse @:: ', ->
+        expect(str parse('@::')).to.equal '[attribute! @ ::]'
+      it 'should parse a:: ', ->
+        expect(str parse('a::')).to.equal '[attribute! a ::]'
+      it 'should parse a::b ', ->
+        expect(str parse('a::b')).to.equal '[attribute! [attribute! a ::] b]'
+      it 'should parse ::a', ->
+        expect(str parse('::a')).to.equal '[attribute! :: a]'
 
-  xdescribe "quote! expression: ", ->
-    parse = (text) ->
-      parser = new Parser()
-      x = parser.parse(text, parser.clause, 0)
     describe "quote! expression: ", ->
       it 'should parse ~ a.b', ->
         expect(str parse('~ a.b')).to.equal '[quote! [attribute! a b]]'
@@ -574,15 +566,11 @@ describe "parser basic: ",  ->
         expect(str parse('~ print a b')).to.equal '[quote! [print a b]]'
       it 'should parse ` print a b', ->
         expect(str parse('` print a b')).to.equal '[quasiquote! [print a b]]'
-      it 'should parse ~ print : min a \n abs b', ->
+      xit 'should parse ~ print : min a \n abs b', ->
         expect(str parse('~ print : min a \n abs b')).to.equal '[quote! [print [min a [abs b]]]]'
-      it 'should parse ` a.b', ->
+      xit 'should parse ` a.b', ->
         expect(str parse('` a.b')).to.equal '[quasiquote! [attribute! a b]]'
 
-  xdescribe "unquote! expression: ", ->
-    parse = (text) ->
-      parser = new Parser()
-      x = parser.parse(text, parser.clause, 0)
     describe "unquote! expression: ", ->
       it 'should parse ^ a.b', ->
         expect(str parse('^ a.b')).to.equal '[unquote! [attribute! a b]]'

@@ -1226,13 +1226,8 @@ exports.Parser = ->
     tkn = token
     if (value=tkn.value)=='#' and nextToken()
       return {symbol:'#()', type: SYMBOL, priority: 800, start:tkn}
-    else if value=='::' and (tkn=token) and nextToken()
-      if token.type==IDENTIFIER
-        token = tkn
+    else if value=='::'
         return {symbol:'attribute!', type: SYMBOL, start:tkn, priority: 800}
-      else if token.type==BRACKET
-        token = tkn
-        return {symbol:'index!', type: SYMBOL, start:tkn, priority: 800}
     else if value=="." and (tkn=token) and nextToken()
       if token.type==IDENTIFIER
         return {symbol:'attribute!', type: SYMBOL, start:tkn, priority: 800}
@@ -1876,13 +1871,12 @@ exports.Parser = ->
 
   @customClauseList = ['assignClause', 'colonClause', 'macroCallClause', 'indentClause']
 
-  shadowToken = (symbol, tkn) -> extend {symbol:symbol}, tkn
-
   leadTokenClause = (value) ->
     start = token
-    if (type=matchToken().type)!=SPACE and type!=INDENT then return
-    if not (fn=leadWordClauseMap[start.value]) then return
-    clause = fn(token, parser.clause())
+    if (type=matchToken().type)!=SPACE and type!=INDENT then token = start; return
+    matchToken()
+    if not (fn=leadWordClauseMap[start.value]) then token = start; return
+    clause = fn(start, parser.clause())
     clause.start = start; clause.stop = token
     clause
 
@@ -1912,10 +1906,10 @@ exports.Parser = ->
       code=compileExp(['return', [tkn, clause]], environment)
       new Function('__$taiji_$_$parser__', code)(parser)
 
-    '~':  (tkn, clause) -> [shadowToken(tkn, 'quote!'), clause]
-    '`':  (tkn, clause) -> [shadowToken(tkn, 'quasiquote!'), clause]
-    '^':  (tkn, clause) -> [shadowToken(tkn, 'unquote!'), clause]
-    '^&': (tkn, clause) -> [shadowToken(tkn, 'unquote-splice'), clause]
+    '~':  (tkn, clause) -> tkn.symbol = 'quote!'; [tkn, clause]
+    '`':  (tkn, clause) -> tkn.symbol = 'quasiquote!'; [tkn, clause]
+    '^':  (tkn, clause) -> tkn.symbol = 'unquote!'; [tkn, clause]
+    '^&': (tkn, clause) -> tkn.symbol = 'unquote-splice!'; [tkn, clause]
 
   # preprocess opertator
   # see # see metaConvertFnMap['#'] and preprocessMetaConvertFnMap for more information

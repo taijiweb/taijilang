@@ -430,7 +430,7 @@ describe("parser basic: ", function() {
       return expect(parse(' and 1')).to.equal(void 0);
     });
   });
-  xdescribe("space clause binaryOperator: ", function() {
+  describe("space clause binaryOperator: ", function() {
     var parse;
     parse = function(text) {
       var parser, root, x;
@@ -488,8 +488,10 @@ describe("parser basic: ", function() {
     it('should parse :::1', function() {
       return expect(str(parse(':::1'))).to.equal(':::');
     });
-    return xit('should parse (++', function() {
-      return expect(str(parse('(++'))).to.equal(void 0);
+    return it('should parse (++', function() {
+      return expect(function() {
+        return parse('(++');
+      }).to["throw"](/expect \)/);
     });
   });
   describe("matchToken: ", function() {
@@ -717,7 +719,7 @@ describe("parser basic: ", function() {
       x = parser.parse(text, matchRule(parser, parser.spaceClauseExpression), 0);
       return getOperatorExpression(x);
     };
-    return it('should parse require.extensions[".tj"] = ->', function() {
+    return xit('should parse require.extensions[".tj"] = ->', function() {
       return expect(str(parse('require.extensions[".tj"] = ->'))).to.equal("[index! [attribute! require extensions] [string! \".tj\"]]");
     });
   });
@@ -806,41 +808,26 @@ describe("parser basic: ", function() {
         return expect(str(parse('print 1 2'))).to.equal("[print 1 2]");
       });
     });
-    return describe("colon clause: ", function() {
+    describe("colon clause: ", function() {
       return it('should parse print: 1 + 2, 3', function() {
         return expect(str(parse('print: 1 + 2, 3'))).to.equal("[print [+ 1 2] 3]");
       });
     });
-  });
-  xdescribe(":: as prototype", function() {
-    var parse;
-    parse = function(text) {
-      var parser, x;
-      parser = new Parser();
-      x = parser.parse(text, parser.clause, 0);
-      return x;
-    };
-    it('should parse @:: ', function() {
-      return expect(str(parse('@::'))).to.equal('[attribute! @ ::]');
+    describe(":: as prototype", function() {
+      it('should parse @:: ', function() {
+        return expect(str(parse('@::'))).to.equal('[attribute! @ ::]');
+      });
+      it('should parse a:: ', function() {
+        return expect(str(parse('a::'))).to.equal('[attribute! a ::]');
+      });
+      it('should parse a::b ', function() {
+        return expect(str(parse('a::b'))).to.equal('[attribute! [attribute! a ::] b]');
+      });
+      return it('should parse ::a', function() {
+        return expect(str(parse('::a'))).to.equal('[attribute! :: a]');
+      });
     });
-    it('should parse a:: ', function() {
-      return expect(str(parse('a::'))).to.equal('[attribute! a ::]');
-    });
-    it('should parse a::b ', function() {
-      return expect(str(parse('a::b'))).to.equal('[attribute! [attribute! a ::] b]');
-    });
-    return it('should parse ::a', function() {
-      return expect(str(parse('::a'))).to.equal('[attribute! :: a]');
-    });
-  });
-  xdescribe("quote! expression: ", function() {
-    var parse;
-    parse = function(text) {
-      var parser, x;
-      parser = new Parser();
-      return x = parser.parse(text, parser.clause, 0);
-    };
-    return describe("quote! expression: ", function() {
+    describe("quote! expression: ", function() {
       it('should parse ~ a.b', function() {
         return expect(str(parse('~ a.b'))).to.equal('[quote! [attribute! a b]]');
       });
@@ -850,21 +837,13 @@ describe("parser basic: ", function() {
       it('should parse ` print a b', function() {
         return expect(str(parse('` print a b'))).to.equal('[quasiquote! [print a b]]');
       });
-      it('should parse ~ print : min a \n abs b', function() {
+      xit('should parse ~ print : min a \n abs b', function() {
         return expect(str(parse('~ print : min a \n abs b'))).to.equal('[quote! [print [min a [abs b]]]]');
       });
-      return it('should parse ` a.b', function() {
+      return xit('should parse ` a.b', function() {
         return expect(str(parse('` a.b'))).to.equal('[quasiquote! [attribute! a b]]');
       });
     });
-  });
-  xdescribe("unquote! expression: ", function() {
-    var parse;
-    parse = function(text) {
-      var parser, x;
-      parser = new Parser();
-      return x = parser.parse(text, parser.clause, 0);
-    };
     describe("unquote! expression: ", function() {
       it('should parse ^ a.b', function() {
         return expect(str(parse('^ a.b'))).to.equal('[unquote! [attribute! a b]]');
