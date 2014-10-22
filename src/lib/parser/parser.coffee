@@ -110,7 +110,7 @@ exports.Parser = ->
 
   @token = -> token
 
-  tokenFnMap = {}
+  @tokenFnMap = tokenFnMap = {}
 
   tokenOnSymbolChar = ->
     cur = cursor
@@ -925,7 +925,7 @@ exports.Parser = ->
       if (type=token.type)==UNDENT then error 'unexpected undent while parsing parenethis "(...)"'
       else if type==SPACE or type==NEWLINE or type==INDENT then matchToken()
       if token.value==')'
-        token = {type: PAREN, value:undefined, cursor:cur, stopCursor: cursor,
+        token = {type: PAREN, value:[], cursor:cur, stopCursor: cursor,
         line:lineno, column:col}
         start.next = token
         return token
@@ -1077,15 +1077,23 @@ exports.Parser = ->
   @setAtStatementHead = (x) -> atStatementHead = x
   @endOfInput = -> not text[cursor]
 
+  spaces = ->
+    cur = cursor
+    while char==' ' or char=='\t' then char = text[++cursor]
+    {value:text[cur...cursor]}
+
+  # c should not be \n \r
+  matchChar = (c) -> if char==c then char = text[++cursor]; true
+
   @literal = literal = (string) ->
     length = string.length
-    if text[cursor...cursor+length]==string then cursor += length; true
+    if text[cursor...cursor+length]==string then cursor += length; char = text[cursor]; true
 
   wrapResult = (result, info) -> result.info = info; result
 
   @decimal = decimal = ->
     cur = cursor
-    while c = text[cursor] then (if  '0'<=c<='9' then cursor++ else break)
+    while '0'<=char<='9' then char = text[++cursor]
     if cursor==cur then return
     {value: text[cur...cursor], cursor:cur}
 
@@ -2101,20 +2109,48 @@ exports.Parser = ->
     if text[cursor] then error 'expect end of input, but meet "'+text.slice(cursor)+'"'
     begin body
 
+  # #!use/bin/node taiji
+  @binShellDirective = ->
+    if text[cursor...cursor+2]!='#!' then return
+
+    cur = cursor
+    while char and char!='\n' and char!='\r' then char = text[++cursor]
+
+    if char=='\n'
+      if char=='\r' then cursor += 2
+      else cursor++
+      lineno++
+    else if char=='\r'
+      if char=='\n' then cursor += 2
+      else cursor++
+      lineno++
+
+    lineStart = cursor
+
+    ['binShellDirective!', text[cur...cursor]]
+
   @moduleHeader = ->
     if not (literal('taiji') and spaces()  and  literal('language') and spaces() and
-        (x=decimal()) and char('.') and (y=decimal()))
-      error 'taiji language module should begin with "taiji language x.x"'
-    if (x=x.value)!=0 or (y=y.value)!=1 then error 'taiji 0.1 can not process taiji language'+x+'.'+y
-    lineno++
-    while lineno<=maxLine and (lineInfo[lineno].indentCol>0 or lineInfo[lineno].empty) then lineno++
-    if lineno>maxLine then cursor = text.length
-    else cursor = lineInfo[lineno].start # lineInfo[lineno].indentCol = 0
+        (x=decimal()) and matchChar('.') and (y=decimal()))
+      lexError 'taiji language module should begin with "taiji language x.x"'
+    if (x=x.value)!='0' or (y=y.value)!='1' then error 'taiji 0.1 can not process taiji language'+x+'.'+y
+
+    while char and char!='\n' and char!='\r' then char = text[++cursor]
+    while char
+      if char=='\n'
+        if char=='\r' then cursor += 2
+        else cursor++
+        lineno++
+      else if char=='\r'
+        if char=='\n' then cursor += 2
+        else cursor++
+        lineno++
+      if char!=' ' and char!='\t'  and char=='\n'  and char=='\r' then break
+      while (char=text[++cursor]) and char!='\n' and char!='\r' then char = text[++cursor]
     {type: MODULE_HEADER, version: {main:x, minor:y}, value: text[...cursor]}
 
   @module = ->
-    # #!use/bin/node taiji
-    if text[cursor...cursor+2]=='#!' then  scriptDirective = ['scriptDirective!', skipLineTail()]
+    scriptDirective = ['scriptDirective!', parser.binShellDirective()]
     wrapResult ['module!', scriptDirective, parser.moduleHeader(), parser.moduleBody()], {type: MODULE}
 
   @init = (data, cur, env) ->
@@ -2136,7 +2172,7 @@ exports.Parser = ->
     root()
 
   @lexError = lexError = (message) ->
-    throw cursor+'('+lexRow+':'+lexCol+'): '+message+': \n'+text[cursor-40...cursor]+'|   |'+text[cursor...cursor+40]
+    throw cursor+'('+lineno+':'+(cursor-lineStart)+'): '+'lexical error: '+message+': \n'+text[cursor-40...cursor]+'|   |'+text[cursor...cursor+40]
 
   @error = error = (message, tkn) ->
     tkn = tkn or token; cur = tkn.cursor

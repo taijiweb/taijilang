@@ -410,24 +410,6 @@ describe "parser basic: ",  ->
       it "parse toString", ->
         expect(parse('toString')).to.equal "toString"
 
-  xdescribe "parenthesis: ",  ->
-    parse = (text) ->
-      parser = new Parser()
-      x = parser.parse(text, parser.paren, 0)
-    it 'should parse ()', ->
-      x = parse('()')
-      expect(x.type).to.equal PAREN
-      expect(x.value).to.equal undefined
-    it 'should parse (a)', ->
-      x = parse('(a)')
-      expect(x.type).to.equal PAREN
-      expect(x.value.type).to.equal IDENTIFIER
-      expect(x.value.value).to.equal 'a'
-    it 'should parse (a,b)', ->
-      x = parse('(a,b)')
-      expect(x.type).to.equal PAREN
-      expect(str getOperatorExpression x).to.equal '[, a b]'
-
   describe "compact clause expression:", ->
     parse = (text) ->
       parser = new Parser()
@@ -475,6 +457,25 @@ describe "parser basic: ",  ->
       expect(str parse('x=./!1/')).to.equal "[= x [regexp! /1/]]"
     it "parse x=./!1/g", ->
       expect(str parse('x=./!1/g')).to.equal "[= x [regexp! /1/g]]"
+
+  describe "parenthesis: ",  ->
+    parse = (text) ->
+      parser = new Parser()
+      parser.init(text, 0)
+      x = parser.tokenFnMap['(']()
+    it 'should parse ()', ->
+      x = parse('()')
+      expect(x.type).to.equal PAREN
+      expect(x.value).to.deep.equal []
+    it 'should parse (a)', ->
+      x = parse('(a)')
+      expect(x.type).to.equal PAREN
+      expect(x.value.type).to.equal IDENTIFIER
+      expect(x.value.value).to.equal 'a'
+    it 'should parse (a,b)', ->
+      x = parse('(a,b)')
+      expect(x.type).to.equal PAREN
+      expect(str getOperatorExpression x).to.equal '[, a b]'
 
   describe "space clause expression:", ->
     parse = (text) ->
@@ -650,14 +651,14 @@ describe "parser basic: ",  ->
       x = parse('/. some \n  embedded \n  comment')
       expect(str x).to.equal "[]"
 
-  xdescribe  "module header",  ->
+  describe  "module header",  ->
     parse = (text) ->
       parser = new Parser()
       x = parser.parse(text, parser.moduleHeader, 0)
-    it 'should parse taiji language 0.1', ->
+    iit 'should parse taiji language 0.1', ->
       x = parse('taiji language 0.1')
-      expect(x.version).to.deep.equal {main: 0, minor:1}
-      expect(x.text).to.equal 'taiji language 0.1'
+      expect(x.version).to.deep.equal {main: '0', minor:'1'}
+      expect(x.value).to.equal 'taiji language 0.1'
     it 'should parse taiji language 0.1\n1', ->
       expect(-> parse('taiji language 3.1\n1')).to.throw /taiji 0.1 can not process taiji language/
     it 'should parse taiji language 0.1\n1', ->

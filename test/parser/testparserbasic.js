@@ -618,33 +618,6 @@ describe("parser basic: ", function() {
       });
     });
   });
-  xdescribe("parenthesis: ", function() {
-    var parse;
-    parse = function(text) {
-      var parser, x;
-      parser = new Parser();
-      return x = parser.parse(text, parser.paren, 0);
-    };
-    it('should parse ()', function() {
-      var x;
-      x = parse('()');
-      expect(x.type).to.equal(PAREN);
-      return expect(x.value).to.equal(void 0);
-    });
-    it('should parse (a)', function() {
-      var x;
-      x = parse('(a)');
-      expect(x.type).to.equal(PAREN);
-      expect(x.value.type).to.equal(IDENTIFIER);
-      return expect(x.value.value).to.equal('a');
-    });
-    return it('should parse (a,b)', function() {
-      var x;
-      x = parse('(a,b)');
-      expect(x.type).to.equal(PAREN);
-      return expect(str(getOperatorExpression(x))).to.equal('[, a b]');
-    });
-  });
   describe("compact clause expression:", function() {
     var parse;
     parse = function(text) {
@@ -709,6 +682,34 @@ describe("parser basic: ", function() {
     });
     return it("parse x=./!1/g", function() {
       return expect(str(parse('x=./!1/g'))).to.equal("[= x [regexp! /1/g]]");
+    });
+  });
+  describe("parenthesis: ", function() {
+    var parse;
+    parse = function(text) {
+      var parser, x;
+      parser = new Parser();
+      parser.init(text, 0);
+      return x = parser.tokenFnMap['(']();
+    };
+    it('should parse ()', function() {
+      var x;
+      x = parse('()');
+      expect(x.type).to.equal(PAREN);
+      return expect(x.value).to.deep.equal([]);
+    });
+    it('should parse (a)', function() {
+      var x;
+      x = parse('(a)');
+      expect(x.type).to.equal(PAREN);
+      expect(x.value.type).to.equal(IDENTIFIER);
+      return expect(x.value.value).to.equal('a');
+    });
+    return it('should parse (a,b)', function() {
+      var x;
+      x = parse('(a,b)');
+      expect(x.type).to.equal(PAREN);
+      return expect(str(getOperatorExpression(x))).to.equal('[, a b]');
     });
   });
   describe("space clause expression:", function() {
@@ -965,21 +966,21 @@ describe("parser basic: ", function() {
       return expect(str(x)).to.equal("[]");
     });
   });
-  return xdescribe("module header", function() {
+  return describe("module header", function() {
     var parse;
     parse = function(text) {
       var parser, x;
       parser = new Parser();
       return x = parser.parse(text, parser.moduleHeader, 0);
     };
-    it('should parse taiji language 0.1', function() {
+    iit('should parse taiji language 0.1', function() {
       var x;
       x = parse('taiji language 0.1');
       expect(x.version).to.deep.equal({
-        main: 0,
-        minor: 1
+        main: '0',
+        minor: '1'
       });
-      return expect(x.text).to.equal('taiji language 0.1');
+      return expect(x.value).to.equal('taiji language 0.1');
     });
     it('should parse taiji language 0.1\n1', function() {
       return expect(function() {
