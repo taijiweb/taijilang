@@ -1106,8 +1106,8 @@ exports.Parser = ->
     tokenText = token.value
     if not hasOwnProperty.call(prefixOperatorDict, tokenText) or  not (op=prefixOperatorDict[tokenText]) then return
     if token.escaped then return
-    opToken = token; matchToken()
-    if token.value=='.' and matchToken()
+    opToken = token; nextToken()
+    if token.value=='.' and nextToken()
       if (type=token.type)==SPACE or type==INDENT or type==UNDENT or type==NEWLINE
         if mode==OPERATOR_EXPRESSION then error 'unexpected spaces after :'
         else token = opToken; return
@@ -1909,7 +1909,7 @@ exports.Parser = ->
     '~':  (tkn, clause) -> tkn.symbol = 'quote!'; [tkn, clause]
     '`':  (tkn, clause) -> tkn.symbol = 'quasiquote!'; [tkn, clause]
     '^':  (tkn, clause) -> tkn.symbol = 'unquote!'; [tkn, clause]
-    '^&': (tkn, clause) -> tkn.symbol = 'unquote-splice!'; [tkn, clause]
+    '^&': (tkn, clause) -> tkn.symbol = 'unquote-splice'; [tkn, clause]
 
   # preprocess opertator
   # see # see metaConvertFnMap['#'] and preprocessMetaConvertFnMap for more information
@@ -1944,7 +1944,9 @@ exports.Parser = ->
         # label statement
         return ['label!', start, blk]
       else token = start
-    else if type==SYMBOL and (fn=symbol2clause[token.value]) then return fn()
+    else if type==SYMBOL and (fn=symbol2clause[token.value])
+      if result = fn() then return result
+      else token = start
 
     if not (head=parser.compactClauseExpression())
       if (op=parser.prefixOperator())
