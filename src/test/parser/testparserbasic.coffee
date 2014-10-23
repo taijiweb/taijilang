@@ -592,11 +592,11 @@ describe "parser basic: ",  ->
       it 'should parse ^print a b', ->
         expect(str parse('^print a b')).to.equal "[[unquote! print] a b]"
 
-  xdescribe "hash: ",  ->
+  describe "hash: ",  ->
     describe "hash item: ",  ->
       parse = (text) ->
         parser = new Parser()
-        x = parser.parse(text, parser.hashItem, 0)
+        x = parser.parse(text, matchRule(parser, parser.hashItem), 0)
       it 'should parse 1:2', ->
         expect(str parse('1:2')).to.equal '[jshashitem! 1 2]'
       it 'should parse a:2', ->
@@ -604,11 +604,11 @@ describe "parser basic: ",  ->
       it 'should parse a=>2', ->
         expect(str parse('a=>2')).to.equal '[pyhashitem! a 2]'
 
-    describe "hash! expression: ",  ->
+    describe "hash expression: ",  ->
       parse = (text) ->
         parser = new Parser()
-        x = parser.parse(text, parser.hash, 0)
-      it 'should parse {.1:2.}', ->
+        x = parser.parse(text, matchRule(parser, parser.hash), 0)
+      iit 'should parse {. 1:2 }', ->
         expect(str parse('{.1:2.}')).to.equal '[hash! [jshashitem! 1 2]]'
       it 'should parse {.1:2; 3:4.}', ->
         expect(str parse('{.1:2; 3:4.}')).to.equal '[hash! [jshashitem! 1 2] [jshashitem! 3 4]]'
@@ -655,13 +655,13 @@ describe "parser basic: ",  ->
     parse = (text) ->
       parser = new Parser()
       x = parser.parse(text, parser.moduleHeader, 0)
-    iit 'should parse taiji language 0.1', ->
+    it 'should parse taiji language 0.1', ->
       x = parse('taiji language 0.1')
       expect(x.version).to.deep.equal {main: '0', minor:'1'}
       expect(x.value).to.equal 'taiji language 0.1'
-    it 'should parse taiji language 0.1\n1', ->
+    it 'taiji language 3.1\n1 should throw', ->
       expect(-> parse('taiji language 3.1\n1')).to.throw /taiji 0.1 can not process taiji language/
     it 'should parse taiji language 0.1\n1', ->
       x = parse('taiji language 0.1\n header comment \n1')
-      expect(x.version).to.deep.equal {main: 0, minor:1}
-      expect(x.text).to.equal "taiji language 0.1\n header comment \n"
+      expect(x.version).to.deep.equal {main: "0", minor:"1"}
+      expect(x.value).to.equal "taiji language 0.1\n header comment \n"

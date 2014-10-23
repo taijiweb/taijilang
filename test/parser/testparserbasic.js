@@ -874,13 +874,13 @@ describe("parser basic: ", function() {
       });
     });
   });
-  xdescribe("hash: ", function() {
+  describe("hash: ", function() {
     describe("hash item: ", function() {
       var parse;
       parse = function(text) {
         var parser, x;
         parser = new Parser();
-        return x = parser.parse(text, parser.hashItem, 0);
+        return x = parser.parse(text, matchRule(parser, parser.hashItem), 0);
       };
       it('should parse 1:2', function() {
         return expect(str(parse('1:2'))).to.equal('[jshashitem! 1 2]');
@@ -892,14 +892,14 @@ describe("parser basic: ", function() {
         return expect(str(parse('a=>2'))).to.equal('[pyhashitem! a 2]');
       });
     });
-    return describe("hash! expression: ", function() {
+    return idescribe("hash expression: ", function() {
       var parse;
       parse = function(text) {
         var parser, x;
         parser = new Parser();
-        return x = parser.parse(text, parser.hash, 0);
+        return x = parser.parse(text, matchRule(parser, parser.hash), 0);
       };
-      it('should parse {.1:2.}', function() {
+      it('should parse {. 1:2 }', function() {
         return expect(str(parse('{.1:2.}'))).to.equal('[hash! [jshashitem! 1 2]]');
       });
       it('should parse {.1:2; 3:4.}', function() {
@@ -973,7 +973,7 @@ describe("parser basic: ", function() {
       parser = new Parser();
       return x = parser.parse(text, parser.moduleHeader, 0);
     };
-    iit('should parse taiji language 0.1', function() {
+    it('should parse taiji language 0.1', function() {
       var x;
       x = parse('taiji language 0.1');
       expect(x.version).to.deep.equal({
@@ -982,7 +982,7 @@ describe("parser basic: ", function() {
       });
       return expect(x.value).to.equal('taiji language 0.1');
     });
-    it('should parse taiji language 0.1\n1', function() {
+    it('taiji language 3.1\n1 should throw', function() {
       return expect(function() {
         return parse('taiji language 3.1\n1');
       }).to["throw"](/taiji 0.1 can not process taiji language/);
@@ -991,10 +991,10 @@ describe("parser basic: ", function() {
       var x;
       x = parse('taiji language 0.1\n header comment \n1');
       expect(x.version).to.deep.equal({
-        main: 0,
-        minor: 1
+        main: "0",
+        minor: "1"
       });
-      return expect(x.text).to.equal("taiji language 0.1\n header comment \n");
+      return expect(x.value).to.equal("taiji language 0.1\n header comment \n");
     });
   });
 });

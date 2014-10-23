@@ -988,50 +988,57 @@ exports.Parser = ->
     '.': ->  matchToken(); return hash()
 
   @hash = ->
-    cur = cursor; line1 = lineno; indentCol = lineInfo[lineno].indentCol
-    if text[cursor...cursor+2]!='{.' then return else cursor += 2
+    start = token; matchToken(); ind = token.indent
+    if token.type==INDENT then matchToken()
     items = parser.hashBlock()
-    if lineInfo[lineno].indentCol<indentCol then error 'unexpected undent while parsing parenethis "{.  ... .}"'
-    if text[cursor...cursor+2]!='.}' then error 'expect .}' else cursor += 2
-    wrapResult ['hash!'].concat(items), {start:cur, stop:cursor, line1:line1, line:lineno}
+    if token.type==UNDENT then matchToken()
+    if token.indent<ind then error "expect the same indent as or more indent as the start line of hash block"
+    if token.value!='}' then error 'expect }'
+    matchToken()
+    wrapResult ['hash!'].concat(items), {start:start, stop:token}
+
+  @hashLine = ->
+    result = []
+    while (x=parser.hashItem())
+      result.push x
+      if (value=token.value)==';' then matchToken(); if token.type==SPACE then matchToken()
+      else if (type=token.type)==NEWLINE then matchToken(); break
+      else if type==UNDENT or value=='}' then break
+      else if type==EOI then error "unexpected end of input while parsing hash block"
+    return result
 
   @hashBlock = ->
-    cur = cursor; line1 = lineno
-    if (spac=bigSpace()) and spac.undent then return
-    result = []; if spac.indent then indentCol = lineInfo[lineno].indentCol
-    while (x=parser.hashItem()) and result.push x
-      space()
-      if not (c=text[cursor]) then break
-      if c=='.'
-        if text[cursor+1]=='}' then break
-        else error 'unexpected ".", expect .} to close hash block'
-      if c==';' then cursor++
-      space2 = bigSpace()
-      if not (c=text[cursor]) or c=='}' then break
-      if lineno==line1 then continue
-      if (col=lineInfo[lineno].indentCol)>column1
-        if indentCol and col!=indentCol then error 'unconsistent indent in hash {. .}'
-        else indentCol = col
-      else if col==column1 then break
-      else if col<column1 then rollbackToken space2; return
+    start = token; result = []
+    while (items=parser.hashLine())
+      result.push result, items
+      if (type=token.type)==EOI then error "unexpected end of input while parsing hash block"
+      else if type==UNDENT then break
+      else if (value=token.value)==';' then matchToken()
+      else if value=='}' then break
+      if token.type==INDENT
+        if token.isComment
+          blk = parser.hashBlock()
+          result.push.apply result, blk
+        else error "unexpected indent while parsing hash block"
     result.start = cur; result.stop = cursor; result
 
   @hashItem = ->
-    if isIndent(token) then error 'unexpected indent'
-    else if isUndent(token) then return
+    if token.type==UNDENT then return
+    start = token
     if key=parser.compactClauseExpression()
-      if isMultiline(token) then error 'unexpected new line after hash key'
-      if token.value==':' and matchToken()
+      if (type=token.type)==NEWLINE or type==UNDENT then error 'unexpected new line after hash key'
+      else if type==EOI then "unexpected end of input after hash key"
+      else if type==SPACE then matchToken()
+      if (value=token.value)==':' and matchToken()
         if (t=key.type)==IDENTIFIER or t==NUMBER or t==NON_INTERPOLATE_STRING then js = true
-      else if text[cursor...cursor+2]=='=>' then cursor+=2
+      else if value=='=>' then matchToken()
       else error 'expect : or => for hash item definition'
-      if (spac=follow('spaceComment')) and spac.indent
-        value = ['hash!'].concat parser.hashBlock()
-      else value = parser.clause()
+      if token.type==SPACE then matchToken()
+      value = parser.clause()
       if not value then error 'expect value of hash item'
       if js then result = ['jshashitem!', getOperatorExpression(key), value]
       else result = ['pyhashitem!', getOperatorExpression(key), value]
-      wrapResult result, {start:cur, stop:cursor, line1:line1, line:lineno}
+      wrapResult result, {start:start, stop:token}
 
   tokenOnRightDelimiterChar = ->
     token.next = {type:RIGHT_DELIMITER, value:char, cursor:cursor, stopCursor:cursor,
@@ -1889,27 +1896,27 @@ exports.Parser = ->
     clause
 
   leadWordClauseMap =
-  # eval while parsing, call by %% clause
-  # e.g.
-  # %% %text()
-  # %% %cursor()
-  # %% %number()1234
+    # eval while parsing, call by %% clause
+    # e.g.
+    # %% %text()
+    # %% %cursor()
+    # %% %number()1234
     '%%':  (tkn, clause) ->
       code = compileExp(['return', clause], environment)
       new Function('__$taiji_$_$parser__', code)(parser)
 
-  # the head of clause will be convert to attribute of __$taiji_$_$parser__
-  # see exports['%/'] and convertParserAttribute in core.coffee
-  # {%/ matcheA(x, y) } will be converted to {%% %matchA(x, y)}
+    # the head of clause will be convert to attribute of __$taiji_$_$parser__
+    # see exports['%/'] and convertParserAttribute in core.coffee
+    # {%/ matcheA(x, y) } will be converted to {%% %matchA(x, y)}
     '%/': (tkn, clause) ->
       # notice the difference between %% and %/
       # here ['%/', clause] is compiled
       code=compileExp(['return', [tkn, clause]], environment)
       new Function('__$taiji_$_$parser__', code)(parser)
 
-  # identifier in clause will be convert to attribute of __$taiji_$_$parser__
-  # see exports['%!'] and convertParserAttribute in core.coffee
-  # {%! matcheA(x, y) } will be converted to {%% %matchA(%x, %y)}
+    # identifier in clause will be convert to attribute of __$taiji_$_$parser__
+    # see exports['%!'] and convertParserAttribute in core.coffee
+    # {%! matcheA(x, y) } will be converted to {%% %matchA(%x, %y)}
     '%!': (tkn, clause) ->
       code=compileExp(['return', [tkn, clause]], environment)
       new Function('__$taiji_$_$parser__', code)(parser)
@@ -1919,24 +1926,24 @@ exports.Parser = ->
     '^':  (tkn, clause) -> tkn.symbol = 'unquote!'; [tkn, clause]
     '^&': (tkn, clause) -> tkn.symbol = 'unquote-splice'; [tkn, clause]
 
-  # preprocess opertator
-  # see # see metaConvertFnMap['#'] and preprocessMetaConvertFnMap for more information
+    # preprocess opertator
+    # see # see metaConvertFnMap['#'] and preprocessMetaConvertFnMap for more information
     '#':  (tkn, clause) -> [tkn, clause]
 
-  # evaluate in compile time
-  # see metaConvertFnMap['##']
+    # evaluate in compile time
+    # see metaConvertFnMap['##']
     '##':  (tkn, clause) -> [tkn, clause]
 
-  # evaluate in both compile time and run time
-  # see metaConvertFnMap['#/']
+    # evaluate in both compile time and run time
+    # see metaConvertFnMap['#/']
     '#/': (tkn, clause) -> [tkn, clause]
 
-  # escape from compile time to runtime
-  # see metaConvertFnMap['#-']
+    # escape from compile time to runtime
+    # see metaConvertFnMap['#-']
     '#-': (tkn, clause) -> [tkn, clause]
 
-  # #& metaConvert exp and get the current expression(not metaConverted raw program)
-  # see metaConvertFnMap['#&']
+    # #& metaConvert exp and get the current expression(not metaConverted raw program)
+    # see metaConvertFnMap['#&']
     '#&': (tkn, clause) -> [tkn, clause]
 
   symbol2clause = {}
@@ -2086,7 +2093,6 @@ exports.Parser = ->
       if token.stopIndent<dent then break
     return result
 
-
   @lineBlock = (dent) ->
     if token.type==INDENT then nextToken(); parser.blockWithoutIndentHead(dent)
     else
@@ -2130,6 +2136,7 @@ exports.Parser = ->
     ['binShellDirective!', text[cur...cursor]]
 
   @moduleHeader = ->
+    cur = cursor
     if not (literal('taiji') and spaces()  and  literal('language') and spaces() and
         (x=decimal()) and matchChar('.') and (y=decimal()))
       lexError 'taiji language module should begin with "taiji language x.x"'
@@ -2145,9 +2152,9 @@ exports.Parser = ->
         if char=='\n' then cursor += 2
         else cursor++
         lineno++
-      if char!=' ' and char!='\t'  and char=='\n'  and char=='\r' then break
-      while (char=text[++cursor]) and char!='\n' and char!='\r' then char = text[++cursor]
-    {type: MODULE_HEADER, version: {main:x, minor:y}, value: text[...cursor]}
+      if (char=text[cursor])!=' ' and  char!='\t' and char!='\n'  and char!='\r' then break
+      while char and char!='\n' and char!='\r' then char = text[++cursor]
+    {type: MODULE_HEADER, version: {main:x, minor:y}, value: text[...cursor], cursor:cur, stopCursor:cursor}
 
   @module = ->
     scriptDirective = ['scriptDirective!', parser.binShellDirective()]
