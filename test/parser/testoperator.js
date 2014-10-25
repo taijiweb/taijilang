@@ -1,4 +1,4 @@
-var Parser, chai, constant, expect, getOperatorExpression, idescribe, iit, isArray, lib, ndescribe, nit, str, _ref;
+var BLOCK_COMMENT, COMPACT_CLAUSE_EXPRESSION, EOI, HALF_DENT, IDENTIFIER, INDENT, NEWLINE, NUMBER, OPERATOR_EXPRESSION, PAREN, PAREN_OPERATOR_EXPRESSION, Parser, SPACE, SPACE_CLAUSE_EXPRESSION, UNDENT, chai, constant, expect, idescribe, iit, isArray, lib, matchRule, ndescribe, nit, str, _ref;
 
 chai = require("chai");
 
@@ -16,16 +16,30 @@ lib = '../../lib/';
 
 _ref = require(lib + 'parser/base'), constant = _ref.constant, isArray = _ref.isArray, str = _ref.str;
 
-getOperatorExpression = require(lib + 'parser/operator').getOperatorExpression;
-
 Parser = require(lib + 'parser').Parser;
 
-ndescribe("parse operator expression: ", function() {
+IDENTIFIER = constant.IDENTIFIER, NUMBER = constant.NUMBER, NEWLINE = constant.NEWLINE, INDENT = constant.INDENT, UNDENT = constant.UNDENT, HALF_DENT = constant.HALF_DENT, PAREN = constant.PAREN, BLOCK_COMMENT = constant.BLOCK_COMMENT, EOI = constant.EOI, SPACE = constant.SPACE, PAREN_OPERATOR_EXPRESSION = constant.PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION = constant.COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION = constant.SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION = constant.OPERATOR_EXPRESSION;
+
+matchRule = function(parser, rule) {
+  return function() {
+    var token;
+    token = parser.matchToken();
+    if (token.type === NEWLINE) {
+      parser.matchToken();
+    }
+    if (token.type === SPACE) {
+      parser.matchToken();
+    }
+    return rule();
+  };
+};
+
+describe("parse operator expression: ", function() {
   var parse;
   parse = function(text) {
     var parser, x;
     parser = new Parser();
-    return x = getOperatorExpression(parser.parse(text, parser.operatorExpression, 0));
+    return x = parser.parse(text, matchRule(parser, parser.operatorExpression), 0);
   };
   describe("atom: ", function() {
     it("parse 1", function() {
@@ -166,12 +180,12 @@ ndescribe("parse operator expression: ", function() {
     it("parse 1/\n2", function() {
       return expect(function() {
         return parse('1/\n2');
-      }).to["throw"](/unexpected spaces or new lines after binary operator/);
+      }).to["throw"](/unexpected new line/);
     });
     return it("parse 1+2\n+4/\n*5\n*3==7", function() {
       return expect(function() {
         return parse('1+2\n+4/\n*5\n*3==7');
-      }).to["throw"](/unexpected spaces or new lines after binary operator/);
+      }).to["throw"](/unexpected new line/);
     });
   });
   describe("indent expression: ", function() {
@@ -238,14 +252,10 @@ ndescribe("parse operator expression: ", function() {
       return expect(str(parse('a[1]'))).to.deep.equal('[index! a 1]');
     });
     it("parse a (1)", function() {
-      return expect(function() {
-        return parse('a (1)');
-      }).to["throw"](/() as call operator should tightly close to the left caller/);
+      return expect(str(parse('a (1)'))).to.equal('a');
     });
     it("parse a [1]", function() {
-      return expect(function() {
-        return parse('a [1]');
-      }).to["throw"](/subscript should tightly close to left operand/);
+      return expect(str(parse('a [1]'))).to.equal('a');
     });
     return it("parse a[1][2]", function() {
       return expect(str(parse('a[1][2]'))).to.deep.equal('[index! [index! a 1] 2]');

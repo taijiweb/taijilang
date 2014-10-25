@@ -8,7 +8,6 @@ nit = ->
 
 lib = '../../lib/'
 {constant, isArray, str} = require lib+'parser/base'
-{getOperatorExpression} = require lib+'parser/operator'
 {Parser} = require lib+'parser/parser'
 
 {IDENTIFIER, NUMBER, NEWLINE, INDENT, UNDENT, HALF_DENT, PAREN, BLOCK_COMMENT, EOI, SPACE
@@ -209,7 +208,7 @@ describe "parser basic: ",  ->
         x = parser.token()
         x
       it "parse /!-h\b|-r\b|-v\b|-b\b/", ->
-        expect(str parse('/!-h\b|-r\b|-v\b|-b\b/')).to.equal "/-h\b|-r\b|-v\b|-b\b/"
+        expect(str parse('/!-h\b|-r\b|-v\b|-b\b/')).to.equal "[regexp! /-h\b|-r\b|-v\b|-b\b/]"
 
   describe "prefixOperator: ",  ->
     parse = (text) ->
@@ -414,7 +413,6 @@ describe "parser basic: ",  ->
     parse = (text) ->
       parser = new Parser()
       x = parser.parse(text, matchRule(parser, parser.compactClauseExpression), 0)
-      getOperatorExpression x
     it 'should parse a', ->
       expect(str parse('a')).to.equal "a"
     it 'should parse a.b', ->
@@ -470,18 +468,17 @@ describe "parser basic: ",  ->
     it 'should parse (a)', ->
       x = parse('(a)')
       expect(x.type).to.equal PAREN
-      expect(x.value.type).to.equal IDENTIFIER
-      expect(x.value.value).to.equal 'a'
+      #expect(x.value.type).to.equal IDENTIFIER
+      expect(x.value).to.equal 'a'
     it 'should parse (a,b)', ->
       x = parse('(a,b)')
       expect(x.type).to.equal PAREN
-      expect(str getOperatorExpression x).to.equal '[, a b]'
+      expect(str x).to.equal '[, a b]'
 
   describe "space clause expression:", ->
     parse = (text) ->
       parser = new Parser()
       x = parser.parse(text,  matchRule(parser, parser.spaceClauseExpression), 0)
-      getOperatorExpression x
     xit 'should parse require.extensions[".tj"] = ->', ->
       expect(str parse('require.extensions[".tj"] = ->')).to.equal "[index! [attribute! require extensions] [string! \".tj\"]]"
 
@@ -489,7 +486,6 @@ describe "parser basic: ",  ->
     parse = (text) ->
       parser = new Parser()
       x = parser.parse(text, matchRule(parser, parser.operatorExpression), 0)
-      getOperatorExpression x
     it 'should parse @', ->
       expect(str parse('@')).to.equal '@'
     it 'should parse @a', ->
@@ -604,11 +600,11 @@ describe "parser basic: ",  ->
       it 'should parse a=>2', ->
         expect(str parse('a=>2')).to.equal '[pyhashitem! a 2]'
 
-    describe "hash expression: ",  ->
+    xdescribe "hash expression: ",  ->
       parse = (text) ->
         parser = new Parser()
         x = parser.parse(text, matchRule(parser, parser.hash), 0)
-      iit 'should parse {. 1:2 }', ->
+      it 'should parse {. 1:2 }', ->
         expect(str parse('{.1:2.}')).to.equal '[hash! [jshashitem! 1 2]]'
       it 'should parse {.1:2; 3:4.}', ->
         expect(str parse('{.1:2; 3:4.}')).to.equal '[hash! [jshashitem! 1 2] [jshashitem! 3 4]]'

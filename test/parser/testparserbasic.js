@@ -1,4 +1,4 @@
-var BLOCK_COMMENT, COMPACT_CLAUSE_EXPRESSION, EOI, HALF_DENT, IDENTIFIER, INDENT, NEWLINE, NUMBER, OPERATOR_EXPRESSION, PAREN, PAREN_OPERATOR_EXPRESSION, Parser, SPACE, SPACE_CLAUSE_EXPRESSION, UNDENT, chai, constant, expect, getOperatorExpression, idescribe, iit, isArray, lib, matchRule, ndescribe, nit, str, _ref;
+var BLOCK_COMMENT, COMPACT_CLAUSE_EXPRESSION, EOI, HALF_DENT, IDENTIFIER, INDENT, NEWLINE, NUMBER, OPERATOR_EXPRESSION, PAREN, PAREN_OPERATOR_EXPRESSION, Parser, SPACE, SPACE_CLAUSE_EXPRESSION, UNDENT, chai, constant, expect, idescribe, iit, isArray, lib, matchRule, ndescribe, nit, str, _ref;
 
 chai = require("chai");
 
@@ -15,8 +15,6 @@ nit = function() {};
 lib = '../../lib/';
 
 _ref = require(lib + 'parser/base'), constant = _ref.constant, isArray = _ref.isArray, str = _ref.str;
-
-getOperatorExpression = require(lib + 'parser/operator').getOperatorExpression;
 
 Parser = require(lib + 'parser/parser').Parser;
 
@@ -306,7 +304,7 @@ describe("parser basic: ", function() {
         return x;
       };
       return it("parse /!-h\b|-r\b|-v\b|-b\b/", function() {
-        return expect(str(parse('/!-h\b|-r\b|-v\b|-b\b/'))).to.equal("/-h\b|-r\b|-v\b|-b\b/");
+        return expect(str(parse('/!-h\b|-r\b|-v\b|-b\b/'))).to.equal("[regexp! /-h\b|-r\b|-v\b|-b\b/]");
       });
     });
   });
@@ -623,8 +621,7 @@ describe("parser basic: ", function() {
     parse = function(text) {
       var parser, x;
       parser = new Parser();
-      x = parser.parse(text, matchRule(parser, parser.compactClauseExpression), 0);
-      return getOperatorExpression(x);
+      return x = parser.parse(text, matchRule(parser, parser.compactClauseExpression), 0);
     };
     it('should parse a', function() {
       return expect(str(parse('a'))).to.equal("a");
@@ -702,14 +699,13 @@ describe("parser basic: ", function() {
       var x;
       x = parse('(a)');
       expect(x.type).to.equal(PAREN);
-      expect(x.value.type).to.equal(IDENTIFIER);
-      return expect(x.value.value).to.equal('a');
+      return expect(x.value).to.equal('a');
     });
     return it('should parse (a,b)', function() {
       var x;
       x = parse('(a,b)');
       expect(x.type).to.equal(PAREN);
-      return expect(str(getOperatorExpression(x))).to.equal('[, a b]');
+      return expect(str(x)).to.equal('[, a b]');
     });
   });
   describe("space clause expression:", function() {
@@ -717,8 +713,7 @@ describe("parser basic: ", function() {
     parse = function(text) {
       var parser, x;
       parser = new Parser();
-      x = parser.parse(text, matchRule(parser, parser.spaceClauseExpression), 0);
-      return getOperatorExpression(x);
+      return x = parser.parse(text, matchRule(parser, parser.spaceClauseExpression), 0);
     };
     return xit('should parse require.extensions[".tj"] = ->', function() {
       return expect(str(parse('require.extensions[".tj"] = ->'))).to.equal("[index! [attribute! require extensions] [string! \".tj\"]]");
@@ -729,8 +724,7 @@ describe("parser basic: ", function() {
     parse = function(text) {
       var parser, x;
       parser = new Parser();
-      x = parser.parse(text, matchRule(parser, parser.operatorExpression), 0);
-      return getOperatorExpression(x);
+      return x = parser.parse(text, matchRule(parser, parser.operatorExpression), 0);
     };
     it('should parse @', function() {
       return expect(str(parse('@'))).to.equal('@');
@@ -892,7 +886,7 @@ describe("parser basic: ", function() {
         return expect(str(parse('a=>2'))).to.equal('[pyhashitem! a 2]');
       });
     });
-    return idescribe("hash expression: ", function() {
+    return xdescribe("hash expression: ", function() {
       var parse;
       parse = function(text) {
         var parser, x;

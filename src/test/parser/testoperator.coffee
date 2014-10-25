@@ -7,13 +7,21 @@ nit = ->
 
 lib = '../../lib/'
 {constant, isArray, str} = require lib+'parser/base'
-{getOperatorExpression} = require lib+'parser/operator'
 {Parser} = require lib+'parser'
 
-ndescribe "parse operator expression: ", ->
+{IDENTIFIER, NUMBER, NEWLINE, INDENT, UNDENT, HALF_DENT, PAREN, BLOCK_COMMENT, EOI, SPACE
+PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION} = constant
+
+matchRule = (parser, rule) -> ->
+  token = parser.matchToken()
+  if token.type==NEWLINE then parser.matchToken()
+  if token.type==SPACE then parser.matchToken()
+  rule()
+
+describe "parse operator expression: ", ->
   parse = (text) ->
     parser = new Parser()
-    x = getOperatorExpression parser.parse(text, parser.operatorExpression, 0)
+    x = parser.parse(text, matchRule(parser, parser.operatorExpression), 0)
   describe "atom: ", ->
     it "parse 1", ->
       expect(str parse('1')).to.deep.equal '1'
@@ -132,10 +140,10 @@ ndescribe "parse operator expression: ", ->
       expect(str parse('1+2\n+4\n*5\n*3==7')).to.deep.equal "[* [* [+ [+ 1 2] 4] 5] [== 3 7]]"
 
     it "parse 1/\n2", ->
-      expect(-> parse('1/\n2')).to.throw /unexpected spaces or new lines after binary operator/
+      expect(-> parse('1/\n2')).to.throw /unexpected new line/
 
     it "parse 1+2\n+4/\n*5\n*3==7", ->
-      expect(-> parse('1+2\n+4/\n*5\n*3==7')).to.throw /unexpected spaces or new lines after binary operator/
+      expect(-> parse('1+2\n+4/\n*5\n*3==7')).to.throw /unexpected new line/
 
   describe "indent expression: ", ->
     it "parse 1\n *3", ->
@@ -189,9 +197,9 @@ ndescribe "parse operator expression: ", ->
     it "parse a[1]", ->
       expect(str parse('a[1]')).to.deep.equal '[index! a 1]'
     it "parse a (1)", ->
-      expect(-> parse('a (1)')).to.throw /() as call operator should tightly close to the left caller/
+      expect(str parse('a (1)')).to.equal 'a'
     it "parse a [1]", ->
-      expect(-> parse('a [1]')).to.throw /subscript should tightly close to left operand/
+      expect(str parse('a [1]')).to.equal 'a'
     it "parse a[1][2]", ->
       expect(str parse('a[1][2]')).to.deep.equal '[index! [index! a 1] 2]'
 

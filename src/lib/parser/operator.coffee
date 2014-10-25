@@ -1,9 +1,9 @@
 #https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence
-{extend, charset, digitCharSet, letterCharSet, identifierCharSet, constant, isArray, wrapInfo1, wrapInfo2} = base = require './base'
+{extend, charset, digitCharSet, letterCharSet, identifierCharSet, constant, isArray, wrapSyntaxInfo} = base = require './base'
 
 {NUMBER,  STRING,  IDENTIFIER, SYMBOL, REGEXP,  HEAD_SPACES, CONCAT_LINE, PUNCT, FUNCTION, PAREN, BRACKET, INDENT_EXPRESSION
 NEWLINE,  SPACES,  INLINE_COMMENT, SPACES_INLINE_COMMENT, LINE_COMMENT, BLOCK_COMMENT, CODE_BLOCK_COMMENT,
-NON_INTERPOLATE_STRING, INTERPOLATE_STRING, DATA_BRACKET
+NON_INTERPOLATE_STRING, INTERPOLATE_STRING, DATA_BRACKET, BRACKET
 INDENT, UNDENT, HALF_DENT, CURVE,
 PREFIX, SUFFIX, BINARY} = constant
 
@@ -91,7 +91,7 @@ exports.binaryOperatorDict =
   # update: there is no integer division operator in javascript
   '*': {priority: 130}, '/': {priority: 130}, '%': {priority: 130}  #'/%': {priority: 130},
 
-  # '.': {priority: 200, symbol: 'attribute!'}  # attribute, become customed parser.binaryAttributeOperator
+  #'.': {priority: 200, symbol: 'attribute!'}  # attribute, become customed parser.binaryAttributeOperator
   # '&/': {priority:200, symbol: 'index!'} # index
 
   #'|||=': {priority:20, value:'|||=', symbol:'^=', rightAssoc: true, assign:true}
@@ -108,65 +108,44 @@ exports.assignOperators = ('= += -= *= /= %= <<= >>= >>>= &= |= ^= &&= ||= #= #/
 do -> for op in exports.assignOperators
   exports.binaryOperatorDict[op] = {priority:20, value: op, symbol:op, rightAssoc: true, assign:true}
 
-exports.binaryFunctionPriority = 35
-
-exports.makeOperatorExpression = (type, op, x, y) ->
-  if type==BINARY
-    result = [op, x, y]; result.type = type
-    result.type = type; result.priority = op.priority; result.rightAssoc = op.rightAssoc
-    wrapInfo2 result, x, y
-  else # PREFIX, SUFFIX
-    result = [op, x]; result.type = type
-    result.priority = op.priority; result.rightAssoc = op.rightAssoc
-    wrapInfo2 result, op, x
+exports.makeExpression = (type, op, x, y) ->
+  switch type
+    when PREFIX
+#      if op.value=='%'
+#        if x.type==IDENTIFIER
+#          {value:['attribute!', 'parser!', x], type:type, priority:op.priority, rightAssoc:op.rightAssoc, start:op.start, stop:(op.stop or op.start)}
+#        else {value:['index!', 'parser!', x], type:type, priority:op.priority, rightAssoc:op.rightAssoc, start:op.start, stop:(op.stop or op.start)}
+#      else {value:[op, x], type:type, priority:op.priority, rightAssoc:op.rightAssoc, start:op.start, stop:(op.stop or op.start)}
+      {value:[op, x], expressionType:type, priority:op.priority, rightAssoc:op.rightAssoc, start:op.start, stop:(op.stop or op.start)}
+    when SUFFIX
+      {value:[op, x], expressionType:type, priority:op.priority, rightAssoc:op.rightAssoc, start:x.start, stop:(op.stop or op.start)}
+    when BINARY
+      opValue = op.symbol; yValue = y.value
+      if opValue=='call()'
+        if y.empty then value = ['call!', x, []] # x()
+        else if yValue[0]==',' then value = ['call!', x, yValue[1...]]
+        else value = ['call!', x, [y]]
+      else if opValue=='index[]'
+        if y.empty then error 'error when parsing subscript index.', y
+        else if y.type==BRACKET and yValue[0]=='list!'
+          if yValue.length==1 then error 'subscript index should not be empty list', y
+          else if yValue.length==2 then value = ['index!', x, yValue[1]]
+          else value = ['index!', x, y]
+        else value =  ['index!', x, yValue[1...]]
+#      else if opValue=='index&/'
+#        if not y? then error 'error when parsing subscript index', exp
+#        else wrapInfo1 ['index!', x, y], exp
+      else if opValue==','
+        if (xValue=x.value)[0]==',' then xValue.push y; value = xValue
+        else value = [',', x,  y]
+      else if opValue=='#()'
+        if y.empty then value = ['#call!', x, []]
+        else if yValue[0].value==',' then value = ['#call!', x, yValue[1...]]
+        else value = ['#call!', x, [y]]
+#      else if op.value=='?'
+#        if yValue[0].value!=':' then error 'error when parsing ternary expression(i.e. x ? y :z)'
+#        value = ['?:', x, yValue[1], yValue[2]]
+      else value = [op, x, y]
+      {value:value, expressionType:type, priority:op.priority, rightAssoc:op.rightAssoc, start:x.start, stop:(y.stop or y.start)}
 
 error = (message) -> throw message
-
-exports.getOperatorExpression = getExpression = (exp) ->
-  if not exp or not (type=exp.type) or type==NUMBER or type==IDENTIFIER or type==NON_INTERPOLATE_STRING or type==INTERPOLATE_STRING\
-      or type==BRACKET or type==DATA_BRACKET or type==CURVE or (type==SYMBOL and exp.escape)
-    return exp
-  if (value=exp.value)=='@' or value=='::' or value=='...' then return exp
-  if type==PAREN or type==INDENT_EXPRESSION then return getExpression(exp.value)
-  if type==REGEXP then return ['regexp!', exp.value]
-  if type==PREFIX
-    if exp.value=='%'
-      if exp[1] and exp[1].type==IDENTIFIER
-        wrapInfo1 ['attribute!', 'parser!', getExpression(exp[1])], exp
-      else wrapInfo1 ['index!', 'parser!', getExpression(exp[1])], exp
-    else if exp.value=='\\' then return getExpression(exp[1])
-    return wrapInfo1 [exp[0], getExpression(exp[1])], exp
-  if type==SUFFIX
-#    if exp[0]=='x...' then return wrapInfo1 getExpression(exp[1])+'...', exp
-#    else return wrapInfo1 [exp[0], getExpression(exp[1])], exp
-    return wrapInfo1 [exp[0], getExpression(exp[1])], exp
-  if type==BINARY
-    # todo should  refactor to configurable by programmer
-    head = exp[0].symbol; x = getExpression exp[1]; y = getExpression exp[2]
-    if head=='?'
-      if not y or y[0]!=':' then error 'error when parsing ternary expression(i.e. x ? y :z)'
-      wrapInfo1 ['?:', x, y[1], y[2]], exp
-    else if head=='call()'
-      if not y then return wrapInfo1 ['call!', x, []], exp
-      if y[0]==',' then wrapInfo1 ['call!', x, y[1...]], exp
-      else wrapInfo1 ['call!', x, [y]], exp
-    else if head=='#()'
-      if not y then return wrapInfo1 ['#call!', x, []], exp
-      if y[0]==',' then wrapInfo1 ['#call!', x, y[1...]], exp
-      else wrapInfo1 ['#call!', x, [y]], exp
-    else if head=='index[]'
-      if not y? then error 'error when parsing subscript index.', exp
-      else if y.isBracket and y[0]=='list!'
-        if y.length==1 then error 'subscript index should not be empty list', exp
-        else if y.length==2 then wrapInfo1 ['index!', x, y[1]], exp
-        else wrapInfo1 ['index!', x, y], exp
-      else wrapInfo1 ['index!', x, y], exp
-    else if head=='index&/'
-      if not y? then error 'error when parsing subscript index', exp
-      else wrapInfo1 ['index!', x, y], exp
-    else if head==','
-      if x and x[0]==','
-        x.push y
-        wrapInfo1 x, exp
-      else wrapInfo1 [',', x,  y], exp
-    else wrapInfo1 [head, x, y], exp

@@ -182,18 +182,22 @@ exports.realCode = (code) ->
     else code.slice(realCodePos+endModuleText.length)
   else code
 
-exports.wrapInfo1 = (exp, info) ->
-  if typeof exp != 'object' then exp = {value: exp}
-  exp.start = info.start; exp.line1 = info.line1
-  exp.stop = info.stop; exp.line = info.line
-  exp
+exports.dict = (pairs...) ->
+  d = {}; i = 0; pairsLength = pairs.length
+  while i<pairsLength
+    d[pairs[i]] = pairs[i+1]
+    i += 2
+  d
 
-exports.wrapInfo2 = (exp, first, last) ->
-  if typeof exp != 'object' then exp = {value: exp}
-  exp.start = first.start; exp.line1 = first.line1
-  if not last then error 'wrapInfo2: last is undefined'
-  exp.stop = last.stop; exp.line = last.line
-  exp
+exports.list2dict = (keys...) ->
+  d = {}
+  for k in keys then d[k] = 1
+  d
+
+exports.extendSyntaxInfo = (result, start, stop) ->
+  result.start = start
+  if stop then result.stop = stop
+  result
 
 # pretty print internal result
 exports.formatTaijiJson = formatTaijiJson = (exp, level, start, newline, indent, lineLength) ->
