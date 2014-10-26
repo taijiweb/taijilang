@@ -443,7 +443,7 @@ describe "parser basic: ",  ->
     it 'should parse @ a', ->
       expect(str parse('@ a')).to.equal '@'
 
-  describe "definition parameter", ->
+  ndescribe "definition parameter", ->
     parse = (text) ->
       parser = new Parser()
       x = parser.parse(text, matchRule(parser, parser.parameterList), 0)

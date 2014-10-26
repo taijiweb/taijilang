@@ -997,6 +997,10 @@ exports.Parser = ->
 
   hashLineBlock = (dent) ->
     items = hashLine(dent)
+    if token.type==INDENT then nextToken()
+    else if token.type==UNDENT
+      if token.indent<=dent then return items
+      else nextToken()
     items.push.apply items, hashBlock(indent)
     items
 
@@ -1037,7 +1041,12 @@ exports.Parser = ->
       else if value=='=>' then matchToken()
       else error 'expect : or => for hash item definition'
       if token.type==SPACE then matchToken()
-      value = parser.clause()
+      else if token.type==INDENT
+        matchToken()
+        tkn = token
+        blk = hashBlock()
+        value = {value:['hash!'].concat(blk), start:tkn, stop:token}
+      else value = parser.clause()
       if not value then error 'expect value of hash item'
       if js then result = ['jshashitem!', key, value]
       else result = ['pyhashitem!', key, value]
@@ -2037,9 +2046,11 @@ exports.Parser = ->
       # head clause with indented block
       # please pay attention to the difference between clause+':'+INDENT+block and clause+INDENT+block
       clauses = parser.block()
-      clause.value.push.apply clause.value, clauses
-      clause.stop = token
-      clause
+      if clause.value.push
+        clause.value.push.apply clause.value, clauses
+        clause.stop = token
+        clause
+      else clauses.unshift clause; clause = {value:clauses, start:start, stop:token}
 
     else clause
 

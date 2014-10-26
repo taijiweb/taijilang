@@ -663,7 +663,7 @@ describe("parser basic: ", function() {
       return expect(str(parse('@ a'))).to.equal('@');
     });
   });
-  describe("definition parameter", function() {
+  ndescribe("definition parameter", function() {
     var parse;
     parse = function(text) {
       var parser, x;
