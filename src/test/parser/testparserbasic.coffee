@@ -25,73 +25,73 @@ describe "parser basic: ",  ->
     parse = (text) ->
       x = parser.parse(text, parser.matchToken, 0)
 
-    ndescribe "parse number: ",  ->
+    describe "parse number: ",  ->
       describe "is number: ",  ->
         it "parse 1", ->
-          expect(parse('1')).to.equal 1
+          expect(parse('1').value).to.equal 1
         it "parse 01", ->
-          expect(parse('01')).to.equal 1
+          expect(parse('01').value).to.equal 1
         it "parse 0x01", ->
-          expect(parse('0x01')).to.equal 1
+          expect(parse('0x01').value).to.equal 1
         it "parse 0xa", ->
-          expect(parse('0xa')).to.equal 10
+          expect(parse('0xa').value).to.equal 10
         it "parse 1.", ->
-          expect(parse('1.')).to.equal 1
+          expect(parse('1.').value).to.equal 1
           expect(parser.cursor()).to.equal 1
           expect(parser.endOfInput()).to.equal false
         it "parse 1.e0", ->
-          expect(parse('1.e0')).to.equal 1
+          expect(parse('1.e0').value).to.equal 1
         it "parse 1.0e023", ->
           x = parse '1.0e023'
           #        console.log x
-          expect(x).to.equal 1.0e23
+          expect(x.value).to.equal 1.0e23
         #        expect(1.e23).to.equal 1.e23
         it "parse 1.0e-23", ->
-          expect(parse('1.0e-23')).to.equal 1.0e-23
+          expect(parse('1.0e-23').value).to.equal 1.0e-23
         it "parse 1.e-23", ->
           x = parse '1.e-23'
           #        console.log x
-          expect(x).to.equal 1.0e-23
+          expect(x.value).to.equal 1.0e-23
         it "parse 1.0e+023", ->
-          expect(parse('1.0e+23')).to.equal 1.0e+23
+          expect(parse('1.0e+23').value).to.equal 1.0e+23
         it "parse 1.e23", ->
-          expect(parse('1.e23')).to.equal 1.0e23
+          expect(parse('1.e23').value).to.equal 1.0e23
         it "parse 1e23", ->
-          expect(parse('1e23')).to.equal 1.0e23
+          expect(parse('1e23').value).to.equal 1.0e23
         it "parse 1e023", ->
-          expect(parse('1e023')).to.equal 1.0e23
+          expect(parse('1e023').value).to.equal 1.0e23
         it "parse 1.e", ->
-          expect(parse('1.e')).to.equal 1
+          expect(parse('1.e').value).to.equal 1
         it "parse 1.ea", ->
-          expect(parse('1.ea')).to.equal 1
+          expect(parse('1.ea').value).to.equal 1
         it "parse 1.e+", ->
-          expect(parse('1.e+')).to.equal 1
+          expect(parse('1.e+').value).to.equal 1
         it "parse 1.e-", ->
-          expect(parse('1.e-')).to.equal 1
+          expect(parse('1.e-').value).to.equal 1
         it "parse 1.e*", ->
-          expect(parse('1.e*')).to.equal 1
+          expect(parse('1.e*').value).to.equal 1
 
       describe "is not number: ",  ->
         it "parse .1", ->
-          expect(parse('.1')).to.equal undefined
+          expect(parse('.1').type).not.to.equal NUMBER
         it "parse +1.", ->
-          expect(parse('+1.')).to.equal undefined
+          expect(parse('+1.').type).not.to.equal NUMBER
         it "parse +1.e0", ->
-          expect(parse('+1.e0')).to.equal undefined
+          expect(parse('+1.e0').type).not.to.equal NUMBER
         it "parse -.1", ->
-          expect(parse('-.1')).to.equal undefined
+          expect(parse('-.1').type).not.to.equal NUMBER
         it "parse +1.e023", ->
-          expect(parse('+1.e023')).to.equal undefined
+          expect(parse('+1.e023').type).not.to.equal NUMBER
         it "parse +1.e", ->
-          expect(parse('+1.e')).to.equal undefined
+          expect(parse('+1.e').type).not.to.equal NUMBER
         it "parse +.e", ->
-          expect(parse('+.e')).to.equal undefined
+          expect(parse('+.e').type).not.to.equal NUMBER
         it "parse +.", ->
-          expect(parse('+.')).to.equal undefined
+          expect(parse('+.').type).not.to.equal NUMBER
         it "parse -.", ->
-          expect(parse('-.')).to.equal undefined
+          expect(parse('-.').type).not.to.equal NUMBER
 
-    describe "parse parser.identifier: ",  ->
+    describe "parse identifier: ",  ->
       it "parse a", ->
         expect(str parse('a')).to.equal 'a'
         expect(parser.token().type).to.equal IDENTIFIER
@@ -103,11 +103,6 @@ describe "parser basic: ",  ->
         parse('?'); expect(parser.token().type).to.not.equal IDENTIFIER
 
     ndescribe "parse taijiIdentifier: ",  ->
-      parse = (text) ->
-        x = parser.parse(text, parser.taijiIdentifier, 0)
-        #      console.log JSON.stringify x
-        x and x.value
-
       it "parse a", ->
         expect(parse('a')).to.equal 'a'
       it "parse ?", ->
@@ -203,10 +198,6 @@ describe "parser basic: ",  ->
         expect(str parse(':::1')).to.equal ':::'
       it 'should parse (++', ->
         expect(-> parse('(++')).to.throw /expect \)/
-
-    describe "toString: ",  ->
-      it "parse toString", ->
-        expect(str parse('toString')).to.equal "toString"
 
     describe "simple token: ",  ->
       it "parse toString", ->

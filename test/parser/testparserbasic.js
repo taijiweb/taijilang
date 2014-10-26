@@ -42,100 +42,100 @@ describe("parser basic: ", function() {
       var x;
       return x = parser.parse(text, parser.matchToken, 0);
     };
-    ndescribe("parse number: ", function() {
+    describe("parse number: ", function() {
       describe("is number: ", function() {
         it("parse 1", function() {
-          return expect(parse('1')).to.equal(1);
+          return expect(parse('1').value).to.equal(1);
         });
         it("parse 01", function() {
-          return expect(parse('01')).to.equal(1);
+          return expect(parse('01').value).to.equal(1);
         });
         it("parse 0x01", function() {
-          return expect(parse('0x01')).to.equal(1);
+          return expect(parse('0x01').value).to.equal(1);
         });
         it("parse 0xa", function() {
-          return expect(parse('0xa')).to.equal(10);
+          return expect(parse('0xa').value).to.equal(10);
         });
         it("parse 1.", function() {
-          expect(parse('1.')).to.equal(1);
+          expect(parse('1.').value).to.equal(1);
           expect(parser.cursor()).to.equal(1);
           return expect(parser.endOfInput()).to.equal(false);
         });
         it("parse 1.e0", function() {
-          return expect(parse('1.e0')).to.equal(1);
+          return expect(parse('1.e0').value).to.equal(1);
         });
         it("parse 1.0e023", function() {
           var x;
           x = parse('1.0e023');
-          return expect(x).to.equal(1.0e23);
+          return expect(x.value).to.equal(1.0e23);
         });
         it("parse 1.0e-23", function() {
-          return expect(parse('1.0e-23')).to.equal(1.0e-23);
+          return expect(parse('1.0e-23').value).to.equal(1.0e-23);
         });
         it("parse 1.e-23", function() {
           var x;
           x = parse('1.e-23');
-          return expect(x).to.equal(1.0e-23);
+          return expect(x.value).to.equal(1.0e-23);
         });
         it("parse 1.0e+023", function() {
-          return expect(parse('1.0e+23')).to.equal(1.0e+23);
+          return expect(parse('1.0e+23').value).to.equal(1.0e+23);
         });
         it("parse 1.e23", function() {
-          return expect(parse('1.e23')).to.equal(1.0e23);
+          return expect(parse('1.e23').value).to.equal(1.0e23);
         });
         it("parse 1e23", function() {
-          return expect(parse('1e23')).to.equal(1.0e23);
+          return expect(parse('1e23').value).to.equal(1.0e23);
         });
         it("parse 1e023", function() {
-          return expect(parse('1e023')).to.equal(1.0e23);
+          return expect(parse('1e023').value).to.equal(1.0e23);
         });
         it("parse 1.e", function() {
-          return expect(parse('1.e')).to.equal(1);
+          return expect(parse('1.e').value).to.equal(1);
         });
         it("parse 1.ea", function() {
-          return expect(parse('1.ea')).to.equal(1);
+          return expect(parse('1.ea').value).to.equal(1);
         });
         it("parse 1.e+", function() {
-          return expect(parse('1.e+')).to.equal(1);
+          return expect(parse('1.e+').value).to.equal(1);
         });
         it("parse 1.e-", function() {
-          return expect(parse('1.e-')).to.equal(1);
+          return expect(parse('1.e-').value).to.equal(1);
         });
         return it("parse 1.e*", function() {
-          return expect(parse('1.e*')).to.equal(1);
+          return expect(parse('1.e*').value).to.equal(1);
         });
       });
       return describe("is not number: ", function() {
         it("parse .1", function() {
-          return expect(parse('.1')).to.equal(void 0);
+          return expect(parse('.1').type).not.to.equal(NUMBER);
         });
         it("parse +1.", function() {
-          return expect(parse('+1.')).to.equal(void 0);
+          return expect(parse('+1.').type).not.to.equal(NUMBER);
         });
         it("parse +1.e0", function() {
-          return expect(parse('+1.e0')).to.equal(void 0);
+          return expect(parse('+1.e0').type).not.to.equal(NUMBER);
         });
         it("parse -.1", function() {
-          return expect(parse('-.1')).to.equal(void 0);
+          return expect(parse('-.1').type).not.to.equal(NUMBER);
         });
         it("parse +1.e023", function() {
-          return expect(parse('+1.e023')).to.equal(void 0);
+          return expect(parse('+1.e023').type).not.to.equal(NUMBER);
         });
         it("parse +1.e", function() {
-          return expect(parse('+1.e')).to.equal(void 0);
+          return expect(parse('+1.e').type).not.to.equal(NUMBER);
         });
         it("parse +.e", function() {
-          return expect(parse('+.e')).to.equal(void 0);
+          return expect(parse('+.e').type).not.to.equal(NUMBER);
         });
         it("parse +.", function() {
-          return expect(parse('+.')).to.equal(void 0);
+          return expect(parse('+.').type).not.to.equal(NUMBER);
         });
         return it("parse -.", function() {
-          return expect(parse('-.')).to.equal(void 0);
+          return expect(parse('-.').type).not.to.equal(NUMBER);
         });
       });
     });
-    describe("parse parser.identifier: ", function() {
+    describe("parse identifier: ", function() {
       it("parse a", function() {
         expect(str(parse('a'))).to.equal('a');
         return expect(parser.token().type).to.equal(IDENTIFIER);
@@ -154,11 +154,6 @@ describe("parser basic: ", function() {
       });
     });
     ndescribe("parse taijiIdentifier: ", function() {
-      parse = function(text) {
-        var x;
-        x = parser.parse(text, parser.taijiIdentifier, 0);
-        return x && x.value;
-      };
       it("parse a", function() {
         return expect(parse('a')).to.equal('a');
       });
@@ -295,11 +290,6 @@ describe("parser basic: ", function() {
         return expect(function() {
           return parse('(++');
         }).to["throw"](/expect \)/);
-      });
-    });
-    describe("toString: ", function() {
-      return it("parse toString", function() {
-        return expect(str(parse('toString'))).to.equal("toString");
       });
     });
     return describe("simple token: ", function() {
