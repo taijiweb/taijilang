@@ -139,7 +139,7 @@ exports.Parser = ->
     cur = cursor; column = cursor-lineStart; first = char; char = text[++cursor]
     while char==first then char = text[++cursor]
     if cursor==cur+1 then type = PUNCTUATION else type = SYMBOL
-    token.next = {type: type, value: text.slice(cur, cursor),
+    token.next = {type:type, value: text.slice(cur, cursor),
     cursor:cur, stopCursor:cursor,
     line: lineno, column:column}
 
@@ -164,7 +164,7 @@ exports.Parser = ->
     skipInlineSpace()
     if (char=text[cursor])=='\n' or char=='\r'
       error 'concatenated line should not have only spaces and comments'
-    return token.next = {type: SPACE, cursor:cur, stopCursor: cursor, line:line, column:column, indent:lexIndent}
+    return token.next = {type:SPACE, cursor:cur, stopCursor: cursor, line:line, stopLine:lineno, column:column, indent:lexIndent}
 
   # token started with ' ' and '\t'
   tokenFnMap[' '] = tokenFnMap['\t'] = tokenOnSpaceChar = ->
@@ -180,7 +180,7 @@ exports.Parser = ->
       else
         cursor--
         return  token.next = {type:SPACE, value:text[cur...cursor], cursor:cur, stopCursor: cursor,
-        line:line, column:column, indent:lexIndent}
+        line:line, stopLine:lineno, column:column, indent:lexIndent}
     else if char=='\n' or char=='\r'
       skipSpaceLines(dent)
       if not char then type = EOI
@@ -190,7 +190,7 @@ exports.Parser = ->
       return token.next = {type:type, value:text[cur...cursor], cursor:cur, line:line, column:column, indent:lexIndent}
     else
       return  token.next = {type:SPACE, value:text[cur...cursor], cursor:cur, stopCursor: cursor,
-      line:line, column:column, indent:lexIndent}
+      line:line, stopLine:lineno, column:column, indent:lexIndent}
 
   # should be called after a new line
   skipSpaceLines = (dent) ->
@@ -415,10 +415,10 @@ exports.Parser = ->
         else if lexIndent>indent then type = INDENT
         else if lexIndent==indent then type = NEWLINE
         else type = UNDENT
-        return token.next = {type: type, value: text[cur...cursor], cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
+        return token.next = {type:type, value: text[cur...cursor], cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
       else
         type = SPACE
-        return token.next = {type: type, value: text[cur...cursor], cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
+        return token.next = {type:type, value: text[cur...cursor], cursor:cur, stopCursor:cursor, line:line, stopLine:lineno, column:column, indent:lexIndent}
     # /! start a regexp
     else if char=='!'
       cur = cursor; cursor += 2; char = text[cursor]; column = cursor-lineStart
@@ -925,7 +925,6 @@ exports.Parser = ->
         else matchToken()
       else if token.value!=')' then error 'expect )'
       #else matchToken() # do not match token here, so token.next==undefined, and nextToken() will matchToken instead.
-      char = text[++cursor]
       exp.type = PAREN; exp.cursor = cur; exp.stopCursor = cursor
       exp.line = line; exp.column = column; exp.indent = lexIndent
       token = exp
@@ -947,7 +946,6 @@ exports.Parser = ->
       if token.value!=']' then error 'expect ]'
       if expList then expList.unshift 'list!'
       else expList = []
-      char = text[++cursor]
       token = {type: BRACKET, value:expList, cursor:cur, stopCursor: cursor, line:line, column:column, indent:lexIndent}
     start.next = token
     token
@@ -958,7 +956,10 @@ exports.Parser = ->
     cur = cursor; char = text[++cursor]; line = lineno; column = cursor-lineStart
     start = token; matchToken()
     if (curveVariantFn=curveVariantMap[token.value])
-      token = curveVariantFn(); token.cursor = cursor; token.column = column
+      token = curveVariantFn()
+      token.cursor = cur; token.stopCursor = cursor; token.line = line; token.stopLine = lineno; token.column = column
+      token.indent = lexIndent
+      return token
     else
       if token.value=='}' and matchToken()
         token = {value:text[cur...cursor], value:['hash!'], cursor:cur, line:line, column:column, indent:lexIndent}
@@ -968,7 +969,6 @@ exports.Parser = ->
       if token.type==UNDENT and token.indent<ind then nextToken()
       if token.value!='}' then error 'expect }' else cursor++
       if indent<ind then error 'unexpected undent while parsing parenethis "{...}"'
-      char = text[++cursor]
       if body.length==0 then return {type: CURVE, value:'', cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
       if body.length==1 then body = body[0]
       else body.unshift 'begin!'
@@ -982,24 +982,24 @@ exports.Parser = ->
     if token.type==SPACE
       if token.stopLine==token.line
         matchToken()
-        items parser.hashLineBlock()
-      else items = parser.hashBlock()
-    if token.type==INDENT
+        items = hashLineBlock(ind)
+      else items = hashBlock(ind)
+    else if token.type==INDENT
       matchToken()
-      items = parser.hashBlock()
-    else items = parser.hashLineBlock()
+      items = parser.hashBlock(ind)
+    else items = hashLineBlock(ind)
     if token.type==UNDENT then matchToken()
     if token.indent<ind then error "expect the same indent as or more indent as the start line of hash block"
     if token.value!='}' then error 'expect }'
     matchToken()
-    extendSyntaxInfo ['hash!'].concat(items), start, token
+    extendSyntaxInfo {value:['hash!'].concat(items)}, start, token
 
   hashLineBlock = (dent) ->
-    items = parser.hashLine(dent)
-    items.push.apply items parser.hashBlock()
+    items = hashLine(dent)
+    items.push.apply items, hashBlock(indent)
     items
 
-  @hashLine = ->
+  hashLine = ->
     result = []
     while (x=parser.hashItem())
       result.push x
@@ -1009,10 +1009,10 @@ exports.Parser = ->
       else if type==EOI then error "unexpected end of input while parsing hash block"
     return result
 
-  @hashBlock = ->
+  hashBlock = ->
     start = token; result = []
-    while (items=parser.hashLine())
-      result.push result, items
+    while (items=hashLine())
+      result.push.apply result, items
       if (type=token.type)==EOI then error "unexpected end of input while parsing hash block"
       else if type==UNDENT then break
       else if (value=token.value)==';' then matchToken()
@@ -1022,9 +1022,9 @@ exports.Parser = ->
           blk = parser.hashBlock()
           result.push.apply result, blk
         else error "unexpected indent while parsing hash block"
-    result.start = cur; result.stop = cursor; result
+    result.start = start; result.stop = token; result
 
-  @hashItem = ->
+  @hashItem = hashItem = ->
     if token.type==UNDENT then return
     start = token
     if key=parser.compactClauseExpression()
@@ -1043,7 +1043,8 @@ exports.Parser = ->
       extendSyntaxInfo result, start, token
 
   tokenOnRightDelimiterChar = ->
-    token.next = {type:RIGHT_DELIMITER, value:char, cursor:(cur=cursor-1), stopCursor:cursor,
+    c = char; cur = cursor; char = text[++cursor]
+    token.next = {type:RIGHT_DELIMITER, value:c, cursor:cur, stopCursor:cursor,
     line:lineno, column:cur-lineStart}
 
   for c in ')]}' then tokenFnMap[c] = tokenOnRightDelimiterChar
@@ -1176,7 +1177,8 @@ exports.Parser = ->
         if mode!=OPERATOR_EXPRESSION and mode!=INDENT_EXPRESSION
           token[binaryOperatorMemoIndex+mode] = {}; return
         else priInc = 600
-      when PAREN then return  {symbol:'call()', type: SYMBOL, priority: 800, start:token}
+      when PAREN
+        return  {symbol:'call()', type: SYMBOL, priority: 800, start:token}
       when BRACKET then return {symbol:'index[]', type: SYMBOL, priority: 800, start:token}
       when IDENTIFIER
         cur = token.cursor
@@ -1198,7 +1200,9 @@ exports.Parser = ->
         else priInc = 600
       else priInc = 600
     opValue = token.value
-    if not hasOwnProperty.call(binaryOperatorDict, opValue) or not (op=binaryOperatorDict[opValue]) then return
+    if not hasOwnProperty.call(binaryOperatorDict, opValue) or not (op=binaryOperatorDict[opValue])
+      start[binaryOperatorMemoIndex+mode] = {}
+      token = start; return
     opToken = token; nextToken()
 
     if token.value=='.'
@@ -1887,7 +1891,7 @@ exports.Parser = ->
     start = token; clause = []
     while item = parser.clauseItem() then clause.push item
     if not clause.length then return
-    extendSyntaxInfo clause, start, token
+    {value:clause, start:start, stop:token}
 
   @customClauseList = ['assignClause']
 
@@ -2005,20 +2009,22 @@ exports.Parser = ->
       if token.type==SPACE then nextToken()
       clause = parser.clauses()
       clause.unshift head
-      clause.start = head
-      return extendSyntaxInfo clause, start, token
+      return {value:clause, start:head.start, stop:token}
 
     if clause = parser.sequenceClause()
-      clause.unshift head; clause.start = start
+      clause.value.unshift head; clause.start = start
       if token.value==INDENT
         blk = parser.block()
-        clause.push.apply clause, blk
+        clause.value.push.apply clause.value, blk
         clause.stop = blk.stop
+        return clause
     else clause = head
 
     if (value=token.value)==','
       nextToken()
       #if token.type==SPACE then nextToken()
+      clause.stop = token
+      clause
 
     else if value==':'
       # head clause with colon leading clauses or colon leading indented block
@@ -2029,8 +2035,7 @@ exports.Parser = ->
       #   sin x
       nextToken()
       if token.type==INDENT then clauses = parser.block()
-      else
-        clauses = parser.clauses()
+      else clauses = parser.clauses()
       clauses.unshift clause
       clauses.start = start; clauses.stop = token
       clauses
@@ -2039,9 +2044,11 @@ exports.Parser = ->
       # head clause with indented block
       # please pay attention to the difference between clause+':'+INDENT+block and clause+INDENT+block
       clauses = parser.block()
-      clause.push.apply clause, clauses
+      clause.value.push.apply clause.value, clauses
+      clause.stop = token
+      clause
 
-    extendSyntaxInfo clause, start, token
+    else clause
 
   isCallable = (exp) -> return (type=exp.type)!=NUMBER and type!=NON_INTERPOLATE_STRING and type!=INTERPOLATE_STRING and type!=BRACKET and type!=HASH
 

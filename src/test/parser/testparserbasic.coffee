@@ -600,22 +600,22 @@ describe "parser basic: ",  ->
       it 'should parse a=>2', ->
         expect(str parse('a=>2')).to.equal '[pyhashitem! a 2]'
 
-    xdescribe "hash expression: ",  ->
+    describe "hash expression: ",  ->
       parse = (text) ->
         parser = new Parser()
-        x = parser.parse(text, matchRule(parser, parser.hash), 0)
+        x = parser.parse(text, parser.matchToken, 0)
       it 'should parse {. 1:2 }', ->
-        expect(str parse('{.1:2.}')).to.equal '[hash! [jshashitem! 1 2]]'
-      it 'should parse {.1:2; 3:4.}', ->
-        expect(str parse('{.1:2; 3:4.}')).to.equal '[hash! [jshashitem! 1 2] [jshashitem! 3 4]]'
-      it 'should parse {.1:2; 3:abs\n    5.}', ->
-        expect(str parse('{. 1:2; 3:abs\n    5.}')).to.equal '[hash! [jshashitem! 1 2] [jshashitem! 3 [abs 5]]]'
-      it 'should parse {. 1:2; 3:4;\n 5:6.}', ->
-        expect(str parse('{. 1:2; 3:4;\n 5:6.}')).to.equal '[hash! [jshashitem! 1 2] [jshashitem! 3 4] [jshashitem! 5 6]]'
-      it 'should parse {. 1:2; 3:\n 5:6\n.}', ->
-        expect(str parse('{. 1:2; 3:\n 5:6\n.}')).to.equal '[hash! [jshashitem! 1 2] [jshashitem! 3 [hash! [jshashitem! 5 6]]]]'
-      it 'should parse {. 1:2; 3:\n 5:6;a=>8\n.}', ->
-        expect(str parse('{. 1:2; 3:\n 5:6;a=>8\n.}')).to.equal "[hash! [jshashitem! 1 2] [jshashitem! 3 [hash! [jshashitem! 5 6] [pyhashitem! a 8]]]]"
+        expect(str parse('{. 1:2 }')).to.equal '[hash! [jshashitem! 1 2]]'
+      it 'should parse {.1:2; 3:4}', ->
+        expect(str parse('{.1:2; 3:4}')).to.equal '[hash! [jshashitem! 1 2] [jshashitem! 3 4]]'
+      it 'should parse {.1:2; 3:abs\n    5}', ->
+        expect(str parse('{. 1:2; 3:abs\n    5}')).to.equal '[hash! [jshashitem! 1 2] [jshashitem! 3 [abs 5]]]'
+      it 'should parse {. 1:2; 3:4;\n 5:6}', ->
+        expect(str parse('{. 1:2; 3:4;\n 5:6}')).to.equal '[hash! [jshashitem! 1 2] [jshashitem! 3 4] [jshashitem! 5 6]]'
+      it 'should parse {. 1:2; 3:\n 5:6\n}', ->
+        expect(str parse('{. 1:2; 3:\n 5:6\n}')).to.equal '[hash! [jshashitem! 1 2] [jshashitem! 3 [hash! [jshashitem! 5 6]]]]'
+      it 'should parse {. 1:2; 3:\n 5:6;a=>8\n}', ->
+        expect(str parse('{. 1:2; 3:\n 5:6;a=>8\n}')).to.equal "[hash! [jshashitem! 1 2] [jshashitem! 3 [hash! [jshashitem! 5 6] [pyhashitem! a 8]]]]"
 
   xdescribe  "line comment block",  ->
     parse = (text) ->
