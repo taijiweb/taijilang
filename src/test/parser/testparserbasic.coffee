@@ -20,86 +20,80 @@ matchRule = (parser, rule) -> ->
   rule()
 
 describe "parser basic: ",  ->
-  ndescribe "parse number: ",  ->
+  describe "matchToken: ",  ->
     parser = new Parser()
     parse = (text) ->
-      parser.parse(text, parser.matchToken, 0)
-      parser.token().value
+      x = parser.parse(text, parser.matchToken, 0)
 
-    describe "is number: ",  ->
-      it "parse 1", ->
-        expect(parse('1')).to.equal 1
-      it "parse 01", ->
-        expect(parse('01')).to.equal 1
-      it "parse 0x01", ->
-        expect(parse('0x01')).to.equal 1
-      it "parse 0xa", ->
-        expect(parse('0xa')).to.equal 10
-      it "parse 1.", ->
-        expect(parse('1.')).to.equal 1
-        expect(parser.cursor()).to.equal 1
-        expect(parser.endOfInput()).to.equal false
-      it "parse 1.e0", ->
-        expect(parse('1.e0')).to.equal 1
-      it "parse 1.0e023", ->
-        x = parse '1.0e023'
-#        console.log x
-        expect(x).to.equal 1.0e23
-#        expect(1.e23).to.equal 1.e23
-      it "parse 1.0e-23", ->
-        expect(parse('1.0e-23')).to.equal 1.0e-23
-      it "parse 1.e-23", ->
-        x = parse '1.e-23'
-#        console.log x
-        expect(x).to.equal 1.0e-23
-      it "parse 1.0e+023", ->
-        expect(parse('1.0e+23')).to.equal 1.0e+23
-      it "parse 1.e23", ->
-        expect(parse('1.e23')).to.equal 1.0e23
-      it "parse 1e23", ->
-        expect(parse('1e23')).to.equal 1.0e23
-      it "parse 1e023", ->
-        expect(parse('1e023')).to.equal 1.0e23
-      it "parse 1.e", ->
-        expect(parse('1.e')).to.equal 1
-      it "parse 1.ea", ->
-        expect(parse('1.ea')).to.equal 1
-      it "parse 1.e+", ->
-        expect(parse('1.e+')).to.equal 1
-      it "parse 1.e-", ->
-        expect(parse('1.e-')).to.equal 1
-      it "parse 1.e*", ->
-        expect(parse('1.e*')).to.equal 1
+    ndescribe "parse number: ",  ->
+      describe "is number: ",  ->
+        it "parse 1", ->
+          expect(parse('1')).to.equal 1
+        it "parse 01", ->
+          expect(parse('01')).to.equal 1
+        it "parse 0x01", ->
+          expect(parse('0x01')).to.equal 1
+        it "parse 0xa", ->
+          expect(parse('0xa')).to.equal 10
+        it "parse 1.", ->
+          expect(parse('1.')).to.equal 1
+          expect(parser.cursor()).to.equal 1
+          expect(parser.endOfInput()).to.equal false
+        it "parse 1.e0", ->
+          expect(parse('1.e0')).to.equal 1
+        it "parse 1.0e023", ->
+          x = parse '1.0e023'
+          #        console.log x
+          expect(x).to.equal 1.0e23
+        #        expect(1.e23).to.equal 1.e23
+        it "parse 1.0e-23", ->
+          expect(parse('1.0e-23')).to.equal 1.0e-23
+        it "parse 1.e-23", ->
+          x = parse '1.e-23'
+          #        console.log x
+          expect(x).to.equal 1.0e-23
+        it "parse 1.0e+023", ->
+          expect(parse('1.0e+23')).to.equal 1.0e+23
+        it "parse 1.e23", ->
+          expect(parse('1.e23')).to.equal 1.0e23
+        it "parse 1e23", ->
+          expect(parse('1e23')).to.equal 1.0e23
+        it "parse 1e023", ->
+          expect(parse('1e023')).to.equal 1.0e23
+        it "parse 1.e", ->
+          expect(parse('1.e')).to.equal 1
+        it "parse 1.ea", ->
+          expect(parse('1.ea')).to.equal 1
+        it "parse 1.e+", ->
+          expect(parse('1.e+')).to.equal 1
+        it "parse 1.e-", ->
+          expect(parse('1.e-')).to.equal 1
+        it "parse 1.e*", ->
+          expect(parse('1.e*')).to.equal 1
 
-    describe "is not number: ",  ->
-      it "parse .1", ->
-        expect(parse('.1')).to.equal undefined
-      it "parse +1.", ->
-        expect(parse('+1.')).to.equal undefined
-      it "parse +1.e0", ->
-        expect(parse('+1.e0')).to.equal undefined
-      it "parse -.1", ->
-        expect(parse('-.1')).to.equal undefined
-      it "parse +1.e023", ->
-        expect(parse('+1.e023')).to.equal undefined
-      it "parse +1.e", ->
-        expect(parse('+1.e')).to.equal undefined
-      it "parse +.e", ->
-        expect(parse('+.e')).to.equal undefined
-      it "parse +.", ->
-        expect(parse('+.')).to.equal undefined
-      it "parse -.", ->
-        expect(parse('-.')).to.equal undefined
+      describe "is not number: ",  ->
+        it "parse .1", ->
+          expect(parse('.1')).to.equal undefined
+        it "parse +1.", ->
+          expect(parse('+1.')).to.equal undefined
+        it "parse +1.e0", ->
+          expect(parse('+1.e0')).to.equal undefined
+        it "parse -.1", ->
+          expect(parse('-.1')).to.equal undefined
+        it "parse +1.e023", ->
+          expect(parse('+1.e023')).to.equal undefined
+        it "parse +1.e", ->
+          expect(parse('+1.e')).to.equal undefined
+        it "parse +.e", ->
+          expect(parse('+.e')).to.equal undefined
+        it "parse +.", ->
+          expect(parse('+.')).to.equal undefined
+        it "parse -.", ->
+          expect(parse('-.')).to.equal undefined
 
-  describe "parse identifier: ",  ->
-    parser = new Parser()
     describe "parse parser.identifier: ",  ->
-      parse = (text) ->
-        x = parser.parse(text, parser.matchToken, 0)
-        parser.token().value
-
       it "parse a", ->
-        expect(parse('a')).to.equal 'a'
+        expect(str parse('a')).to.equal 'a'
         expect(parser.token().type).to.equal IDENTIFIER
       it "parse ?", ->
         parse('?'); expect(parser.token().type).to.not.equal IDENTIFIER
@@ -138,19 +132,9 @@ describe "parser basic: ",  ->
       it "parse _a1", ->
         expect(parse('_a1')).to.equal '_a1'
 
-  describe "parse escaped string symbol:",  ->
-    parse = (text) ->
-      parser = new Parser()
-      x = parser.parse(text, matchRule(parser, parser.atom), 0).value
-    it "parse \\'x...'", ->
-      expect(str parse("\\'x...'")).to.equal "\"x...\""
-
-  describe "parse string: ",  ->
-    parse = (text) ->
-      parser = new Parser()
-      parser.parse(text, parser.matchToken, 0)
-      x = parser.token()
-      x
+    describe "parse escaped string symbol:",  ->
+      it "parse \\'x...'", ->
+        expect(str parse("\\'x...'")).to.equal "\"x...\""
 
     describe "parse interpolate string: ",  ->
       it "parse a", ->
@@ -200,15 +184,59 @@ describe "parser basic: ",  ->
       it "parse 'a\"\\\"\n\'\\n'", ->
         expect(str parse("'a\"\\\"\n\\'\\n\n'")).to.equal '"a\"\\\"\\n\'\\n\\n"'
 
-  describe "parse regexp: ",  ->
     describe "parse regexp: ",  ->
-      parse = (text) ->
-        parser = new Parser()
-        parser.parse(text, parser.matchToken, 0)
-        x = parser.token()
-        x
       it "parse /!-h\b|-r\b|-v\b|-b\b/", ->
         expect(str parse('/!-h\b|-r\b|-v\b|-b\b/')).to.equal "[regexp! /-h\b|-r\b|-v\b|-b\b/]"
+
+    describe "symbol: ",  ->
+      it 'should parse ==1', ->
+        expect(str parse('==1')).to.equal '=='
+      it 'should parse @@@1', ->
+        expect(str parse('@@@1')).to.equal '@@@'
+      it 'should parse +.1', ->
+        expect(str parse('+.1')).to.equal '+'
+      it 'should parse .1', ->
+        expect(str parse('.1')).to.equal '.'
+      it 'should parse ../', ->
+        expect(str parse('../')).to.equal '..'
+      it 'should parse :::1', ->
+        expect(str parse(':::1')).to.equal ':::'
+      it 'should parse (++', ->
+        expect(-> parse('(++')).to.throw /expect \)/
+
+    describe "toString: ",  ->
+      it "parse toString", ->
+        expect(str parse('toString')).to.equal "toString"
+
+    describe "simple token: ",  ->
+      it "parse toString", ->
+        expect(str parse('toString')).to.equal 'toString'
+      it "parse 123", ->
+        expect(str parse('123')).to.equal '123'
+      it "parse 123.5", ->
+        expect(str parse('123.5')).to.equal '123.5'
+      it "parse 123.5e4", ->
+        expect(str parse('123.5e4')).to.equal "1235000"
+      it "parse @@@", ->
+        expect(str parse('@@@')).to.equal '@@@'
+      it "parse :::", ->
+        expect(str parse(':::')).to.equal ':::'
+      it "parse ...", ->
+        expect(str parse('...')).to.equal '...'
+      it "parse #==", ->
+        expect(str parse('#==')).to.equal '#=='
+      it "parse *//stop at line comment", ->
+        expect(str parse('*//stop at line comment')).to.equal '*'
+      it "parse */!stop at regexp", ->
+        expect(str parse('*/!stop at regexp/')).to.equal '*'
+      it "parse +/+", ->
+        expect(str parse('+/+')).to.equal '+/+'
+      it "parse +/(", ->
+        expect(str parse('+/(')).to.equal '+/'
+      xit "parse \\/(", ->
+        expect(str parse("\\/(")).to.equal '\\/'
+      it "parse */*multiply*/", ->
+        expect(str parse('*/*multiply*/')).to.equal '*'
 
   describe "prefixOperator: ",  ->
     parse = (text) ->
@@ -297,65 +325,6 @@ describe "parser basic: ",  ->
     it 'should parse and 1', ->
       expect(parse(' and 1')).to.equal '&&'
 
-  describe "symbol: ",  ->
-    parse = (text) ->
-      parser = new Parser()
-      parser.parse(text, parser.matchToken, 0)
-      x = parser.token()
-      x
-    it 'should parse ==1', ->
-      expect(str parse('==1')).to.equal '=='
-    it 'should parse @@@1', ->
-      expect(str parse('@@@1')).to.equal '@@@'
-    it 'should parse +.1', ->
-      expect(str parse('+.1')).to.equal '+'
-    it 'should parse .1', ->
-      expect(str parse('.1')).to.equal '.'
-    it 'should parse ../', ->
-      expect(str parse('../')).to.equal '..'
-    it 'should parse :::1', ->
-      expect(str parse(':::1')).to.equal ':::'
-    it 'should parse (++', ->
-      expect(-> parse('(++')).to.throw /expect \)/
-
-  describe "matchToken: ",  ->
-    parser = new Parser()
-    parse = (text) ->
-      parser.init(text, 0)
-      parser.matchToken()
-      x = parser.token()
-      x
-
-    describe "simple token: ",  ->
-      it "parse toString", ->
-        expect(str parse('toString')).to.equal 'toString'
-      it "parse 123", ->
-        expect(str parse('123')).to.equal '123'
-      it "parse 123.5", ->
-        expect(str parse('123.5')).to.equal '123.5'
-      it "parse 123.5e4", ->
-        expect(str parse('123.5e4')).to.equal "1235000"
-      it "parse @@@", ->
-        expect(str parse('@@@')).to.equal '@@@'
-      it "parse :::", ->
-        expect(str parse(':::')).to.equal ':::'
-      it "parse ...", ->
-        expect(str parse('...')).to.equal '...'
-      it "parse #==", ->
-        expect(str parse('#==')).to.equal '#=='
-      it "parse *//stop at line comment", ->
-        expect(str parse('*//stop at line comment')).to.equal '*'
-      it "parse */!stop at regexp", ->
-        expect(str parse('*/!stop at regexp/')).to.equal '*'
-      it "parse +/+", ->
-        expect(str parse('+/+')).to.equal '+/+'
-      it "parse +/(", ->
-        expect(str parse('+/(')).to.equal '+/'
-      xit "parse \\/(", ->
-        expect(str parse("\\/(")).to.equal '\\/'
-      it "parse */*multiply*/", ->
-        expect(str parse('*/*multiply*/')).to.equal '*'
-
     describe "space and comment: ",  ->
       it "parse inline space comment", ->
         parser = new Parser()
@@ -398,16 +367,6 @@ describe "parser basic: ",  ->
         parser.matchToken()
         x = parser.token()
         expect(x.value).to.equal "/*fdsafdsa*/// line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  "
-
-  describe "parse atom: ",  ->
-    parser = new Parser()
-    parse = (text) ->
-      x = parser.parse(text, matchRule(parser, parser.atom), 0)
-      str x
-
-    describe "toString: ",  ->
-      it "parse toString", ->
-        expect(parse('toString')).to.equal "toString"
 
   describe "compact clause expression:", ->
     parse = (text) ->
@@ -479,7 +438,7 @@ describe "parser basic: ",  ->
     parse = (text) ->
       parser = new Parser()
       x = parser.parse(text,  matchRule(parser, parser.spaceClauseExpression), 0)
-    xit 'should parse require.extensions[".tj"] = ->', ->
+    it 'should parse require.extensions[".tj"] = ->', ->
       expect(str parse('require.extensions[".tj"] = ->')).to.equal "[index! [attribute! require extensions] [string! \".tj\"]]"
 
   describe "@ as this", ->

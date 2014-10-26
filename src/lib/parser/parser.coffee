@@ -133,17 +133,17 @@ exports.Parser = ->
     while char==first then char = text[++cursor]
     token.next = {type: SYMBOL, value: text.slice(cur, cursor),
     cursor:cur, stopCursor:cursor,
-    line: lineno, column:column}
+    line: lineno, column:column, atom:cursor-cur==1}
 
   tokenFnMap[':'] = tokenOnColonChar = ->
     cur = cursor; column = cursor-lineStart; first = char; char = text[++cursor]
     while char==first then char = text[++cursor]
     if cursor==cur+1 then type = PUNCTUATION else type = SYMBOL
-    token.next = {type:type, value: text.slice(cur, cursor),
+    token.next = {type:type, value: text.slice(cur, cursor), atom:cursor-cur==2
     cursor:cur, stopCursor:cursor,
     line: lineno, column:column}
 
-  # the word "space" below maybe means not spacebar key or space character ' ' or '\t'
+    # the word "space" below maybe means not spacebar key or space character ' ' or '\t'
   # it means anything piece like white space, e.g. ' ', '\t', etc.
 
   concatenateLine = ->
@@ -383,7 +383,7 @@ exports.Parser = ->
       else
         for c in text[cur+2...tkn.stopCursor]
           if c=='\n' or c=='\r' then error 'unexpected new line characters in escaped string'
-        tkn.escaped = true; tkn.cursor = cur
+        tkn.escaped = true; tkn.cursor = cur; tkn.atom = true
         return token.next = tkn
     # else if char=='"' # don't permit escape interpolated string
     else
@@ -423,7 +423,7 @@ exports.Parser = ->
     else if char=='!'
       cur = cursor; cursor += 2; char = text[cursor]; column = cursor-lineStart
       leftRegexp()
-      return token.next = {type:REGEXP, value:['regexp!', '/'+text[cur+1...cursor]], cursor:cur, stopCursor:cursor, line:lineno, column: column}
+      return token.next = {type:REGEXP, value:['regexp!', '/'+text[cur+1...cursor]], atom:true, cursor:cur, stopCursor:cursor, line:lineno, column: column}
     else if char=='.' # block comment /. multiple indented lines
       # block comment should never be generated at match_here
       # how to assure it?
@@ -472,7 +472,7 @@ exports.Parser = ->
     if keywordHasOwnProperty(txt) then type = KEYWORD
     else if conjunctionHasOwnProperty(txt) then type = CONJUNCTION
     else type = IDENTIFIER
-    token.next = {type:type, value:txt
+    token.next = {type:type, value:txt, atom:true
     cursor:cur, stopCursor: cursor,
     line: lineno, column: column}
 
@@ -502,11 +502,11 @@ exports.Parser = ->
       if cursor==baseStart
         # e.g 0x+3, 0x(1+2)
         cursor--; char = text[cursor]
-        return token.next = { type: NUMBER, value: text[cur...cursor], value:0,
+        return token.next = { type: NUMBER, value:parseInt(text[baseStart...cursor], base), atom:true
         cursor:cur, stopCursor:cursor
         line:lineno, column:column}
       else
-        return token.next = { type: NUMBER, value:parseInt(text[baseStart...cursor], base),
+        return token.next = { type: NUMBER, value:parseInt(text[baseStart...cursor], base), atom:true
         cursor:cur, line:lineno, column: column}
     # base==10
     while char
@@ -523,7 +523,7 @@ exports.Parser = ->
     dotCursor = cursor-1
     if not meetDigit and char!='e' and char!='E'
       cursor = dotCursor; char = text[cursor]
-      return token.next = { type: NUMBER, value:parseInt(text[baseStart...cursor], base),
+      return token.next = { type: NUMBER, value:parseInt(text[baseStart...cursor], base), atom:true
       cursor:cur, stopCursor:cursor
       line:lineno, column: column}
     if char=='e' or char=='E'
@@ -532,7 +532,7 @@ exports.Parser = ->
         char = text[++cursor]
         if not char or char<'0' or '9'<char
           cursor = dotCursor; char = text[cursor]
-          return token.next = { type: NUMBER, value:parseInt(text[cur...dotCursor], base),
+          return token.next = { type: NUMBER, value:parseInt(text[cur...dotCursor], base), atom:true
           cursor:cur, stopCursor:cursor
           line:lineno, column: column}
         else
@@ -541,13 +541,13 @@ exports.Parser = ->
             if  char<'0' or '9'<char then break
       else if not char or char<'0' or '9'<char
         cursor = dotCursor; char = text[cursor]
-        return token.next = { type: NUMBER, value:parseInt(text[cur...dotCursor], base),
+        return token.next = { type: NUMBER, value:parseInt(text[cur...dotCursor], base), atom:true
         cursor:cur, stopCursor:cursor
         line:lineno, column: column}
       else while char
           if  char<'0' or '9'<char then break
           char = text[++cursor]
-    token.next = { type: NUMBER, value:parseFloat(text[cur...cursor], base),
+    token.next = { type: NUMBER, value:parseFloat(text[cur...cursor], base), atom:true
     cursor:cur, stopCursor:cursor
     line:lineno, column: column}
 
@@ -574,7 +574,7 @@ exports.Parser = ->
         return token.next = leftRawNonInterpolatedString()
       else
         char = text[++cursor]
-        return token.next = {value:'""', type:NON_INTERPOLATE_STRING, cursor:cursor-2, line:lineno, column:column}
+        return token.next = {value:'""', type:NON_INTERPOLATE_STRING, atom:true, cursor:cursor-2, line:lineno, column:column}
     else return token.next = leftNonInterpolatedString()
 
   leftRawNonInterpolatedString = ->
@@ -588,7 +588,7 @@ exports.Parser = ->
         if text[cursor+1]=="'"
           if text[cursor+2]=="'"
             cursor += 3; char = text[cursor]
-            return {type:NON_INTERPOLATE_STRING, value:'"'+str+'"', start:cur, stop:cursor, line:line, stopLine: lineno}
+            return {type:NON_INTERPOLATE_STRING, value:'"'+str+'"', atom:true, start:cur, stop:cursor, line:line, stopLine: lineno}
           else str += "''"; cursor += 2; char = text[cursor]
         else str += "'"; char = text[++cursor]
       else if char=='\\'
@@ -603,7 +603,7 @@ exports.Parser = ->
         if text[cursor+1]=="'"
           if text[cursor+2]=="'"
             cursor += 3; char = text[cursor]
-            return {type: NON_INTERPOLATE_STRING, value: '"'+str+'"', start:cur, stop:cursor, line:line, stopLine: lineno}
+            return {type: NON_INTERPOLATE_STRING, value: '"'+str+'"', atom:true, start:cur, stop:cursor, line:line, stopLine: lineno}
           else str += "''"; cursor += 2; char = text[cursor]
         else str += "'"; char = text[++cursor]
       else str += rawNonInterpolatedStringLine(indentInfo)
@@ -658,7 +658,7 @@ exports.Parser = ->
     while char
       if char=="'"
         char = text[++cursor]
-        return {type: NON_INTERPOLATE_STRING, value: '"'+str+'"', start:cur, stop:cursor, line:line, stopLine: line, column: column}
+        return {type: NON_INTERPOLATE_STRING, value: '"'+str+'"', atom:true, cursor:cur, stopCursor:cursor, line:line, stopLine:lineno, column:column}
       else if char=='\\'
         # the '\' at end of line will not in the result string
         if (c=text[cursor+1])=='\n' or c=='\r' then char = text[++cursor]; concatenating = true; break
@@ -669,7 +669,7 @@ exports.Parser = ->
     while char and char!="'" then str += nonInterpolatedStringLine(indentInfo)
     if char=="'"
       char = text[++cursor]
-      return {type: NON_INTERPOLATE_STRING, value: '"'+str+'"', start:cur, stop:cursor, line:line, stopLine: lineno, column: column}
+      return {type: NON_INTERPOLATE_STRING, value: '"'+str+'"', atom:true, cursor:cur, stopCursor:cursor, line:line, stopLine:lineno, column:column}
     else error "expect \"'\", unexpected end of input while parsing interpolated string"
 
   nonInterpolatedStringLine = (indentInfo) ->
@@ -719,7 +719,7 @@ exports.Parser = ->
         return tkn2
       else
         char = text[++cursor]
-        return token.next = {value:'""', type:NON_INTERPOLATE_STRING, lineno:lineno, cursor:cursor-2, column:cursor-2-lineStart}
+        return token.next = {value:'""', type:NON_INTERPOLATE_STRING, atom:true, line:lineno, cursor:cursor-2, column:cursor-2-lineStart}
     else
       tkn = token;  interolateStringNumber++
       tkn2 = leftInterpolateString()
@@ -736,7 +736,7 @@ exports.Parser = ->
           if text[cursor+2]=='"'
             cursor += 3
             if str!='"' then pieces.push str += '"'
-            return {type: INTERPOLATE_STRING, value: ['string!'].concat(pieces),
+            return {type: INTERPOLATE_STRING, value: ['string!'].concat(pieces), atom:true
             cursor:cur, stopCursor: cursor,
             line:line, stopLine: line}
           else cursor += 2; char = text[cursor]
@@ -826,7 +826,7 @@ exports.Parser = ->
     while char
       if char=='"'
         if str!='"' then pieces.push str+'"'; char = text[++cursor]
-        return {type: INTERPOLATE_STRING, value: ['string!'].concat(pieces),
+        return {type: INTERPOLATE_STRING, value: ['string!'].concat(pieces), atom:true
         cursor:cur, stopCursor:cursor,
         line:line, stopLine: lineno}
       else if char=='\n'
@@ -916,7 +916,7 @@ exports.Parser = ->
       ind = indent = lexIndent
       if type==SPACE or type==NEWLINE or type==INDENT then matchToken()
       if token.value==')'
-        token = {type: PAREN, value:[], cursor:cur, stopCursor: cursor, line:lineno, column:column, indent:lexIndent, empty:true }
+        token = {type: PAREN, value:[], atom:true, cursor:cur, stopCursor: cursor, line:lineno, column:column, indent:lexIndent, empty:true }
         start.next = token
         return token
       exp = parser.operatorExpression()
@@ -927,6 +927,7 @@ exports.Parser = ->
       #else matchToken() # do not match token here, so token.next==undefined, and nextToken() will matchToken instead.
       exp.type = PAREN; exp.cursor = cur; exp.stopCursor = cursor
       exp.line = line; exp.column = column; exp.indent = lexIndent
+      exp.atom = true
       token = exp
     start.next = token
 
@@ -947,7 +948,7 @@ exports.Parser = ->
       if expList then expList.unshift 'list!'
       else expList = []
       token = {type: BRACKET, value:expList, cursor:cur, stopCursor: cursor, line:line, column:column, indent:lexIndent}
-    start.next = token
+    start.next = token; token.atom = true
     token
 
   bracketVariantMap = {}
@@ -972,7 +973,7 @@ exports.Parser = ->
       if body.length==0 then return {type: CURVE, value:'', cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
       if body.length==1 then body = body[0]
       else body.unshift 'begin!'
-    {type: CURVE, value:body, cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
+    {type: CURVE, value:body, atom:true, cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
 
   curveVariantMap =
     '.': ->  matchToken(); return parser.hash()
@@ -992,7 +993,7 @@ exports.Parser = ->
     if token.indent<ind then error "expect the same indent as or more indent as the start line of hash block"
     if token.value!='}' then error 'expect }'
     matchToken()
-    extendSyntaxInfo {value:['hash!'].concat(items)}, start, token
+    extendSyntaxInfo {value:['hash!'].concat(items), atom:true}, start, token
 
   hashLineBlock = (dent) ->
     items = hashLine(dent)
@@ -1106,15 +1107,6 @@ exports.Parser = ->
     {value: text[cur...cursor], cursor:cur}
 
   @symbolOrIdentifier = -> parser.symbol() or parser.identifier()
-
-  atomTokenTypes = list2dict(IDENTIFIER,  NUMBER,  REGEXP,  PAREN, BRACKET, CURVE,  HASH,
-  BRACKET,  PAREN,  SYMBOL, NON_INTERPOLATE_STRING,  INTERPOLATE_STRING, COMPACT_CLAUSE_EXPRESSION)
-
-  @atom = (mode) ->
-    if token.isCompactClauseExpression
-      atomToken = token; nextToken(); atomToken.start = atomToken; return atomToken
-    else if atomTokenTypes[token.type]
-      atomToken = token; atomToken.priority = 1000; nextToken(); atomToken.start = atomToken; return atomToken
 
   # prefix operator don't need to be compared to current global priority
   @prefixOperator = (mode) ->
@@ -1275,7 +1267,8 @@ exports.Parser = ->
     indexMode = expressionMemoIndex+mode; start = token
     if m=start[indexMode] then token = m.next or token; return m.result
     if not x = parser.prefixExpression(mode, priority)
-      if not x = parser.atom(mode) then start[memoIndex+mode] = {}; return
+      if not token.atom then start[memoIndex+mode] = {}; return
+      else x = token; x.priority = 1000; x.start = x; nextToken()
     while 1
       tkn1 = token
       if (op = parser.suffixOperator(mode, x))
@@ -1313,7 +1306,7 @@ exports.Parser = ->
   # compact expression as clause item.
   @compactClauseExpression = ->
     result = parser.expression(COMPACT_CLAUSE_EXPRESSION, 600, true)
-    if result then result.isCompactClauseExpression = true
+    if result then result.atom = true
     result
 
   # space expression as clause item.
