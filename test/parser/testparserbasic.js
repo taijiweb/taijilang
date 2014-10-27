@@ -329,7 +329,7 @@ describe("parser basic: ", function() {
       it("parse +/(", function() {
         return expect(str(parse('+/('))).to.equal('+/');
       });
-      xit("parse \\/(", function() {
+      it("parse \\/(", function() {
         return expect(str(parse("\\/("))).to.equal('\\/');
       });
       return it("parse */*multiply*/", function() {
@@ -513,7 +513,7 @@ describe("parser basic: ", function() {
         parser.matchToken();
         parser.matchToken();
         x = parser.token();
-        return expect(x.value).to.equal("   /*sfadl*/ \n// line comment \n// line comment 2\n ");
+        return expect(x.value).to.equal("   /*sfadl*/ \n");
       });
       it("parse multiple line space comment 3", function() {
         var parser, x;
@@ -522,7 +522,7 @@ describe("parser basic: ", function() {
         parser.matchToken();
         parser.matchToken();
         x = parser.token();
-        return expect(x.value).to.equal("   // line comment // line comment 2\n/*fds;j*/ ");
+        return expect(x.value).to.equal("   // line comment // line comment 2\n");
       });
       it("parse multiple line space comment 4", function() {
         var parser, x;
@@ -531,7 +531,10 @@ describe("parser basic: ", function() {
         parser.matchToken();
         parser.matchToken();
         x = parser.token();
-        return expect(x.value).to.equal("   // line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  ");
+        expect(x.value).to.equal("   // line comment \n");
+        parser.matchToken();
+        x = parser.token();
+        return expect(x.value).to.equal("// line comment 2\n");
       });
       return it("parse c style block comment leads more space lines", function() {
         var parser, x;
@@ -539,7 +542,7 @@ describe("parser basic: ", function() {
         parser.init('/*fdsafdsa*/// line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  something', 0);
         parser.matchToken();
         x = parser.token();
-        return expect(x.value).to.equal("/*fdsafdsa*/// line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  ");
+        return expect(x.value).to.equal("/*fdsafdsa*/// line comment \n");
       });
     });
   });
@@ -759,10 +762,10 @@ describe("parser basic: ", function() {
       it('should parse ` print a b', function() {
         return expect(str(parse('` print a b'))).to.equal('[quasiquote! [print a b]]');
       });
-      xit('should parse ~ print : min a \n abs b', function() {
+      it('should parse ~ print : min a \n abs b', function() {
         return expect(str(parse('~ print : min a \n abs b'))).to.equal('[quote! [print [min a [abs b]]]]');
       });
-      return xit('should parse ` a.b', function() {
+      return it('should parse ` a.b', function() {
         return expect(str(parse('` a.b'))).to.equal('[quasiquote! [attribute! a b]]');
       });
     });
@@ -840,7 +843,7 @@ describe("parser basic: ", function() {
       });
     });
   });
-  xdescribe("line comment block", function() {
+  describe("line comment block", function() {
     var parse;
     parse = function(text) {
       var parser, x;
@@ -850,7 +853,7 @@ describe("parser basic: ", function() {
     it('should parse // line comment\n 1', function() {
       return expect(str(parse('// line comment\n 1'))).to.equal('1');
     });
-    it('should parse /// line comment\n 1', function() {
+    nit('should parse /// line comment\n 1', function() {
       return expect(str(parse('/// line comment\n 1'))).to.equal("[begin! [directLineComment! /// line comment] 1]");
     });
     it('should parse // line comment block\n 1 2', function() {
@@ -869,22 +872,22 @@ describe("parser basic: ", function() {
       return expect(str(parse('// \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12'))).to.equal('[begin! [1 2] [3 4] [5 6] [7 8] [9 10] [11 12]]');
     });
   });
-  xdescribe("block comment ", function() {
+  describe("block comment ", function() {
     var parse;
     parse = function(text) {
       var parser, x;
       parser = new Parser();
-      return x = parser.parse(text, parser.line, 0);
+      return x = parser.parse(text, matchRule(parser, parser.line), 0);
     };
     it('should parse /. some comment', function() {
       var x;
       x = parse('/. some comment');
-      return expect(str(x)).to.equal("[]");
+      return expect(str(x)).to.equal("undefined");
     });
     return it('should parse /. some \n  embedded \n  comment', function() {
       var x;
       x = parse('/. some \n  embedded \n  comment');
-      return expect(str(x)).to.equal("[]");
+      return expect(str(x)).to.equal("undefined");
     });
   });
   return describe("module header", function() {

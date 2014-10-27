@@ -80,29 +80,28 @@ exports.Parser = ->
 
   memoIndex = 0  # don't need be set in parser.init, memoMap need to be set instead.
 
-  eof = {type:EOI, value:'', cursor: text.length, column: -1, indent: -1} # line wait to be filled
-  eof.next = eof  # eof.next is always itself
+  eoi = {type:EOI, value:'', cursor: text.length, column: -1, indent: -1} # line wait to be filled
+  eoi.next = eoi  # eoi.next is always itself
 
   nextToken = ->
-    if token.next
-      indent = token.indent or indent
-      token = token.next
+    indent = token.indent or indent
+    if token.next then token = token.next
     else
       if not char
-        if token==eof then return eof
-        eof.lineno = lineno+1; lineStart = cursor; lexIndent = -1
-        token.next = eof
-        return token = eof # while reaching the end of input, always return eof
+        if token==eoi then return eoi
+        eoi.lineno = lineno+1; lineStart = cursor; lexIndent = -1
+        token.next = eoi
+        return token = eoi # while reaching the end of input, always return eoi
       else if fn = tokenFnMap[char] then return token=fn(char)
       else return token=tokenOnSymbolChar()
 
   #  tokenFnMap[char](char) and tokenOnSymbolChar should change the token
   @matchToken = matchToken = ->
     if not char
-      if token==eof then return eof
-      eof.lineno = lineno+1; lineStart = cursor; lexIndent = -1
-      token.next = eof
-      return token = eof # while reaching the end of input, always return eof
+      if token==eoi then return eoi
+      eoi.lineno = lineno+1; lineStart = cursor; lexIndent = -1
+      token.next = eoi
+      return token = eoi # while reaching the end of input, always return eoi
     else if fn = tokenFnMap[char] then return token=fn(char)
     else return token=tokenOnSymbolChar()
 
@@ -156,21 +155,21 @@ exports.Parser = ->
       if char=='\n' then char = text[++cursor]
     lineStart = cursor
     while (char=text[cursor]) and char==' ' then cursor++
-    if char=='\t' then error 'do not allow use tab character "\t" at the head of line.'
-    else if char=='\n' or char=='\r' then error 'should not follow empty line as concatenated line'
-    else if not char then error 'unexpected end of input after concatenated line symbol "\"'
+    if char=='\t' then lexError 'do not allow use tab character "\t" at the head of line.'
+    else if char=='\n' or char=='\r' then lexError 'should not follow empty line as concatenated line'
+    else if not char then lexError 'unexpected end of input after concatenated line symbol "\"'
     lexIndent = cursor-lineStart
-    if lexIndent<indent then error 'expect the same indent or more indent for the concatenated lines'
+    if lexIndent<indent then lexError 'expect the same indent or more indent for the concatenated lines'
     skipInlineSpace()
     if (char=text[cursor])=='\n' or char=='\r'
-      error 'concatenated line should not have only spaces and comments'
+      lexError 'concatenated line should not have only spaces and comments'
     return token.next = {type:SPACE, cursor:cur, stopCursor: cursor, line:line, stopLine:lineno, column:column, indent:lexIndent}
 
   # token started with ' ' and '\t'
   tokenFnMap[' '] = tokenFnMap['\t'] = tokenOnSpaceChar = ->
-    cur = cursor; line = lineno; column = cursor-lineStart; dent = lexIndent
+    cur = cursor; line = lineno; column = cursor-lineStart; indent = lexIndent
     char = text[++cursor]
-    skipInlineSpace(dent)
+    skipInlineSpace(indent)
     if char=='\\'
       char = text[++cursor]
       if char=='\n' or c=='\r'
@@ -181,16 +180,15 @@ exports.Parser = ->
         cursor--
         return  token.next = {type:SPACE, value:text[cur...cursor], cursor:cur, stopCursor: cursor,
         line:line, stopLine:lineno, column:column, indent:lexIndent}
-    else if char=='\n' or char=='\r'
-      skipSpaceLines(dent)
-      if not char then type = EOI
-      else if lexIndent>dent then type = INDENT
-      else if lexIndent<dent then type = UNDENT
-      else type = NEWLINE
-      return token.next = {type:type, value:text[cur...cursor], cursor:cur, line:line, column:column, indent:lexIndent}
+    else if char
+      if char!='\n' and char!='\r'
+        token.next = {type:SPACE, value:text[cur...cursor], cursor:cur, stopCursor: cursor,
+        line:line, stopLine:lineno, column:column, indent:lexIndent}
+      else
+        type = newLineAndEmptyLines()
+        token.next = {type:type, value:text[cur...cursor], cursor:cur, line:line, column:column, indent:lexIndent}
     else
-      return  token.next = {type:SPACE, value:text[cur...cursor], cursor:cur, stopCursor: cursor,
-      line:line, stopLine:lineno, column:column, indent:lexIndent}
+      token.next = {type:EOI, value:text[cur...cursor], cursor:cur, line:line, column:column, indent:-1}
 
   # should be called after a new line
   skipSpaceLines = (dent) ->
@@ -276,25 +274,28 @@ exports.Parser = ->
   # left indent block comment started with /., before entering this function, /. has been matched.
   leftIndentBlockComment = (dent) ->
     # skip line tail
-    while char!='\n' and char!='\r' then cursor++; char = text[cursor]
+    while char and char!='\n' and char!='\r' then char = text[++cursor]
 
     # skip lines that is empty or indent more spaces at the head
     while 1
       if char=='\n'
         if text[cursor+1]=='\r' then cursor+=2 else cursor++
         char = text[cursor]; lineno++; lineStart = cursor
-        while char==' ' then cursor++; char = text[cursor]
+        while char==' ' then char = text[++cursor]
         if char=='\n' or char=='\r' then continue
-        if char=='\t' then unexpectedTabCharAtLineHead()
+        if char=='\t' then lexError 'unexpected tab character "\t" at the head of line'
         if cursor-lineStart<=dent then break
+        while char and char!='\n' and char!='\r' then char = text[++cursor]
       else if char=='\r'
         if text[cursor+1]=='\n' then cursor+=2 else cursor+=1
         char = text[cursor]; lineno++; lineStart = cursor
         while char==' ' then cursor++; char = text[cursor]
         if char=='\n' or char=='\r' then continue
-        if char=='\t' then unexpectedTabCharAtLineHead()
+        if char=='\t' then lexError 'unexpected tab character "\t" at the head of line'
         if cursor-lineStart<=dent then break
-      else if not char then break
+        while char and char!='\n' and char!='\r' then char = text[++cursor]
+      else if not char then lexIndent = -1; break
+    return
 
   # default /* some content */, can cross lines
   leftCBlockComment = (dent) ->
@@ -321,7 +322,7 @@ exports.Parser = ->
         if lineStart-cursor<dent then expectMoreIndent(dent)
       else if not char
         unexpectedEOI('while parsing c style block comment /* */')
-      else cursor++;  char = text[cursor]
+      else char = text[++cursor]
 
   leftRegexp = ->
     while char
@@ -398,27 +399,24 @@ exports.Parser = ->
       # skip line tail
       cursor++; char=text[cursor]
       while char and char!='\n' and char!='\r' then cursor++; char=text[cursor]
-      skipSpaceLines(indent)
-      if not char then type = EOI
-      else if lexIndent>indent then type = INDENT
-      else if lexIndent==indent then type = NEWLINE
-      else type = UNDENT
-      return token.next = {type:type, value: text[cur...cursor], cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
+      if char
+        if char!='\n' and char!='\r'
+          token.next = {type:SPACE, value: text[cur...cursor], cursor:cur, stopCursor:cursor, line:line, stopLine:lineno, column:column, indent:lexIndent}
+        else
+          token.next = {type:newLineAndEmptyLines(), value: text[cur...cursor], cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
+      else
+        token.next = {type:EOI, value: text[cur...cursor], cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
     # /* start a c style block comment
     else if char=='*'
       leftCBlockComment()
       skipInlineSpace()
-      if not char then t = EOI
-      else if char=='\n' or char=='\r'
-        skipSpaceLines(indent)
-        if not char then type = EOI
-        else if lexIndent>indent then type = INDENT
-        else if lexIndent==indent then type = NEWLINE
-        else type = UNDENT
-        return token.next = {type:type, value: text[cur...cursor], cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
+      if char
+        if char!='\n' and char!='\r'
+          token.next = {type:SPACE, value: text[cur...cursor], cursor:cur, stopCursor:cursor, line:line, stopLine:lineno, column:column, indent:lexIndent}
+        else
+          token.next = {type:newLineAndEmptyLines(), value: text[cur...cursor], cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
       else
-        type = SPACE
-        return token.next = {type:type, value: text[cur...cursor], cursor:cur, stopCursor:cursor, line:line, stopLine:lineno, column:column, indent:lexIndent}
+        token.next = {type:EOI, value: text[cur...cursor], cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
     # /! start a regexp
     else if char=='!'
       cur = cursor; cursor += 2; char = text[cursor]; column = cursor-lineStart
@@ -453,14 +451,35 @@ exports.Parser = ->
       token = {type:SYMBOL, value:value, cursor:cur, stopCursor:cursor, line:line, column:column}
       return prev.next = token
 
+  newLineAndEmptyLines = ->
+    while 1
+      if char=='\n'
+        char = text[++cursor]
+        if char=='\r' then char = text[++cursor]
+        lineStart = cursor
+        while char and char==' ' then char = text[++cursor]
+        if char=='\t' then lexError 'unexpected tab character "\t" at the head of line'
+        if not char or (char!='\n' and char!='\r') then break
+      else if char=='\r'
+        char = text[++cursor]
+        if char=='\n' then char = text[++cursor]
+        lineStart = cursor
+        while char and char==' ' then char = text[++cursor]
+        if char=='\t' then lexError 'unexpected tab character "\t" at the head of line'
+        if not char or (char!='\n' and char!='\r') then break
+      else break
+    if not char then type = EOI; lexIndent = -1
+    else
+      lexIndent = cursor-lineStart
+      if lexIndent>indent then type = INDENT
+      else if lexIndent<indent then type = UNDENT
+      else type = NEWLINE
+    type
+
   # the token leaded by '\n', '\r', maybe return token with type NEWLINE, INDENT, UNDENT, EOI
   tokenFnMap['\n'] = tokenFnMap['\r'] = tokenOnNewlineChar = ->
     cur = cursor; line = lineno; column = cursor-lineStart; indent = lexIndent
-    skipSpaceLines(indent)
-    if not char then type = EOI
-    else if lexIndent>indent then type = INDENT
-    else if lexIndent==indent then type = NEWLINE
-    else type = UNDENT
+    type = newLineAndEmptyLines()
     return token.next = {type:type, value:text[cur...cursor],
     cursor:cur, stopCursor:cursor,
     line:line, column:column, indent:lexIndent}
@@ -493,11 +512,11 @@ exports.Parser = ->
         if  not('0'<=char<='9' or 'a'<=char<='f' or 'A'<=char<='F') then break
         else char = text[++cursor]
     if base==2
-      if char=='.' or char=='e' or char=='E' then error 'binary number followed by ".eE"'
-      else if '2'<=char<='9' then error 'binary number followed by 2-9'
+      if char=='.' or char=='e' or char=='E' then lexError 'binary number followed by ".eE"'
+      else if '2'<=char<='9' then lexError 'binary number followed by 2-9'
     if base==16
-      if char=='.' then error 'hexadecimal number followed by "."'
-      else if letterCharSet[char] then error 'hexadecimal number followed by g-z or G-Z'
+      if char=='.' then lexError 'hexadecimal number followed by "."'
+      else if letterCharSet[char] then lexError 'hexadecimal number followed by g-z or G-Z'
     if base!=10
       if cursor==baseStart
         # e.g 0x+3, 0x(1+2)
@@ -607,7 +626,7 @@ exports.Parser = ->
           else str += "''"; cursor += 2; char = text[cursor]
         else str += "'"; char = text[++cursor]
       else str += rawNonInterpolatedStringLine(indentInfo)
-    if not text[cursor] then error "expect ''', unexpected end of input while parsing interpolated string"
+    if not text[cursor] then lexError "expect ''', unexpected end of input while parsing interpolated string"
 
   rawNonInterpolatedStringLine = (indentInfo) ->
     result = ''
@@ -628,11 +647,11 @@ exports.Parser = ->
     lineno++; cur = cursor
     while char==' ' then char = text[++cursor]
     column = cursor-lineStart
-    if char=='\t' then error 'unexpected tab character "\t" at the head of line'
+    if char=='\t' then lexError 'unexpected tab character "\t" at the head of line'
     else if char=='\n' or char=='\r' then result += text[cur...cursor]; return result
     else if (ind=indentInfo.value)!=undefined then indentInfo.value = column
     else if ind>column then i = 0; n = column-ind; while i++<n then result += ' '
-    else if ind<column then error 'expect equal to or more than the indent of first line of the string'
+    else if ind<column then lexError 'expect equal to or more than the indent of first line of the string'
     while char
       if char=="'"
         if text[cursor+1]=="'"
@@ -644,10 +663,10 @@ exports.Parser = ->
         char = text[++cursor]
         if char=='\n' or char=='\r' then concatenating = true; return result
         if char then result += '\\\\'
-        else error 'unexpected end of input while parsing non interpolated string'
+        else lexError 'unexpected end of input while parsing non interpolated string'
       # '"' must be escaped, because all the string is wrapped in "..."
       else result += char; char = text[++cursor]
-    error 'unexpected end of input while parsing non interpolated string'
+    lexError 'unexpected end of input while parsing non interpolated string'
 
   leftNonInterpolatedString = ->
     cur = cursor-1; line = lineno; column = cur-lineStart
@@ -670,7 +689,7 @@ exports.Parser = ->
     if char=="'"
       char = text[++cursor]
       return {type: NON_INTERPOLATE_STRING, value: '"'+str+'"', atom:true, cursor:cur, stopCursor:cursor, line:line, stopLine:lineno, column:column}
-    else error "expect \"'\", unexpected end of input while parsing interpolated string"
+    else lexError "expect \"'\", unexpected end of input while parsing interpolated string"
 
   nonInterpolatedStringLine = (indentInfo) ->
     result = ''
@@ -690,11 +709,11 @@ exports.Parser = ->
     lineno++; cur = cursor
     while char==' ' then char = text[++cursor]
     column = cursor-lineStart
-    if char=='\t' then error 'unexpected tab character "\t" at the head of line'
+    if char=='\t' then lexError 'unexpected tab character "\t" at the head of line'
     else if char=='\n' or char=='\r' then result += text[cur...cursor]; return result
     else if (ind=indentInfo.value)!=undefined then indentInfo.value = column
     else if ind>column then i = 0; n = column-ind; while i++<n then result += ' '
-    else if ind<column then error 'expect equal to or more than the indent of first line of the string'
+    else if ind<column then lexError 'expect equal to or more than the indent of first line of the string'
     while char
       if char=="'" then return result
       else if char=='\n' or char=='\r' then return result
@@ -704,10 +723,10 @@ exports.Parser = ->
         if char=='\n' or char=='\r' then return result
         else if char=="'" then result += "'"; char = text[++cursor]
         else if char then result += '\\'; result += char; char = text[++cursor]
-        else error 'unexpected end of input while parsing non interpolated string'
+        else lexError 'unexpected end of input while parsing non interpolated string'
       else if char=='"'  then result += '\\"'; char = text[++cursor]
       else result += char; char = text[++cursor]
-    error 'unexpected end of input while parsing non interpolated string'
+    lexError 'unexpected end of input while parsing non interpolated string'
 
   tokenFnMap['"'] = tokenOnDoubleQuoteChar = ->
     char = text[++cursor]
@@ -761,10 +780,10 @@ exports.Parser = ->
             continue
           else break
         column = cursor-lineStart
-        if char=='\t' then error 'unexpected tab character "\t" in the head of line'
+        if char=='\t' then lexError 'unexpected tab character "\t" in the head of line'
         if indentInfo.value==undefined then indentInfo.value = column
         ind = indentInfo.value
-        if ind<column then error 'expect equal to or more than the indent of first line of the string'
+        if ind<column then lexError 'expect equal to or more than the indent of first line of the string'
         else if ind>column then i = 0; n = column-ind; while i++<n then str += ' '
       else if char=='\r'
         if not concatenating then str += '\\r'
@@ -786,10 +805,10 @@ exports.Parser = ->
             continue
           else break
         column = cursor-lineStart
-        if char=='\t' then error 'unexpected tab character "\t" in the head of line'
+        if char=='\t' then lexError 'unexpected tab character "\t" in the head of line'
         else if (ind=indentInfo.value)!=undefined then indentInfo.value = column
         else if ind>column then i = 0; n = column-ind; while i++<n then str += ' '
-        else if ind<column then error 'expect equal to or more than the indent of first line of the string'
+        else if ind<column then lexError 'expect equal to or more than the indent of first line of the string'
       else if char=='(' or char=='{' or char=='['
         # for efficiency, do not match next token while matching delimiter token (...), [...], {...} in tokenOnLeftParenChar, tokenOnLeftBracketChar, tokenOnLeftCurveChar
         str += char+'"'; pieces.push str; pieces = '"'; char = text[++cursor]
@@ -815,9 +834,9 @@ exports.Parser = ->
         char = text[++cursor]
         if char=='\n' or char=='\r' then concatenating = true
         else if char then str += '\\\\'
-        else error 'unexpected end of input while parsing interpolated string'
+        else lexError 'unexpected end of input while parsing interpolated string'
       else str += char; char = text[++cursor]
-    if not text[cursor] then error 'expect \'"\', unexpected end of input while parsing interpolated string'
+    if not text[cursor] then lexError 'expect \'"\', unexpected end of input while parsing interpolated string'
 
   leftInterpolateString = ->
     cur = cursor-1; line = lineno
@@ -849,12 +868,12 @@ exports.Parser = ->
             continue
           else break
         column = cursor-lineStart
-        if char=='\t' then error 'unexpected tab character "\t" in the head of line'
+        if char=='\t' then lexError 'unexpected tab character "\t" in the head of line'
         else if indentInfo.value==undefined then indentInfo.value = column
         else
           ind = indentInfo.value
           if ind>column then i = 0; n = column-ind; while i++<n then result += ' '
-          else if ind<column then error 'expect equal to or more than the indent of first line of the string'
+          else if ind<column then lexError 'expect equal to or more than the indent of first line of the string'
       else if char=='\r'
         if not concatenating then str += char
         char = text[++cursor]
@@ -875,12 +894,12 @@ exports.Parser = ->
             continue
           else break
         column = cursor-lineStart
-        if char=='\t' then error 'unexpected tab character "\t" in the head of line'
+        if char=='\t' then lexError 'unexpected tab character "\t" in the head of line'
         else if indentInfo.value==undefined then indentInfo.value = column
         else
           ind = indentInfo.value
           if ind>column then i = 0; n = column-ind; while i++<n then result += ' '
-          else if ind<column then error 'expect equal to or more than the indent of first line of the string'
+          else if ind<column then lexError 'expect equal to or more than the indent of first line of the string'
       else if char=='$'
         literalStart = ++cursor; char = text[cursor]
         if not firstIdentifierCharSet[char] then str += '$'
@@ -902,7 +921,7 @@ exports.Parser = ->
         else if char=='\n' or char=='\r' then char = text[++cursor]; concatenating = true
         else str += '\\'+char; char = text[++cursor]
       else str += char; char = text[++cursor]
-    if not text[cursor] then error 'expect \'"\', but meet end of input while parsing interpolated string'
+    if not text[cursor] then lexError 'expect \'"\', but meet end of input while parsing interpolated string'
 
   # for efficiency, in tokenOnLeftParenChar, tokenOnLeftBracketChar, tokenOnLeftCurveChar
   # do not match next token while matching delimiter token (...), [...], {...}
@@ -944,7 +963,7 @@ exports.Parser = ->
       if token.type==UNDENT
         if token.indent<ind then error 'unexpected undent while parsing parenethis "[...]"'
         else matchToken()
-      if token.value!=']' then error 'expect ]'
+      if token.value!=']' then lexError 'expect ]'
       if expList then expList.unshift 'list!'
       else expList = []
       token = {type: BRACKET, value:expList, cursor:cur, stopCursor: cursor, line:line, column:column, indent:lexIndent}
@@ -968,8 +987,8 @@ exports.Parser = ->
         return start
       body = parser.lineBlock()
       if token.type==UNDENT and token.indent<ind then nextToken()
-      if token.value!='}' then error 'expect }' else cursor++
-      if indent<ind then error 'unexpected undent while parsing parenethis "{...}"'
+      if token.value!='}' then lexError 'expect }' else cursor++
+      if indent<ind then lexError 'unexpected undent while parsing parenethis "{...}"'
       if body.length==0 then return {type: CURVE, value:'', cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
       if body.length==1 then body = body[0]
       else body.unshift 'begin!'
@@ -990,8 +1009,8 @@ exports.Parser = ->
       items = parser.hashBlock(ind)
     else items = hashLineBlock(ind)
     if token.type==UNDENT then matchToken()
-    if token.indent<ind then error "expect the same indent as or more indent as the start line of hash block"
-    if token.value!='}' then error 'expect }'
+    if token.indent<ind then lexError "expect the same indent as or more indent as the start line of hash block"
+    if token.value!='}' then lexError 'expect }'
     matchToken()
     extendSyntaxInfo {value:['hash!'].concat(items), atom:true}, start, token
 
@@ -1011,14 +1030,14 @@ exports.Parser = ->
       if (value=token.value)==';' then matchToken(); if token.type==SPACE then matchToken()
       else if (type=token.type)==NEWLINE then matchToken(); break
       else if type==UNDENT or value=='}' then break
-      else if type==EOI then error "unexpected end of input while parsing hash block"
+      else if type==EOI then lexError "unexpected end of input while parsing hash block"
     return result
 
   hashBlock = ->
     start = token; result = []
     while (items=hashLine())
       result.push.apply result, items
-      if (type=token.type)==EOI then error "unexpected end of input while parsing hash block"
+      if (type=token.type)==EOI then lexError "unexpected end of input while parsing hash block"
       else if type==UNDENT then break
       else if (value=token.value)==';' then matchToken()
       else if value=='}' then break
@@ -1026,20 +1045,20 @@ exports.Parser = ->
         if token.isComment
           blk = parser.hashBlock()
           result.push.apply result, blk
-        else error "unexpected indent while parsing hash block"
+        else lexError "unexpected indent while parsing hash block"
     result.start = start; result.stop = token; result
 
   @hashItem = hashItem = ->
     if token.type==UNDENT then return
     start = token
     if key=parser.compactClauseExpression()
-      if (type=token.type)==NEWLINE or type==UNDENT then error 'unexpected new line after hash key'
+      if (type=token.type)==NEWLINE or type==UNDENT then lexError 'unexpected new line after hash key'
       else if type==EOI then "unexpected end of input after hash key"
       else if type==SPACE then matchToken()
       if (value=token.value)==':' and matchToken()
         if (t=key.type)==IDENTIFIER or t==NUMBER or t==NON_INTERPOLATE_STRING then js = true
       else if value=='=>' then matchToken()
-      else error 'expect : or => for hash item definition'
+      else lexError 'expect : or => for hash item definition'
       if token.type==SPACE then matchToken()
       else if token.type==INDENT
         matchToken()
@@ -1047,7 +1066,7 @@ exports.Parser = ->
         blk = hashBlock()
         value = {value:['hash!'].concat(blk), start:tkn, stop:token}
       else value = parser.clause()
-      if not value then error 'expect value of hash item'
+      if not value then lexError 'expect value of hash item'
       if js then result = ['jshashitem!', key, value]
       else result = ['pyhashitem!', key, value]
       extendSyntaxInfo result, start, token
@@ -1973,6 +1992,7 @@ exports.Parser = ->
     else if type==SYMBOL and (fn=symbol2clause[token.value])
       if result = fn() then return result
       else token = start
+    else if type==NEWLINE then return
 
     if not (head=parser.compactClauseExpression())
       if (op=parser.prefixOperator())
@@ -2082,7 +2102,7 @@ exports.Parser = ->
 
   @sentence = ->
     start = token
-    if (type=token.type)==EOI or type==UNDENT or type==RIGHT_DELIMITER or isConjunction(token)
+    if (type=token.type)==EOI or type==UNDENT or type==NEWLINE or type==RIGHT_DELIMITER or isConjunction(token)
       return
     result = parser.clauses()
     if token.value==';'
@@ -2091,15 +2111,15 @@ exports.Parser = ->
     extendSyntaxInfo result, start, token
 
   @line = ->
-    if (type=token.type)==UNDENT or type==RIGHT_DELIMITER or isConjunction(token) and type==EOI
+    if (type=token.type)==UNDENT or type==RIGHT_DELIMITER or isConjunction(token) or type==EOI
       return
-    # if x=(parser.lineCommentBlock() or parser.codeCommentBlockComment()) then return x
+    if type==INDENT then return parser.block(indent)
     result = []
     while x = parser.sentence() then result.push.apply result, x
     if token.type==NEWLINE then nextToken()
     result
 
-  @block = (dent) -> if token.type==INDENT then nextToken(); return parser.blockWithoutIndentHead(dent)
+  @block = (dent) -> if token.type==INDENT then nextToken(); return parser.blockWithoutIndentHead(indent)
 
   # a block with out indent( the indent has been ate before).
   # stop until meet a undent (less indent than the intent of the start line)
@@ -2107,7 +2127,11 @@ exports.Parser = ->
     result = []
     while (x=parser.line())
       result.push.apply(result, x)
-      if token.indent<dent then break
+      if token.type==UNDENT
+        if indent==dent then nextToken(); break
+        else if indent>dent then error 'wrong indent column'
+        else continue
+      else break
     return result
 
   @lineBlock = (dent) ->
@@ -2119,18 +2143,18 @@ exports.Parser = ->
       result
 
   @moduleBody = ->
-    matchToken()
+    start = token; matchToken()
     if token.type==NEWLINE then matchToken()
-    if token.type==SPACE then matchToken()
+    else if token.type==SPACE then matchToken()
     body = []
     while 1
       if not x=parser.line() then break
-      spac = bigSpace()
       body.push.apply body, x
-      clearMemo()
-      if lineInfo[lineno].indentCol<indentCol then rollbackToken spac; break
-    if text[cursor] then error 'expect end of input, but meet "'+text.slice(cursor)+'"'
-    begin body
+    if token!=eoi then error 'expect end of input, but meet "'+text.slice(cursor)+'"'
+    if body.length>1 then body.unshift 'begin!'
+    else if body.length==1 then body = body[0]
+    else body = 'undefined'
+    {value:body, start:start, stop:eoi}
 
   # #!use/bin/node taiji
   @binShellDirective = ->

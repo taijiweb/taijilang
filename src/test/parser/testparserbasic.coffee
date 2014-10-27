@@ -224,7 +224,7 @@ describe "parser basic: ",  ->
         expect(str parse('+/+')).to.equal '+/+'
       it "parse +/(", ->
         expect(str parse('+/(')).to.equal '+/'
-      xit "parse \\/(", ->
+      it "parse \\/(", ->
         expect(str parse("\\/(")).to.equal '\\/'
       it "parse */*multiply*/", ->
         expect(str parse('*/*multiply*/')).to.equal '*'
@@ -337,27 +337,30 @@ describe "parser basic: ",  ->
         parser.matchToken()
         parser.matchToken()
         x = parser.token()
-        expect(x.value).to.equal "   /*sfadl*/ \n// line comment \n// line comment 2\n "
+        expect(x.value).to.equal "   /*sfadl*/ \n"
       it "parse multiple line space comment 3", ->
         parser = new Parser()
         parser.init('123   // line comment // line comment 2\n/*fds;j*/ something', 0)
         parser.matchToken()
         parser.matchToken()
         x = parser.token()
-        expect(x.value).to.equal "   // line comment // line comment 2\n/*fds;j*/ "
+        expect(x.value).to.equal "   // line comment // line comment 2\n"
       it "parse multiple line space comment 4", ->
         parser = new Parser()
         parser.init('123   // line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  something', 0)
         parser.matchToken()
         parser.matchToken()
         x = parser.token()
-        expect(x.value).to.equal "   // line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  "
+        expect(x.value).to.equal "   // line comment \n"
+        parser.matchToken()
+        x = parser.token()
+        expect(x.value).to.equal "// line comment 2\n"
       it "parse c style block comment leads more space lines", ->
         parser = new Parser()
         parser.init('/*fdsafdsa*/// line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  something', 0)
         parser.matchToken()
         x = parser.token()
-        expect(x.value).to.equal "/*fdsafdsa*/// line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  "
+        expect(x.value).to.equal "/*fdsafdsa*/// line comment \n"
 
   describe "compact clause expression:", ->
     parse = (text) ->
@@ -513,9 +516,9 @@ describe "parser basic: ",  ->
         expect(str parse('~ print a b')).to.equal '[quote! [print a b]]'
       it 'should parse ` print a b', ->
         expect(str parse('` print a b')).to.equal '[quasiquote! [print a b]]'
-      xit 'should parse ~ print : min a \n abs b', ->
+      it 'should parse ~ print : min a \n abs b', ->
         expect(str parse('~ print : min a \n abs b')).to.equal '[quote! [print [min a [abs b]]]]'
-      xit 'should parse ` a.b', ->
+      it 'should parse ` a.b', ->
         expect(str parse('` a.b')).to.equal '[quasiquote! [attribute! a b]]'
 
     describe "unquote! expression: ", ->
@@ -567,13 +570,13 @@ describe "parser basic: ",  ->
       it 'should parse {. 1:2; 3:\n 5:6;a=>8\n}', ->
         expect(str parse('{. 1:2; 3:\n 5:6;a=>8\n}')).to.equal "[hash! [jshashitem! 1 2] [jshashitem! 3 [hash! [jshashitem! 5 6] [pyhashitem! a 8]]]]"
 
-  xdescribe  "line comment block",  ->
+  describe  "line comment block",  ->
     parse = (text) ->
       parser = new Parser()
       x = parser.parse(text, parser.moduleBody, 0)
     it 'should parse // line comment\n 1', ->
       expect(str parse('// line comment\n 1')).to.equal '1'
-    it 'should parse /// line comment\n 1', ->
+    nit 'should parse /// line comment\n 1', ->
       expect(str parse('/// line comment\n 1')).to.equal "[begin! [directLineComment! /// line comment] 1]"
     it 'should parse // line comment block\n 1 2', ->
       expect(str parse('// line comment block\n 1 2')).to.equal "[1 2]"
@@ -586,16 +589,16 @@ describe "parser basic: ",  ->
     it 'should parse // \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12', ->
       expect(str parse('// \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12')).to.equal '[begin! [1 2] [3 4] [5 6] [7 8] [9 10] [11 12]]'
 
-  xdescribe  "block comment ",  ->
+  describe  "block comment ",  ->
     parse = (text) ->
       parser = new Parser()
-      x = parser.parse(text, parser.line, 0)
+      x = parser.parse(text, matchRule(parser, parser.line), 0)
     it 'should parse /. some comment', ->
       x = parse('/. some comment')
-      expect(str x).to.equal "[]"
+      expect(str x).to.equal "undefined"
     it 'should parse /. some \n  embedded \n  comment', ->
       x = parse('/. some \n  embedded \n  comment')
-      expect(str x).to.equal "[]"
+      expect(str x).to.equal "undefined"
 
   describe  "module header",  ->
     parse = (text) ->
