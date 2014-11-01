@@ -459,17 +459,17 @@ describe("parse: ", function() {
       it('should parse if and 1 2 then 3', function() {
         var x;
         x = parse('if and 1 2 then 3');
-        return expect(x).to.equal("[[if [and 1 2] 3 undefined]]");
+        return expect(x).to.equal("[[if [and 1 2] 3]]");
       });
       it('should parse if and 1 2 then\n 3', function() {
         var x;
         x = parse('if and 1 2 then\n 3');
-        return expect(x).to.equal("[[if [and 1 2] 3 undefined]]");
+        return expect(x).to.equal("[[if [and 1 2] 3]]");
       });
       it('should parse if add : add 1 2 , add 3 4 then 5', function() {
         var x;
         x = parse('if add : add 1 2 , add 3 4 then 5');
-        return expect(x).to.equal("[[if [add [add 1 2] [add 3 4]] 5 undefined]]");
+        return expect(x).to.equal("[[if [add [add 1 2] [add 3 4]] 5]]");
       });
       return it('should parse print : and 1 2 , or : eq 3 4 , eq 5 6', function() {
         var x;
@@ -477,7 +477,7 @@ describe("parse: ", function() {
         return expect(x).to.equal('[[print [and 1 2] [or [eq 3 4] [eq 5 6]]]]');
       });
     });
-    idescribe("old test 2: ", function() {
+    describe("old test 2: ", function() {
       it('should parse if 2 then 3 else 4', function() {
         var x;
         x = parse('if 2 then 3 else 4');
@@ -513,7 +513,7 @@ describe("parse: ", function() {
                 return parse('if 1 else 2');
               };
             } catch (_error) {}
-          })()).to["throw"](/unexpected else, expect then clause/);
+          })()).to["throw"](/unexpected conjunction "else"/);
         });
         it('should parse if 1 then 2 else 3', function() {
           var x;
@@ -537,10 +537,8 @@ describe("parse: ", function() {
         });
       });
       return describe("group2: ", function() {
-        it('should parse if 1 \n  2 \nelse 3', function() {
-          return expect(function() {
-            return parse('if 1 \n  2 \nelse 3');
-          }).to["throw"](/unexpected else, expect then clause/);
+        it('should parse if 1 then\n  2 \nelse 3', function() {
+          return expect(parse('if 1 then\n  2 \nelse 3')).to.equal('[[if 1 2 3]]');
         });
         it('should parse if 1 then if 2 then 3', function() {
           var x;
@@ -582,7 +580,7 @@ describe("parse: ", function() {
               return parse('while 1 else 2');
             };
           } catch (_error) {}
-        })()).to["throw"](/unexpected else, expect then clause/);
+        })()).to["throw"](/unexpected conjunction "else"/);
       });
       it('should parse while 1 then \n while 2 then 3 \nelse 4', function() {
         var x;
@@ -595,12 +593,12 @@ describe("parse: ", function() {
         return expect(x).to.equal("[[while 1 [while 2 3 4]]]");
       });
     });
-    describe("try statement: ", function() {
+    idescribe("try statement: ", function() {
       describe("group1: ", function() {
         it('should parse try 1 catch e then 2', function() {
           var x;
           x = parse('try 1 catch e then 2');
-          return expect(x).to.equal("[[try 1 [e 2] undefined]]");
+          return expect(x).to.equal("[[try 1 e 2 undefined]]");
         });
         nit('should parse try 1 else 2', function() {
           var x;
@@ -635,7 +633,7 @@ describe("parse: ", function() {
         it('should parse try 1 catch e then try 2 catch e then 3', function() {
           var x;
           x = parse('try 1 catch e then try 2 catch e then 3');
-          return expect(x).to.equal("[[try 1 [e [try 2 [e 3] undefined]] undefined]]");
+          return expect(x).to.equal("[[try 1 e [try 2 e 3 undefined] undefined]]");
         });
         nit('should parse try 1 catch e then try 2 catch e then 3 else 4', function() {
           var x;
@@ -657,10 +655,15 @@ describe("parse: ", function() {
           x = parse('try 1 catch e then\n try 2 catch e then 3 \n else 4');
           return expect(x).to.equal("[[try 1 [list! [e [try 2 [list! [e 3]] 4 undefined]]] undefined undefined]]");
         });
-        return it('should parse try \n 1 catch e then\n 2', function() {
-          var x;
-          x = parse('try \n 1 catch e then\n 2');
-          return expect(x).to.equal("[[try 1 e 2 undefined]]");
+        it('should parse try \n 1 catch e then\n 2', function() {
+          return expect(function() {
+            return parse('try \n 1 catch e then\n 2');
+          }).to["throw"](/unexpected conjunction "catch" following a indent block/);
+        });
+        return it('should parse try \n 1 \ncatch e then\n 2', function() {
+          return expect(function() {
+            return parse('try \n 1 catch e then\n 2');
+          }).to["throw"](/unexpected conjunction "catch" following a indent block/);
         });
       });
     });

@@ -324,18 +324,18 @@ describe "parse: ",  ->
         expect(x).to.equal "[[print 1] [print 2]]"
       it 'should parse if and 1 2 then 3', ->
         x = parse('if and 1 2 then 3')
-        expect(x).to.equal "[[if [and 1 2] 3 undefined]]"
+        expect(x).to.equal "[[if [and 1 2] 3]]"
       it 'should parse if and 1 2 then\n 3', ->
         x = parse('if and 1 2 then\n 3')
-        expect(x).to.equal "[[if [and 1 2] 3 undefined]]"
+        expect(x).to.equal "[[if [and 1 2] 3]]"
       it 'should parse if add : add 1 2 , add 3 4 then 5', ->
         x = parse('if add : add 1 2 , add 3 4 then 5')
-        expect(x).to.equal "[[if [add [add 1 2] [add 3 4]] 5 undefined]]"
+        expect(x).to.equal "[[if [add [add 1 2] [add 3 4]] 5]]"
       it 'should parse print : and 1 2 , or : eq 3 4 , eq 5 6', ->
         x = parse('print : and 1 2 , or : eq 3 4 , eq 5 6')
         expect(x).to.equal '[[print [and 1 2] [or [eq 3 4] [eq 5 6]]]]'
 
-    idescribe "old test 2: ",  ->
+    describe "old test 2: ",  ->
       it 'should parse if 2 then 3 else 4', ->
         x = parse('if 2 then 3 else 4')
         expect(x).to.equal "[[if 2 3 4]]"
@@ -355,7 +355,7 @@ describe "parse: ",  ->
           x = parse('if 1 then 2')
           expect(x).to.equal "[[if 1 2]]"
         it 'should parse if 1 else 2', ->
-          expect(try -> parse('if 1 else 2')).to.throw /unexpected else, expect then clause/
+          expect(try -> parse('if 1 else 2')).to.throw  /unexpected conjunction "else"/
         it 'should parse if 1 then 2 else 3', ->
           x = parse('if 1 then 2 else 3')
           expect(x).to.equal "[[if 1 2 3]]"
@@ -370,8 +370,8 @@ describe "parse: ",  ->
           expect(x).to.equal "[[if 1 2 3]]"
 
       describe "group2: ",  ->
-        it 'should parse if 1 \n  2 \nelse 3', ->
-          expect(-> parse('if 1 \n  2 \nelse 3')).to.throw /unexpected else, expect then clause/
+        it 'should parse if 1 then\n  2 \nelse 3', ->
+          expect(parse('if 1 then\n  2 \nelse 3')).to.equal '[[if 1 2 3]]'
         it 'should parse if 1 then if 2 then 3', ->
           x = parse('if 1 then if 2 then 3')
           expect(x).to.equal "[[if 1 [if 2 3]]]"
@@ -393,7 +393,7 @@ describe "parse: ",  ->
         x = parse('while 1 then 2')
         expect(x).to.equal "[[while 1 2]]"
       it 'should parse while 1 else 2', ->
-        expect(try -> parse('while 1 else 2')).to.throw /unexpected else, expect then clause/
+        expect(try -> parse('while 1 else 2')).to.throw /unexpected conjunction "else"/
       it 'should parse while 1 then \n while 2 then 3 \nelse 4', ->
         x = parse('while 1 then \n while 2 then 3 \nelse 4')
         expect(x).to.equal "[[while 1 [while 2 3] 4]]"
@@ -401,11 +401,11 @@ describe "parse: ",  ->
         x = parse('while 1 then\n while 2 then 3 \n else 4')
         expect(x).to.equal "[[while 1 [while 2 3 4]]]"
 
-    describe "try statement: ",  ->
+    idescribe "try statement: ",  ->
       describe "group1: ",  ->
         it 'should parse try 1 catch e then 2', ->
           x = parse('try 1 catch e then 2')
-          expect(x).to.equal "[[try 1 [e 2] undefined]]"
+          expect(x).to.equal "[[try 1 e 2 undefined]]"
         # javascript try-catch has no else clause.
         nit 'should parse try 1 else 2', ->
           x = parse('try 1 else 2')
@@ -427,7 +427,7 @@ describe "parse: ",  ->
       describe "group2: ",  ->
         it 'should parse try 1 catch e then try 2 catch e then 3', ->
           x = parse('try 1 catch e then try 2 catch e then 3')
-          expect(x).to.equal "[[try 1 [e [try 2 [e 3] undefined]] undefined]]"
+          expect(x).to.equal "[[try 1 e [try 2 e 3 undefined] undefined]]"
         nit 'should parse try 1 catch e then try 2 catch e then 3 else 4', ->
           x = parse('try 1 catch e then try 2 catch e then 3 else 4')
           expect(x).to.equal "[[try 1 [list! [e [try 2 [list! [e 3]] 4 undefined]]] undefined undefined]]"
@@ -441,8 +441,9 @@ describe "parse: ",  ->
           x = parse('try 1 catch e then\n try 2 catch e then 3 \n else 4')
           expect(x).to.equal "[[try 1 [list! [e [try 2 [list! [e 3]] 4 undefined]]] undefined undefined]]"
         it 'should parse try \n 1 catch e then\n 2', ->
-          x = parse('try \n 1 catch e then\n 2')
-          expect(x).to.equal "[[try 1 e 2 undefined]]"
+          expect(-> parse('try \n 1 catch e then\n 2')).to.throw /unexpected conjunction "catch" following a indent block/
+        it 'should parse try \n 1 \ncatch e then\n 2', ->
+          expect(-> parse('try \n 1 catch e then\n 2')).to.throw /unexpected conjunction "catch" following a indent block/
 
     describe "try if statement: ",  ->
       it 'should parse try if 1 then 2 catch e then 3', ->
