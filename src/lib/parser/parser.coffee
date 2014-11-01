@@ -8,7 +8,7 @@ taijiIdentifierCharSet, constant} = base = require './base'
 digitChars = base.digits
 letterChars = base.letters
 
-{NUMBER,  STRING,  IDENTIFIER, SYMBOL, REGEXP,  HEAD_SPACES, CONCAT_LINE, PUNCTUATION, FUNCTION, C_BLOCK_COMMENT
+{NULL, NUMBER,  STRING,  IDENTIFIER, SYMBOL, REGEXP,  HEAD_SPACES, CONCAT_LINE, PUNCTUATION, FUNCTION, C_BLOCK_COMMENT
 PAREN, BRACKET, DATA_BRACKET, CURVE, INDENT_EXPRESSION
 NEWLINE,  SPACES,  INLINE_COMMENT, SPACES_INLINE_COMMENT,
 LINE_COMMENT, BLOCK_COMMENT, CODE_BLOCK_COMMENT,CONCAT_LINE
@@ -35,15 +35,15 @@ exports.keywordMap = keywordMap =
 keywordHasOwnProperty = Object.hasOwnProperty.bind(exports.keywordMap)
 
 exports.isKeyword = isKeyword = (item) ->
-  item and not item.escaped and hasOwnProperty.call(exports.keywordMap, item.text)
+  item and not item.escaped and keywordHasOwnProperty(item.text)
 
 exports.conjMap = conjMap =
   'then':1, 'else':1, 'catch':1, 'finally':1, 'case':1, 'default':1, 'extends': 1
   'until':1, 'where':1, 'when':1
-conjunctionHasOwnProperty = Object.hasOwnProperty.bind(exports.keywordMap)
+conjunctionHasOwnProperty = Object.hasOwnProperty.bind(exports.conjMap)
 
 exports.isConjunction = isConjunction = (item) ->
-  item and not item.escaped and hasOwnProperty.call(exports.conjMap, item.text)
+  item and not item.escaped and conjunctionHasOwnProperty(item.text)
 
 hasOwnProperty = Object::hasOwnProperty
 
@@ -104,6 +104,18 @@ exports.Parser = ->
       return token = eoi # while reaching the end of input, always return eoi
     else if fn = tokenFnMap[char] then return token=fn(char)
     else return token=tokenOnSymbolChar()
+
+  # while parsing for (i=0; i<10; i++) then ..., we hope
+  skipToken = ->
+    cursor = token.stopCursor; char = text[cursor]; lexIndent = indent = token.indent or indent; token = nullToken()
+
+  skipSpace = ->
+    if char!=' ' and char!='\t' then return
+    tokenOnSpaceChar()
+    if token.type==SPACE then skipToken()
+
+  nullToken = ->
+    {type:NULL, value:'', cursor:cursor, stopCursor:cursor, line:lineno, column:cursor-lineStart}
 
   @token = -> token
 
@@ -488,10 +500,10 @@ exports.Parser = ->
     cur = cursor; char = text[++cursor]; column = cursor-lineStart
     while char and identifierCharSet[char] then char=text[++cursor]
     txt=text.slice(cur, cursor)
-    if keywordHasOwnProperty(txt) then type = KEYWORD
-    else if conjunctionHasOwnProperty(txt) then type = CONJUNCTION
-    else type = IDENTIFIER
-    token.next = {type:type, value:txt, atom:true
+    if keywordHasOwnProperty(txt) then type = KEYWORD; isAtom = false
+    else if conjunctionHasOwnProperty(txt) then type = CONJUNCTION; isAtom = false
+    else type = IDENTIFIER; isAtom = true
+    token.next = {type:type, value:txt, atom:isAtom
     cursor:cur, stopCursor: cursor,
     line: lineno, column: column}
 
@@ -935,7 +947,8 @@ exports.Parser = ->
       ind = indent = lexIndent
       if type==SPACE or type==NEWLINE or type==INDENT then matchToken()
       if token.value==')'
-        token = {type: PAREN, value:[], atom:true, cursor:cur, stopCursor: cursor, line:lineno, column:column, indent:lexIndent, empty:true }
+        tkn = nextToken()
+        token = {type: PAREN, value:[], atom:true, cursor:cur, stopCursor: cursor, line:lineno, column:column, indent:lexIndent, next:tkn, empty:true, parameters:true }
         start.next = token
         return token
       exp = parser.operatorExpression()
@@ -943,10 +956,13 @@ exports.Parser = ->
         if token.indent<ind then error 'expect ) indent equal to or more than ('
         else matchToken()
       else if token.value!=')' then error 'expect )'
+      tkn = nextToken()
       #else matchToken() # do not match token here, so token.next==undefined, and nextToken() will matchToken instead.
       exp.type = PAREN; exp.cursor = cur; exp.stopCursor = cursor
       exp.line = line; exp.column = column; exp.indent = lexIndent
       exp.atom = true
+      exp.parameters = true
+      exp.next = tkn
       token = exp
     start.next = token
 
@@ -964,9 +980,10 @@ exports.Parser = ->
         if token.indent<ind then error 'unexpected undent while parsing parenethis "[...]"'
         else matchToken()
       if token.value!=']' then lexError 'expect ]'
+      tkn = nextToken()
       if expList then expList.unshift 'list!'
       else expList = []
-      token = {type: BRACKET, value:expList, cursor:cur, stopCursor: cursor, line:line, column:column, indent:lexIndent}
+      token = {type: BRACKET, value:expList, cursor:cur, stopCursor: cursor, line:line, column:column, indent:lexIndent, next:tkn}
     start.next = token; token.atom = true
     token
 
@@ -981,18 +998,19 @@ exports.Parser = ->
       token.indent = lexIndent
       return token
     else
-      if token.value=='}' and matchToken()
-        token = {value:text[cur...cursor], value:['hash!'], cursor:cur, line:line, column:column, indent:lexIndent}
+      if token.value=='}' and tkn=matchToken()
+        token = {value:text[cur...cursor], value:['hash!'], cursor:cur, line:line, column:column, indent:lexIndent, next:tkn}
         start.next = token
-        return start
+        return token
       body = parser.lineBlock()
       if token.type==UNDENT and token.indent<ind then nextToken()
-      if token.value!='}' then lexError 'expect }' else cursor++
+      if token.value!='}' then lexError 'expect }'
+      tkn = nextToken()
       if indent<ind then lexError 'unexpected undent while parsing parenethis "{...}"'
       if body.length==0 then return {type: CURVE, value:'', cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
       if body.length==1 then body = body[0]
       else body.unshift 'begin!'
-    {type: CURVE, value:body, atom:true, cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
+    {type: CURVE, value:body, atom:true, cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent, next:tkn}
 
   curveVariantMap =
     '.': ->  matchToken(); return parser.hash()
@@ -1078,37 +1096,6 @@ exports.Parser = ->
 
   for c in ')]}' then tokenFnMap[c] = tokenOnRightDelimiterChar
 
-  @followMatch = followMatch = (fn) ->
-    cur = cursor; line = lineno
-    x = fn()
-    cursor = cur; lineno = line
-    x
-
-  @follow = follow = (matcherName) ->
-    cur = cursor; line = lineno
-    x = parser[matcherName]()
-    cursor = cur; lineno = line
-    x
-
-  @expect = expect = (matcherName, message) ->
-    if not (x = parser[matcherName]()) then error message
-    else x
-
-  @followSequence = followSequence = (matcherList...) ->
-    cur = cursor; line1 = lineno
-    for matcherName in  matcherList
-      if not (x=parser[matcherName]()) then break
-    cursor = cur; lineno = line1
-    x
-
-  @followOneOf = (matcherList...) ->
-    cur = cursor; line1 = lineno
-    for matcherName in  matcherList
-      cursor = cur; lineno = line1 # defensive coding style
-      if x =  parser[matcherName]() then break
-    cursor = cur; lineno = line1
-    x
-
   @setText = (x) -> parser.text = text = x; x
   @cursor = -> cursor
   @setCursor = (x) -> cursor = x
@@ -1134,16 +1121,15 @@ exports.Parser = ->
     if cursor==cur then return
     {value: text[cur...cursor], cursor:cur}
 
-  @symbolOrIdentifier = -> parser.symbol() or parser.identifier()
-
   # prefix operator don't need to be compared to current global priority
   @prefixOperator = (mode) ->
     # hasOwnProperty.call is necessary in order to avoid error while builtin attribute of object is defined prefix operator
     tokenText = token.value
     if not hasOwnProperty.call(prefixOperatorDict, tokenText) or  not (op=prefixOperatorDict[tokenText]) then return
+    if (mode==COMPACT_CLAUSE_EXPRESSION or mode==SPACE_CLAUSE_EXPRESSION) and op.definition then return
     if token.escaped then return
     opToken = token; nextToken()
-    if token.value=='.' and nextToken()
+    if token.value==':' and nextToken()
       if (type=token.type)==SPACE or type==INDENT or type==UNDENT or type==NEWLINE
         if mode==OPERATOR_EXPRESSION then error 'unexpected spaces after :'
         else token = opToken; return
@@ -1151,7 +1137,9 @@ exports.Parser = ->
     else if type==NEWLINE then error 'unexpected new line after prefix operator'
     else if type==UNDENT then error 'unexpected undent after prefix operator'
     else if (tokenText=token.value)==")" or tokenText==']' or tokenText=="}" then error 'unexpected '+tokenText+' after prefix operator'
-    else if type==SPACE then matchToken(); priInc = 300
+    else if type==SPACE
+      if op.definition and mode==SPACE_CLAUSE_EXPRESSION then token = start; return
+      matchToken(); priInc = 300
     else priInc = 600
     opToken.symbol = op.symbol; opToken.priority = op.priority+priInc
     extendSyntaxInfo opToken, opToken
@@ -1188,6 +1176,7 @@ exports.Parser = ->
         if mode==COMPACT_CLAUSE_EXPRESSION then token[binaryOperatorMemoIndex+mode] = {}; return
         else
           start = token; nextToken()
+          if token.type!=IDENTIFIER and token.type!=SYMBOL then start[binaryOperatorMemoIndex+mode] = {}; token = start; return
           if token.value=='.'
             if nextToken() and token.type==SPACE and nextToken()
               return {symbol:'attribute!', type: SYMBOL, priority: 800, start:start}
@@ -1220,9 +1209,17 @@ exports.Parser = ->
         else priInc = 600
       else priInc = 600
     opValue = token.value
+    if (mode==COMPACT_CLAUSE_EXPRESSION or mode==SPACE_CLAUSE_EXPRESSION) and opValue==',' or opValue==';' or opValue==':'
+      start[binaryOperatorMemoIndex+mode] = {}
+      token = start; return
+
     if not hasOwnProperty.call(binaryOperatorDict, opValue) or not (op=binaryOperatorDict[opValue])
       start[binaryOperatorMemoIndex+mode] = {}
       token = start; return
+    if op.definition and priInc<600
+      start[binaryOperatorMemoIndex+mode] = {}
+      token = start; return
+
     opToken = token; nextToken()
 
     if token.value=='.'
@@ -1361,8 +1358,6 @@ exports.Parser = ->
       else cursor = cur; break
     exp
 
-  @isIdentifier = isIdentifier = (item) -> item.type==IDENTIFIER
-
   @itemToParameter = itemToParameter = (item) ->
     if item.type==IDENTIFIER then return item
     else if item0=item[0]
@@ -1393,56 +1388,55 @@ exports.Parser = ->
         param
       if not meetError then result
 
-  @labelStatement = ->
-    start = cursor; line1 = lineno
-    if not (lbl=parser.jsIdentifier()) then return
-    if text[cursor]!='#' then cursor = start; return
-    cursor++
-    if (spac=bigSpace()) and (not spac.text or spac.undent or spac.newline)  then cursor = start; return
-    if clause=parser.clause() then clause = ['label!', lbl, clause]
-    else clause = ['label!', lbl, '']
-    extendSyntaxInfo clause, start, token
+#  @expectIndentConj = expectIndentConj = (word, line1, isHeadStatement, options, clauseFn) ->
+#    start = token; ind = indent
+#    if options.optionalClause? then optionalClause = options.optionalClause
+#    else optionalClause = word!='then'
+#    if options.optionalWord? then optionalWord = options.optionalWord
+#    else optionalWord = word=='then'
+#    if token.type==SPACE then nextToken()
+#    if token.type==NEWLINE then nextToken()
+#    else if token.type==INDENT then 'unexpected indent'
+#    else if token.type==UNDENT
+#      if indent==ind and not isHeadStatement
+#        error 'meet new line, expect inline keyword "'+word+'" for inline statement'
+#      else if indent<ind
+#        if not optionalClause then error 'unexpected undent, expect '+word
+#        else token = start; return
+#    else if indent>ind
+#      if options.indentCol
+#        if indent!=options.indentCol then error 'unconsistent indent'
+#      else options.indentCol = indent
+#    nextToken()
+#    if token.type==CONJUNCTION
+#      if token.value==word then return  clauseFn()
+#      else
+#        if optionalClause then token = start; return
+#        else  error 'unexpected '+token.value+', expect '+word+' clause'
+#      else if (not optionalWord and not optionalClause) or (
+#          not optionalClause and optionalWord and spac.inline)
+#        if word!='then' or not options.colonAtEndOfLine then error 'expect keyword '+word
+#      else if not optionalWord then return rollbackToken spac
+#      else if optionalClause then return rollbackToken spac
+#    else return
 
-  @conjunction = ->
-    start = cursor
-    if (x=symbol() or taijiIdentifier()) and isConjunction(x) then return x
-    cursor = start; return
 
-  @expectIndentConj = expectIndentConj = (word, line1, isHeadStatement, options, clauseFn) ->
-    start2 = cursor; line2 = lineno
-    if options.optionalClause? then optionalClause = options.optionalClause
-    else optionalClause = word!='then'
-    if options.optionalWord? then optionalWord = options.optionalWord
-    else optionalWord = word=='then'
-    indentCol = lineInfo[line1].indentCol
-    spac = bigSpace(); column = lineInfo[lineno].indentCol
-    if column==indentCol and lineno!=line1 and not isHeadStatement
-      if not optionalClause
-        error 'meet new line, expect inline keyword "'+word+'" for inline statement'
-      else rollbackToken spac; return
-    if column<indentCol
-      if not optionalClause then error 'unexpected undent, expect '+word
-      else rollbackToken spac; return
-    else if column>indentCol
-      if options.indentCol
-        if column!=options.indentCol then error 'unconsistent indent'
-      else options.indentCol = column
-    w = taijiIdentifier()
-    meetWord = w and w.text==word
-    if not meetWord
-      if isConjunction(w)
-        if optionalClause then rollbackToken spac; return
-        else  error 'unexpected '+w.text+', expect '+word+' clause'
-      else if (not optionalWord and not optionalClause) or (
-          not optionalClause and optionalWord and spac.inline)
-        if word!='then' or not options.colonAtEndOfLine then error 'expect keyword '+word
-      else if not optionalWord then return rollbackToken spac
-      else if optionalClause then return rollbackToken spac
-    if not meetWord then rollback start2, line2
-    clauseFn()
+  firstLevelConjunctionThen = ->
+    ind = indent
+    if token.type==SPACE then nextToken()
+    if token.type==NEWLINE then 'unexpected new line, expect "then" instead'
+    else if token.type==INDENT then 'unexpected indent, expect "then" instead'
+    else if token.type==UNDENT
+      error 'unexpected undent, expect "then" instead'
+    else if token.type==EOI
+      error 'unexpected end of input, expect "then" instead'
+    else if token.type==CONJUNCTION
+      if token.value=="then" then nextToken(); return true
+      else error 'unexpected conjunction "'+token.value+'", expect "then" instead'
+    else error 'expect "then"'
 
   conjClause = (conj, line1, isHeadStatement, options) ->
-    begin(expectIndentConj conj, line1, isHeadStatement, options, parser.lineBlock)
+    begin(expectIndentConj(conj, line1, isHeadStatement, options, parser.lineBlock))
 
   thenClause  = (line1, isHeadStatement, options) -> conjClause 'then', line1, isHeadStatement, options
   elseClause  = (line1, isHeadStatement, options) -> conjClause 'else', line1, isHeadStatement, options
@@ -1462,11 +1456,6 @@ exports.Parser = ->
       space(); expectChar(':', 'expect ":" after case values')
       body = parser.block() or parser.lineBlock()
       [exp, begin(body)]
-
-  @keyword = ->
-    start = cursor
-    if (x=symbol() or taijiIdentifier()) and isKeyword(x) then return x
-    cursor = start; return
 
   # if test then action else action
   keywordThenElseStatement = (keyword) -> (isHeadStatement) ->
@@ -1665,33 +1654,18 @@ exports.Parser = ->
 
   @expectChar = expectChar = (c) -> if text[cursor]==c then cursor++ else error 'expect "'+c+'"'
 
-  @endOfDynamicBlock = @eob = ->
-    if cursor==endCursorOfDynamicBlockStack[-1] then return true
-    else return false
-
-  @keywordToStatementMap =
+  @keyword2statement = keyword2statement =
     '%': (isHeadStatement) ->
-      start = cursor; line1 = lineno
-      if not space().text then return
+      ind = indent
+      if token.type!=SPACE then return
       leadClause = parser.clause()
       code = compileExp(['return', ['%/', leadClause]], environment)
-      space(); indentCol = lineInfo[lineno].indentCol
-      if expectWord('then') or (text[cursor]==':' and cursor++)
-        space()
-        if newline()
-          blockStopLineno = lineno
-          while lineInfo[blockStopLineno].indentCol>indentCol and blockStopLineno<maxLine
-            blockStopLineno++
-          cursorAtEndOfDynamicBlock = lineInfo[blockStopLineno].indentCol or text.length
-        else
-          blockStopLineno = lineno+1
-          cursorAtEndOfDynamicBlock = lineInfo[blockStopLineno].indentCol or text.length
-      else error 'expect "then" or ":"'
-      endCursorOfDynamicBlockStack.push cursorAtEndOfDynamicBlock
-      result = new Function('__$taiji_$_$parser__', code)(parser)
-      endCursorOfDynamicBlockStack.pop()
-      cursor = cursorAtEndOfDynamicBlock; lineno = blockStopLineno
-      extendSyntaxInfo result, start, token
+      if token.type==SPACE then matchToken()
+      if token.value=='then' and nextToken()
+        result = new Function('__$taiji_$_$parser__', code)(parser)
+        if indent<ind then error 'expect same or less indent after custom parsing'
+        result
+      else error 'expect the conjunction "then"'
 
     'break': breakContinueStatement('break')
     'continue': breakContinueStatement('continue')
@@ -1710,31 +1684,32 @@ exports.Parser = ->
 
     # import [#/]name [as [#/]name] ... from path as [#/]name #name [by method]
     'import!': (isHeadStatement) ->
-      space()
-      items = parser.importItemList(); space()
+      if token.type==SPACE then nextToken()
+      items = parser.importItemList()
+      if token.type==SPACE then nextToken()
       if items.length then from_ = expectWord('from') # or items[0][2]
       else from_ = word('from')
-      #if not from_ then return ['import!', names[0][0], names[0][1], []]
-      space(); srcModule = parser.string(); space();
-      if as_ = literal('as')
-        space()
-        sym = parser.symbol()
-        if sym
-          if (symValue=sym.text)!='#' and sym.text!='#/'
+      if token.type==SPACE then nextToken()
+      srcModule = parser.string()
+      if token.type==SPACE then nextToken()
+      if token.value=='as'
+        nextToken(); if token.type==SPACE then nextToken()
+        if token.type==SYMBOL and (symValue=token.value) and symValue!='#' and symbolValue!='#/'
             error 'unexpected symbol before import module name', sym
         alias = expectIdentifier('expect an alias for module')
         if symValue=='#' then metaAlias = alias; alias = undefined
         else if symValue=='#/' then metaAlias = alias
-        space()
+        if token.type==SPACE then nextToken()
         sym2 = parser.symbol()
         if sym and sym2 then error 'unexpected symbol after meta alias'
-        space(); alias2 = parser.identifier()
+        if token.type==SPACE then nextToken()
+        alias2 = parser.identifier()
         # sym is the first symbol # or #/
         if sym  and alias2 then 'unexpected identifier '+alias2+' after '+symValue+alias
         if alias2 then metaAlias = alias2
-        space()
-      if word('by')
-        space(); parseMethod = expect('taijiIdentifier', 'expect a parser method')
+        if token.type==SPACE then nextToken()
+      if token.value=='by' and nextToken()
+        if token.type==SPACE then nextToken(); parseMethod = expect('taijiIdentifier', 'expect a parser method')
       runtimeImportList = []; metaImportList = []
       for item in items
         for x in item
@@ -1752,24 +1727,59 @@ exports.Parser = ->
     'while!': keywordTestExpressionBodyStatement('while!')
 
     'for': (isHeadStatement) ->
-      line1 = lineno; space()
-      if text[cursor]=='(' and cursor++
-        init = parser.clause(); space(); expectChar(';')
-        test = parser.clause(); space(); expectChar(';')
-        step = parser.clause(); space(); expectChar(')')
-        return ['cFor!', init, test, step, thenClause(line1, isHeadStatement, {})]
-      name1 = expectIdentifier(); space()
-      if text[cursor]==',' then cursor++; space()
-      if (token=jsIdentifier()) and value=token.value
-        if value=='in' or value=='of' then inOf = value
-        else name2 = value; space(); inOf = expectOneOfWords('in', 'of')
-        space(); obj = parser.clause()
-      if name2
-        if inOf=='in' then kw = 'forIn!!' else kw = 'forOf!!'
-        [kw, name1, name2, obj, thenClause(line1, isHeadStatement, {})]
+      start = token;
+      skipToken() # skip "for"
+      skipSpace()
+      if char=='(' and char=text[++cursor]
+        matchToken()
+        if token.type==SPACE then nextToken()
+        init = parser.clause()
+        if token.type==SPACE then nextToken()
+        if token.value==';' then nextToken()
+        else error 'expect ";"'
+        if token.type==SPACE then nextToken()
+        test = parser.clause()
+        if token.type==SPACE then nextToken()
+        if token.value==';' then nextToken()
+        else error 'expect ";"'
+        if token.type==SPACE then nextToken()
+        step = parser.clause()
+        if token.type==SPACE then nextToken()
+        if token.value==')' then nextToken()
+        else 'expect ")"'
+        if token.type==SPACE then nextToken()
+        firstLevelConjunctionThen()
+        body = parser.lineOrBlock()
+        if body.length==1 then body = body[0]
+        else if body.length==0 then body = 'undefined'
+        else body.unshift 'begin!'
+        return {value:['cFor!', init, test, step, body], start:start, stop:token}
+      matchToken()
+      if token.type!=IDENTIFIER then error 'expect identifier'
+      name1 = token
+      nextToken()
+      if token.type==SPACE then nextToken()
+      if token.value==',' # optional ","
+        nextToken()
+        if token.type==SPACE then nextToken()
+      if token.type!=IDENTIFIER then error 'expect "in", "of" or index variable name'
+      if (value=token.value)=='in' or value=='of' then inOf = value; nextToken()
       else
-        if inOf=='in' then kw = 'forIn!' else kw = 'forOf!'
-        [kw, name1, obj, thenClause(line1, isHeadStatement, {})]
+        name2 = token; nextToken()
+        if token.type==SPACE then nextToken()
+        if (value=token.value)=='in' or value=='of' then inOf = value; nextToken()
+        else  'expect "in" or "of"'
+      if token.type==SPACE then nextToken()
+      obj = parser.clause()
+      firstLevelConjunctionThen()
+      body = parser.lineOrBlock()
+      if inOf=='in' then kw = 'forIn!' else kw = 'forOf!'
+      if body.length==1 then body = body[0]
+      else if body.length==0 then body = 'undefined'
+      else body.unshift 'begin!'
+      clause = [kw, name1, name2, obj, body]
+      clause.start = start; clause.stop = token
+      clause
 
     'do': (isHeadStatement) ->
       line1 = lineno; space(); indentCol = lineInfo[lineno].indentCol
@@ -1806,101 +1816,19 @@ exports.Parser = ->
       ['try', begin(test), catch_[0], catch_[1], final]
 
     'class': (isHeadStatement) ->
-      line1 = lineno; space();
+      nextToken(); if token.type==SPACE then nextToken()
       # class name should be provided explicitly
-      name = expect('identifier', 'expect class name'); space()
-      if parser.conjunction('extends') then space(); superClass = parser.identifier(); space()
-      else supers = undefined
-      if followNewline() and newlineFromLine(line1, line1+1) then body = undefined
+      if token.type!=IDENTIFIER then error 'expect class nam'
+      name  = token; nextToken()
+      if token.type==SPACE then nextToken()
+      if token.type==CONJUNCTION and token.value=='extends' and nextToken()
+        if token.type==SPACE then nextToken()
+        if token.type==IDENTIFIER then superClass = token; nextToken()
+        if token.type==SPACE then nextToken()
+      else superClass = undefined
+      if token.type==NEWLINE or token.type==UNDENT or token.type==EOI then body = undefined
       else body = parser.lineBlock()
       ['#call!', 'class', [name, superClass, body]]
-
-  @statement = ->
-    start = cursor; line1 = lineno
-    if not (keyword = symbol() or taijiIdentifier()) then return
-    if stmtFn = parser.keywordToStatementMap[keyword.text]
-      isHeadStatement = atStatementHead; atStatementHead = false
-      if stmt = stmtFn(isHeadStatement)
-        return extendSyntaxInfo stmt, start, token
-    return rollback start, line1
-
-  @defaultAssignLeftSide = ->
-    start = cursor; line1 = lineno
-    if not (x=parser.spaceClauseExpression()) then return
-    if x.type==PAREN or x.type==BRACKET or x.type==DATA_BRACKET or x.type==CURVE
-      rollback start, line1; return
-    if not x then  rollback start, line1; return
-    if x.type==IDENTIFIER or ((e=entity(x)) and (e[0]=='attribute!' or e[0]=='index!')) then x
-    else if x.text=='::' then x
-    else if parser.isAssign(x[0]) then rollback x[1].stop, x[1].line; return x[1]
-    else  rollback start, line1; return
-
-  @isAssign = (val) -> (op=binaryOperatorDict[val]) and op.assign
-
-  @defaultAssignSymbol = -> (x=parser.symbol()) and parser.isAssign(x.text) and x
-
-  @defaultAssignRightSide = ->
-    space2 = bigSpace()
-    if space2.undent then error 'unexpected undent after assign symbol'+symbol.text
-    else if space2.newline then error 'unexpected new line after assign symbol'+symbol.text
-    parser.block() or parser.clause()
-
-  @makeAssignClause = (assignLeftSide, assignSymbol, assignRightSide) -> ->
-    start = cursor; line1 = lineno
-    if not (left=assignLeftSide()) then return
-    spac = space()
-    if not (token=assignSymbol()) then return rollback start, line1
-    right = assignRightSide(spac)
-    if left.type==CURVE
-      eLeft = entity(left)
-      if typeof eLeft=='string'
-        if eLeft[0]=='"' then error 'unexpected left side of assign: '+eLeft
-        left = [left]
-      else if eLeft and eLeft.push
-        if eLeft[0]=='begin!' then error 'syntax error: left side of assign should be a list of variable names separated by space'
-      else error 'unexpected left side of assign'
-      return ['hashAssign!', left, right]
-    extendSyntaxInfo [token, left, right], start, token
-
-  @defaultAssignClause = @makeAssignClause @defaultAssignLeftSide, @defaultAssignSymbol, @defaultAssignRightSide
-
-  @customAssignClauses = []
-
-  @assignClause = ->
-    for matcher in parser.customAssignClauses then if x=matcher() then return x
-    parser.defaultAssignClause()
-
-  @macroCallClause = ->
-    start = cursor; line1 = lineno
-    if (head=parser.compactClauseExpression())
-       if (space1=space()) and not space1.text then return rollback(start, line1)
-       if text[cursor]=='#' and cursor++ and ((spac=space()) and spac.text or text[cursor]=='\n' or text[cursor]=='\r')
-          if blk = parser.block()
-            return extendSyntaxInfo ['#call!', head, blk], start, token
-          else if args = parser.clauses()
-            return extendSyntaxInfo ['#call!', head, args], start, token
-    rollback(start, line1)
-
-  @parameterList = ->
-    start = token
-    if token.type==SPACE then nextToken()
-    if token.type!=PAREN then token = start; return
-    if item=token.value
-      if params=parser.toParameters(item) then return params
-      else
-        if followSequence('inlineSpaceComment', 'defaultSymbolOfDefinition')
-          error 'illegal parameters list for function definition'
-        else token = start; return
-
-  @definition = ->
-    start = token
-    if not (parameters=parser.parameterList()) then parameters = []
-    if token.type==SPACE then nextToken()
-    if (value=token.value) and ((tail=value[(value.length-2)...])=='->' or tail=='=>')
-      define = token; nextToken()
-      body = begin(parser.lineBlock()) or 'undefined'
-      extendSyntaxInfo [define, parameters, body], start, token
-    else token = start; return
 
   @clauseItem = ->
     if token.type==SPACE then nextToken()
@@ -1915,15 +1843,6 @@ exports.Parser = ->
     {value:clause, start:start, stop:token}
 
   @customClauseList = ['assignClause']
-
-  leadTokenClause = (value) ->
-    start = token
-    if (type=matchToken().type)!=SPACE and type!=INDENT then token = start; return
-    matchToken()
-    if not (fn=leadWordClauseMap[start.value]) then token = start; return
-    clause = fn(start, parser.clause())
-    clause.start = start; clause.stop = token
-    clause
 
   leadWordClauseMap =
     # eval while parsing, call by %% clause
@@ -1978,48 +1897,92 @@ exports.Parser = ->
 
   symbol2clause = {}
 
-  for key of leadWordClauseMap then symbol2clause[key] = leadTokenClause
+  leadTokenClause = (fn) -> ->
+    start = token
+    if (type=matchToken().type)!=SPACE and type!=INDENT then token = start; return
+    matchToken()
+    if not (fn=leadWordClauseMap[start.value]) then token = start; return
+    {value:fn(start, parser.clause()), start:start, stop:stop}
+
+  for key, fn of leadWordClauseMap then symbol2clause[key] = leadTokenClause(fn)
+
+  definitionSymbolBody = ->
+    start = token; nextToken()
+    if token.type==SPACE then nextToken()
+    if token.type==INDENT then body = parser.block()
+    else body = parser.line()
+    if body
+      if body.length==1 then body = body[0]
+      else if body.length==0 then body = 'undefined'
+      else body.unshift 'begin!'
+    {value: [start, [], body], start:start, stop:token}
+
+  symbol2clause['->'] = definitionSymbolBody
+  symbol2clause['|->'] = definitionSymbolBody
+  symbol2clause['=>'] = definitionSymbolBody
+  symbol2clause['|=>'] = definitionSymbolBody
+
+  @customDefinitionParameterList = ->
 
   @clause = ->
-    start = token
     if (type=token.type)==SPACE then nextToken(); type = token.type
-    if type==KEYWORD then return keyword2statement[token.value]()
-    else if type==IDENTIFIER and nextToken()
-      if token.value=='#' and nextToken() and token.value==':' and nextToken() and (blk=parser.lineBlock())
-        # label statement
-        return ['label!', start, blk]
-      else token = start
-    else if type==SYMBOL and (fn=symbol2clause[token.value])
-      if result = fn() then return result
-      else token = start
-    else if type==NEWLINE then return
+    start = token
+    switch token.type
+      when KEYWORD then return keyword2statement[token.value]()
+      when type==IDENTIFIER
+        nextToken()
+        if token.value=='#' and nextToken() and token.value==':' and nextToken() and (blk=parser.lineBlock())
+          # label statement
+          return {value:['label!', start, blk], start:start, stop:token}
+        else token = start
+      when SYMBOL
+        if (fn=symbol2clause[token.value]) and (result = fn()) then return result
+      when NEWLINE, UNDENT, RIGHT_DELIMITER, CONJUNCTION, EOI then return
 
-    if not (head=parser.compactClauseExpression())
+    head = parser.compactClauseExpression()
+    if not head
+      # try to parse: prefix exp
       if (op=parser.prefixOperator())
         if token.type==SPACE and nextToken() and (exp=parser.spaceClauseExpression())
-          return [op, exp]
+          return {value:[op, exp], start:start, stop:token}
         else return op
       else if token.value==',' then nextToken(); return {value:'undefined', start:start, stop:token}
       else return
 
+    # here head is parsed successfully
     if op=parser.binaryOperator(SPACE_CLAUSE_EXPRESSION)
-      originalToken = token; token = head; head.next = op
-      op[binaryOperatorMemoIndex+SPACE_CLAUSE_EXPRESSION] = {result:op, next:originalToken}
+      tokenAfterOperator = token; token = head; head.next = op
+      op[binaryOperatorMemoIndex+SPACE_CLAUSE_EXPRESSION] = {result:op, next:tokenAfterOperator}
       if (exp=parser.spaceClauseExpression())
-        if (value=token.value)==',' then nextToken(); if token.type==SPACE then nextToken()
+        if (value=token.value)==','
+          nextToken(); if token.type==SPACE then nextToken()
+          return exp
         else if value!=';' and (type=token.type)!=NEWLINE and type!=UNDENT and type!=EOI
-          error 'after space expression clause, expect stop symbol of clause like colon, semicolon, new line, undent or end of input etc.'
-        return exp
-      else token = originalToken
+          if exp.priority<600 # spaces was met
+            error 'after space expression clause, expect stop symbol of clause like colon, semicolon, new line, undent or end of input etc.'
+          else token = op
+        else return exp
+      else token = op
 
-    tkn = token
-    if (exp=parser.spaceClauseExpression())
-      if exp.priority<=600 and isCallable(head)
-        if (value=token.value)==',' then nextToken(); if token.type==SPACE then nextToken()
+    else if (tkn=token) and (exp=parser.spaceClauseExpression())
+      # here parsing [head spaceClauseExpression]
+      if exp.priority<=600 and (type=head.type)!=NUMBER and type!=NON_INTERPOLATE_STRING and type!=INTERPOLATE_STRING and type!=BRACKET and type!=HASH
+        if (value=token.value)==','
+          nextToken(); if token.type==SPACE then nextToken()
+          return {value:[head, exp], start:start, stop:token}
         else if value!=';' and (type=token.type)!=NEWLINE and type!=UNDENT and type!=EOI
           error 'after caller leading clause, expect stop symbol of clause like colon, semicolon, new line, undent or end of input etc.'
-        return [head, exp]
+        else return {value:[head, exp], start:start, stop:token}
       else token = tkn
+
+    if op and op.assign
+      nextToken()
+      if (type=token.type)==SPACE then nextToken(); type  =token.type
+      if type==UNDENT then error 'unexpected undent after assign symbol'+op.value
+      else if type==NEWLINE then error 'unexpected new line after assign symbol'+op.value
+      else if type==EOI then error 'unexpected end of input'+op.value
+      right = parser.block() or parser.clause()
+      return {value:[op, head, right], start:start, stop:token}
 
     else if token.value=='#' and nextToken()
       if token.type==SPACE then clauses = parser.clauses()
@@ -2040,7 +2003,45 @@ exports.Parser = ->
         clause.value.push.apply clause.value, blk
         clause.stop = blk.stop
         return clause
+
     else clause = head
+
+    if (op=binaryOperatorDict[token.value]) and op.definition
+      definition = definitionSymbolBody()
+      clauseValue =  clause.value
+      if clause.parameters
+        if clause.type==PAREN
+          if clause.empty
+            definition.value[1] = []
+            definition.start = start
+            clause = definition
+          else if clauseValue.push
+            if clauseValue.length==0
+              error 'unexpected [] in parameter list'
+            else if clauseValue[0]!=','
+              error 'syntax error in parameter list'
+            else
+              clauseValue.shift() # remove "," from list, e.g.(a, b, c) ==> [, a b c] ==> [a b c]
+              definition.value[1] = clauseValue
+              definition.start = start
+              clause = definition
+          else
+            definition.value[1] = [clause]
+            definition.start = start
+            clause = definition
+        else parser.customDefinitionParameterList(clause, definition)
+      else if clauseValue.push and clauseValue.length>1
+          params = clauseValue[-1]
+          if params.parameters
+            clauseValue.pop()
+            definition.value[1] = params
+            definition.start = params.start
+          clauseValue.push definition
+          clause.stop = token
+      else
+        clause = [clause, definition]
+        clause.start = start; clause.stop = token
+      return clause
 
     if (value=token.value)==','
       nextToken()
@@ -2058,6 +2059,10 @@ exports.Parser = ->
       nextToken()
       if token.type==INDENT then clauses = parser.block()
       else clauses = parser.clauses()
+      if clauses.length==1
+        clause0 = clauses[0]
+        if clause0.value.push and clause0.type!=BRACKET then clauses = clause0.value
+      else if clauses.length==0 then error 'expected arguments list after ":"'
       clauses.unshift clause
       clauses.start = start; clauses.stop = token
       clauses
@@ -2074,35 +2079,14 @@ exports.Parser = ->
 
     else clause
 
-  isCallable = (exp) -> return (type=exp.type)!=NUMBER and type!=NON_INTERPOLATE_STRING and type!=INTERPOLATE_STRING and type!=BRACKET and type!=HASH
-
   @clauses = ->
     result = []
     while clause=parser.clause() then result.push clause
     return result
 
-  @lineCommentBlock = ->
-    start = cursor
-    if comment=parser.lineComment()
-      if comment.indent
-        if comment.text[...3]=='///' then result = parser.blockWithoutIndentHead(); result.unshift ['directLineComment!', comment.text]; result
-        else parser.blockWithoutIndentHead()
-      else
-        if text[start...start+3]=='///'
-          [extend(['directLineComment!', comment.text], {start:start, stop:cursor, line: lineno})]
-        else [extend(['lineComment!', comment.text], {start:start, stop:cursor, line: lineno})]
-
-  @codeCommentBlockComment = ->
-    if cursor!=lineInfo[lineno].start+lineInfo[lineno].indentCol then return
-    if text[cursor]!='/' then return
-    if (c=text[cursor+1])=='.' or c=='/' or c=='*' then return
-    start = cursor; line1 = lineno; cursor++
-    code = parser.lineBlock()
-    extend [['codeBlockComment!', code]], {start:start, stop:cursor, line1: line1, line: lineno}
-
   @sentence = ->
     start = token
-    if (type=token.type)==EOI or type==UNDENT or type==NEWLINE or type==RIGHT_DELIMITER or isConjunction(token)
+    if (type=token.type)==EOI or type==UNDENT or type==NEWLINE or type==RIGHT_DELIMITER or type==CONJUNCTION
       return
     result = parser.clauses()
     if token.value==';'
@@ -2111,9 +2095,12 @@ exports.Parser = ->
     extendSyntaxInfo result, start, token
 
   @line = ->
-    if (type=token.type)==UNDENT or type==RIGHT_DELIMITER or isConjunction(token) or type==EOI
+    if (type=token.type)==UNDENT or type==RIGHT_DELIMITER or type==CONJUNCTION or type==EOI
       return
     if type==INDENT then return parser.block(indent)
+    if type==CODE_BLOCK_COMMENT_LEAD_SYMBOL
+      x = parser.line()
+      return {value:['codeBlockComment!', x], start:start, stop:stop}
     result = []
     while x = parser.sentence() then result.push.apply result, x
     if token.type==NEWLINE then nextToken()
@@ -2141,6 +2128,10 @@ exports.Parser = ->
       if token.indent>dent
         result.push.apply result, parser.blockWithoutIndentHead()
       result
+
+  @lineOrBlock = ->
+    if token.type==INDENT then nextToken(); parser.blockWithoutIndentHead(indent)
+    else parser.line()
 
   @moduleBody = ->
     start = token; matchToken()

@@ -1,4 +1,4 @@
-var Parser, chai, constant, expect, idescribe, iit, isArray, lib, ndescribe, nit, str, _ref;
+var Parser, chai, constant, expect, idescribe, iit, isArray, lib, matchRule, ndescribe, nit, str, _ref;
 
 chai = require("chai");
 
@@ -18,13 +18,15 @@ Parser = require(lib + 'parser').Parser;
 
 _ref = require(lib + 'parser/base'), constant = _ref.constant, isArray = _ref.isArray, str = _ref.str;
 
-ndescribe("parse: ", function() {
+matchRule = require('../utils').matchRule;
+
+describe("parse: ", function() {
   describe("clause: ", function() {
     var parse;
     parse = function(text) {
       var parser, x;
       parser = new Parser();
-      x = parser.parse(text, parser.clause, 0);
+      x = parser.parse(text, matchRule(parser, parser.clause), 0);
       return str(x);
     };
     describe("normal clause: ", function() {
@@ -44,7 +46,7 @@ ndescribe("parse: ", function() {
         return expect(parse('1,2')).to.equal('1');
       });
       it('should parse 1 , 2', function() {
-        return expect(parse('1 , 2')).to.equal('1');
+        return expect(parse('1 , 2')).to.equal("1");
       });
       it('should parse 1 2', function() {
         return expect(parse('1 2 ')).to.equal('[1 2]');
@@ -65,10 +67,10 @@ ndescribe("parse: ", function() {
       it('should parse print : add 1 2 , add 3 4', function() {
         return expect(parse('print : add 1 2 , add 3 4')).to.equal('[print [add 1 2] [add 3 4]]');
       });
-      it('should parse print 1 2 : add 3 4', function() {
-        return expect(parse('print 1 2 : add 3 4')).to.equal('[print 1 2 [add 3 4]]');
+      it('should parse select fn : 1 2 4', function() {
+        return expect(parse('select fn : 1 2 4')).to.equal("[[select fn] 1 2 4]");
       });
-      it('should parse print 1 2 : add 3 4', function() {
+      it('should parse print: add: add 1 2 , add 3 4', function() {
         return expect(parse('print: add: add 1 2 , add 3 4')).to.equal('[print [add [add 1 2] [add 3 4]]]');
       });
       it('should parse [2]', function() {
@@ -82,6 +84,9 @@ ndescribe("parse: ", function() {
       });
       it('should parse require.extensions[".tj"] = 1', function() {
         return expect(parse('require.extensions[".tj"] = 1')).to.equal("[= [index! [attribute! require extensions] [string! \".tj\"]] 1]");
+      });
+      it('should parse a = ->', function() {
+        return expect(parse('a = ->')).to.equal("[= a [-> [] undefined]]");
       });
       it('should parse require.extensions[".tj"] = ->', function() {
         return expect(parse('require.extensions[".tj"] = ->')).to.equal("[= [index! [attribute! require extensions] [string! \".tj\"]] [-> [] undefined]]");
@@ -136,6 +141,11 @@ ndescribe("parse: ", function() {
         x = parse('->');
         return expect(x).to.equal('[-> [] undefined]');
       });
+      it('should parse -> 1', function() {
+        var x;
+        x = parse('-> 1');
+        return expect(x).to.equal("[-> [] 1]");
+      });
       it('should parse () -> 1', function() {
         var x;
         x = parse('() -> 1');
@@ -180,6 +190,11 @@ ndescribe("parse: ", function() {
         var x;
         x = parse('-> and 1 2 , and 3 4');
         return expect(x).to.equal("[-> [] [begin! [and 1 2] [and 3 4]]]");
+      });
+      it('should parse print -> 2', function() {
+        var x;
+        x = parse('print -> 2');
+        return expect(x).to.equal("[print [-> [] 2]]");
       });
       return it('should parse -> and 1 2 , and 3 4 -> print x ; print 5 6', function() {
         var x;
@@ -234,7 +249,7 @@ ndescribe("parse: ", function() {
         return expect(x).to.equal("[#call! class [B A [[= :: [-> [] undefined]]]]]");
       });
     });
-    describe('for', function() {
+    idescribe('for', function() {
       it('should parse for (i=0; i<10; i++) then print i', function() {
         var x;
         x = parse('for (i=0; i<10; i++) then print i');
@@ -243,22 +258,22 @@ ndescribe("parse: ", function() {
       it('should parse for i in x then print i', function() {
         var x;
         x = parse('for i in x then print i');
-        return expect(x).to.equal("[forIn! i x [print i]]");
+        return expect(x).to.equal("[forIn! i undefined x [print i]]");
       });
       it('should parse for i v in x then print i, print v', function() {
         var x;
         x = parse('for i v in x then print i, print v');
-        return expect(x).to.equal("[forIn!! i v x [begin! [print i] [print v]]]");
+        return expect(x).to.equal("[forIn! i v x [begin! [print i] [print v]]]");
       });
       it('should parse for i, v of x then print i, print v', function() {
         var x;
         x = parse('for i, v of x then print i, print v');
-        return expect(x).to.equal("[forOf!! i v x [begin! [print i] [print v]]]");
+        return expect(x).to.equal("[forOf! i v x [begin! [print i] [print v]]]");
       });
       return it('should parse label: forx# for i, v in x then print i', function() {
         var x;
         x = parse('forx# for i, v in x then print i, print v');
-        return expect(x).to.equal("[label! forx [forIn!! i v x [begin! [print i] [print v]]]]");
+        return expect(x).to.equal("[label! forx [forIn! i v x [begin! [print i] [print v]]]]");
       });
     });
     describe('var', function() {
@@ -776,7 +791,7 @@ ndescribe("parse: ", function() {
       });
     });
   });
-  describe("line: ", function() {
+  xdescribe("line: ", function() {
     var parse;
     parse = function(text) {
       var parser, x;
@@ -839,7 +854,7 @@ ndescribe("parse: ", function() {
       return expect(x).to.equal("[list! [list! 1 2] [list! 3 4]]");
     });
   });
-  return describe("module: ", function() {
+  return ndescribe("module: ", function() {
     var head, parse;
     head = 'taiji language 0.1\n';
     parse = function(text) {

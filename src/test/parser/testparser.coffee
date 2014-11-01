@@ -9,11 +9,13 @@ lib = '../../lib/'
 {Parser} = require lib+'parser'
 {constant, isArray, str} = require lib+'parser/base'
 
-ndescribe "parse: ",  ->
+{matchRule} = require '../utils'
+
+describe "parse: ",  ->
   describe "clause: ",  ->
     parse = (text) ->
       parser = new Parser()
-      x = parser.parse(text, parser.clause, 0)
+      x = parser.parse(text, matchRule(parser, parser.clause), 0)
       str x
 
     describe "normal clause: ",  ->
@@ -28,7 +30,7 @@ ndescribe "parse: ",  ->
       it 'should parse 1,2', ->
         expect(parse('1,2')).to.equal '1'
       it 'should parse 1 , 2', ->
-        expect(parse('1 , 2')).to.equal '1'
+        expect(parse('1 , 2')).to.equal "1"
       it 'should parse 1 2', ->
         expect(parse('1 2 ')).to.equal '[1 2]'
       it 'should parse print : 1 , 2', ->
@@ -41,9 +43,9 @@ ndescribe "parse: ",  ->
         expect(x).to.equal '[print [and 1 2] 3]'
       it 'should parse print : add 1 2 , add 3 4', ->
         expect(parse('print : add 1 2 , add 3 4')).to.equal '[print [add 1 2] [add 3 4]]'
-      it 'should parse print 1 2 : add 3 4', ->
-        expect(parse('print 1 2 : add 3 4')).to.equal '[print 1 2 [add 3 4]]'
-      it 'should parse print 1 2 : add 3 4', ->
+      it 'should parse select fn : 1 2 4', ->
+        expect(parse('select fn : 1 2 4')).to.equal "[[select fn] 1 2 4]"
+      it 'should parse print: add: add 1 2 , add 3 4', ->
         expect(parse('print: add: add 1 2 , add 3 4')).to.equal '[print [add [add 1 2] [add 3 4]]]'
       it 'should parse [2]', ->
         expect(parse("[2]")).to.equal "[list! 2]"
@@ -53,6 +55,8 @@ ndescribe "parse: ",  ->
         expect(parse("[ [[2] 3] ]")).to.equal "[list! [list! [[list! 2] 3]]]"
       it 'should parse require.extensions[".tj"] = 1', ->
         expect(parse('require.extensions[".tj"] = 1')).to.equal "[= [index! [attribute! require extensions] [string! \".tj\"]] 1]"
+      it 'should parse a = ->', ->
+        expect(parse('a = ->')).to.equal "[= a [-> [] undefined]]"
       it 'should parse require.extensions[".tj"] = ->', ->
         expect(parse('require.extensions[".tj"] = ->')).to.equal "[= [index! [attribute! require extensions] [string! \".tj\"]] [-> [] undefined]]"
       it 'should parse require.extensions[".tj"] = (module, filename) ->', ->
@@ -90,6 +94,9 @@ ndescribe "parse: ",  ->
       it 'should parse ->', ->
         x = parse('->')
         expect(x).to.equal '[-> [] undefined]'
+      it 'should parse -> 1', ->
+        x = parse('-> 1')
+        expect(x).to.equal "[-> [] 1]"
       it 'should parse () -> 1', ->
         x = parse('() -> 1')
         expect(x).to.equal '[-> [] 1]'
@@ -115,6 +122,9 @@ ndescribe "parse: ",  ->
       it 'should parse -> and 1 2 , and 3 4', ->
         x = parse('-> and 1 2 , and 3 4')
         expect(x).to.equal "[-> [] [begin! [and 1 2] [and 3 4]]]"
+      it 'should parse print -> 2', ->
+        x = parse('print -> 2')
+        expect(x).to.equal "[print [-> [] 2]]"
       it 'should parse -> and 1 2 , and 3 4 -> print x ; print 5 6', ->
         x = parse('-> and 1 2 , and 3 4 -> print x ; print 5 6')
         expect(x).to.equal "[-> [] [begin! [and 1 2] [and 3 4 [-> [] [begin! [print x] [print 5 6]]]]]]"
@@ -158,26 +168,26 @@ ndescribe "parse: ",  ->
         x = parse('class B extends A  :: = ->')
         expect(x).to.equal "[#call! class [B A [[= :: [-> [] undefined]]]]]"
 
-    describe 'for', ->
+    idescribe 'for', ->
       it 'should parse for (i=0; i<10; i++) then print i', ->
         x = parse('for (i=0; i<10; i++) then print i')
         expect(x).to.equal "[cFor! [= i 0] [< i 10] [x++ i] [print i]]"
 
       it 'should parse for i in x then print i', ->
         x = parse('for i in x then print i')
-        expect(x).to.equal "[forIn! i x [print i]]"
+        expect(x).to.equal "[forIn! i undefined x [print i]]"
 
       it 'should parse for i v in x then print i, print v', ->
         x = parse('for i v in x then print i, print v')
-        expect(x).to.equal "[forIn!! i v x [begin! [print i] [print v]]]"
+        expect(x).to.equal "[forIn! i v x [begin! [print i] [print v]]]"
 
       it 'should parse for i, v of x then print i, print v', ->
         x = parse('for i, v of x then print i, print v')
-        expect(x).to.equal "[forOf!! i v x [begin! [print i] [print v]]]"
+        expect(x).to.equal "[forOf! i v x [begin! [print i] [print v]]]"
 
       it 'should parse label: forx# for i, v in x then print i', ->
         x = parse('forx# for i, v in x then print i, print v')
-        expect(x).to.equal "[label! forx [forIn!! i v x [begin! [print i] [print v]]]]"
+        expect(x).to.equal "[label! forx [forIn! i v x [begin! [print i] [print v]]]]"
 
     describe 'var', ->
       it 'should parse var a', ->
@@ -515,7 +525,7 @@ ndescribe "parse: ",  ->
       it 'should parse print : 2', ->
         expect(parse("print : 2")).to.equal '[[print 2]]'
 
-  describe "line: ",  ->
+  xdescribe "line: ",  ->
     parse = (text) ->
       parser = new Parser()
       x = parser.parse(text, parser.line, 0)
@@ -562,7 +572,7 @@ ndescribe "parse: ",  ->
       x = parse('[\\ 1 2\n3 4 \\]')
       expect(x).to.equal "[list! [list! 1 2] [list! 3 4]]"
 
-  describe "module: ",  ->
+  ndescribe "module: ",  ->
     head = 'taiji language 0.1\n'
     parse = (text) ->
       parser = new Parser()

@@ -9,17 +9,12 @@ nit = ->
 lib = '../../lib/'
 {constant, isArray, str} = require lib+'parser/base'
 {Parser} = require lib+'parser/parser'
+{matchRule} = require '../utils'
 
 {IDENTIFIER, NUMBER, NEWLINE, INDENT, UNDENT, HALF_DENT, PAREN, BLOCK_COMMENT, EOI, SPACE
 PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION} = constant
 
-matchRule = (parser, rule) -> ->
-  token = parser.matchToken()
-  if token.type==NEWLINE then parser.matchToken()
-  if token.type==SPACE then parser.matchToken()
-  rule()
-
-describe "parser basic: ",  ->
+ndescribe "parser basic: ",  ->
   describe "matchToken: ",  ->
     parser = new Parser()
     parse = (text) ->

@@ -9,6 +9,10 @@ PREFIX, SUFFIX, BINARY} = constant
 
 exports.prefixOperatorDict = prefixOperatorDict =
   '#':  {priority: 200}, # preprocess, conditional meta compilation operator
+  '->':  {priority: 5, definition:true}, # definition operator
+  '|->':  {priority: 5, definition:true}, # definitionoperator
+  '=>':  {priority: 5, definition:true}, # definition operator
+  '|=>':  {priority: 5, definition:true}, # definition operator
   '##':  {priority: 5}, # meta compilation operator
   '#/':  {priority: 5}, # compile in both meta and object level
   '#-':  {priority: 5}, # exit meta level
@@ -57,6 +61,11 @@ do -> for op, result of exports.suffixOperatorDict
   if not result.symbol then result.symbol = op
 
 exports.binaryOperatorDict =
+  '->': {priority: 4, definition:true} # defintion operator
+  '->': {priority: 4, definition:true}
+  '=>': {priority: 4, definition:true}
+  '|=>': {priority: 4, definition:true}
+
   ',': {priority: 5}
 
   # assign  {priority: 20}
