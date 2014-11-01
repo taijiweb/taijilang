@@ -249,7 +249,7 @@ describe("parse: ", function() {
         return expect(x).to.equal("[#call! class [B A [[= :: [-> [] undefined]]]]]");
       });
     });
-    idescribe('for', function() {
+    describe('for', function() {
       it('should parse for (i=0; i<10; i++) then print i', function() {
         var x;
         x = parse('for (i=0; i<10; i++) then print i');
@@ -276,7 +276,7 @@ describe("parse: ", function() {
         return expect(x).to.equal("[label! forx [forIn! i v x [begin! [print i] [print v]]]]");
       });
     });
-    describe('var', function() {
+    idescribe('var', function() {
       it('should parse var a', function() {
         var x;
         x = parse('var a');

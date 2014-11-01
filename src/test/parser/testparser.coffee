@@ -168,7 +168,7 @@ describe "parse: ",  ->
         x = parse('class B extends A  :: = ->')
         expect(x).to.equal "[#call! class [B A [[= :: [-> [] undefined]]]]]"
 
-    idescribe 'for', ->
+    describe 'for', ->
       it 'should parse for (i=0; i<10; i++) then print i', ->
         x = parse('for (i=0; i<10; i++) then print i')
         expect(x).to.equal "[cFor! [= i 0] [< i 10] [x++ i] [print i]]"
@@ -189,7 +189,7 @@ describe "parse: ",  ->
         x = parse('forx# for i, v in x then print i, print v')
         expect(x).to.equal "[label! forx [forIn! i v x [begin! [print i] [print v]]]]"
 
-    describe 'var', ->
+    idescribe 'var', ->
       it 'should parse var a', ->
         x = parse('var a')
         expect(x).to.equal '[var a]'

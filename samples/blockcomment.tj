@@ -8,3 +8,37 @@ taiji language 0.1
   no end tag is needed for a block comment
 
 print 'something' // this is code line
+
+// It's more difficult to parse (1) and (2), easier to parse (3) and (4)
+// the declaration above is wrong! (1) (2) (3) (4) are all INDENT
+// (1) 
+var /* this is 
+  some comment */
+  i, j;
+
+// (2)
+var /* this is 
+    some comment*/
+  i, j;
+
+// (3)
+var /* this is 
+ some comment*/
+  i, j;
+  
+// (4)
+var // line comment
+  i, j;
+
+var 
+  i = abs: add 1
+               2
+  j = 3
+  
+var i = abs: add 1
+      2
+    j = 3
+      
+if and 
+  1 
+  2 then print 3

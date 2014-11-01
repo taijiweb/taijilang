@@ -1514,37 +1514,49 @@ exports.Parser = ->
     result
 
   @varInit = ->
-    if not (id = parser.identifier()) then return
-    space()
-    if text[cursor]=='=' and cursor++
+    if token.type!=IDENTIFIER then return
+    id = token; nextToken()
+    if token.type==SPACE then nextToken()
+    if token.value=='='
+      nextToken()
+      if token.type==SPACE then nextToken()
       if value=parser.block() then value = begin(value)
       else if not(value=parser.clause()) then error 'expect a value after "=" in variable initilization'
-    space()
-    if text[cursor]==',' then cursor++
-    if not value then return id else return [id, '=', value]
+    if token.value==',' then nextToken()
+    if token.type==SPACE then nextToken()
+    if not value then return id
+    else return {value:[id, '=', value], start:id, stop:token}
 
-  @varInitList = ->
-    start = cursor; line1 = lineno; result = []
-    indentCol0 = lineInfo[lineno].indentCol
-    spac = bigSpace()
-    column = lineInfo[lineno].indentCol
-    if column>indentCol0 then indentCol1 = column
-    else if spac.undent or spac.newline then error 'unexpected new line, expect at least one variable in var statement'
+  varInitLine = ->
+    result = []
     while 1
       if x=parser.varInit() then result.push x
       else break
-      space1 = bigSpace()
-      column = lineInfo[lineno].indentCol
-      if not text[cursor] or text[cursor]==';' or follow 'rightDelimiter' then break
-      if lineno==line1 then continue
-      if column>indentCol0
-        if indentCol1 and column!=indentCol1 then error 'unconsitent indent in var initialization block'
-        else if not indentCol1 then indentCol1 = column
-      else if column==indentCol0 then break
-      else rollbackToken space1
-    # if not result.length then error 'expect at least one variable in var statement'
-    if not result.length then rollback start, line1; return
-    return result
+    result
+
+  @varInitList = ->
+    start = token; ind0 = indent; nextToken()
+    if token.type==SPACE then nextToken()
+    if token.type==UNDENT then error 'unexpected undent'
+    else if token.type==NEWLINE then error 'unexpected new line, expect at least one variable in var statement'
+    if token.type!=INDENT
+      result = varInitLine()
+      # if token.value==';' then nextToken() # ";" will be eaten at the end of parsing parser.sentence
+    else
+      nextToken(); ind1 = indent
+      if token.type==SPACE then nextToken()
+      result = []
+      while 1
+        result.push.apply result, varInitLine()
+        if token.value = ';' then nextToken(); if token.type==SPACE then nextToken()
+        if token.type==EOI then break
+        else if token.type==UNDENT
+          if indent==ind1 then continue
+          else if indent==ind0 then nextToken(); break
+          else if indent<ind0 then break
+          else error 'unconsistent indent in var initialization block'
+        else break
+    result
 
   @importItem = ->
     start = cursor; line1 = lineno
