@@ -272,7 +272,7 @@ describe "parse: ",  ->
         x = parse('^&a')
         expect(x).to.equal '[unquote-splice a]'
 
-    describe 'expression clause', ->
+    describe 'expression clause:', ->
       it 'should parse 1+2', ->
         x = parse('1+2')
         expect(x).to.equal '[+ 1 2]'
@@ -285,7 +285,7 @@ describe "parse: ",  ->
         x = parse('print (1+2)')
         expect(x).to.equal '[print [+ 1 2]]'
 
-      it 'should parse print 1 + 2', ->
+      it 'should parse print (1 + 2)', ->
         x = parse('print (1 + 2)')
         expect(x).to.equal '[print [+ 1 2]]'
 
@@ -316,7 +316,7 @@ describe "parse: ",  ->
   describe "sentence: ",  ->
     parse = (text) ->
       parser = new Parser()
-      x = parser.parse(text, parser.sentence, 0)
+      x = parser.parse(text, matchRule(parser, parser.sentence), 0)
       str x
     describe "old test: ",  ->
       it 'should parse print 1 , print 2', ->
@@ -324,18 +324,18 @@ describe "parse: ",  ->
         expect(x).to.equal "[[print 1] [print 2]]"
       it 'should parse if and 1 2 then 3', ->
         x = parse('if and 1 2 then 3')
-        expect(x).to.equal "[[if [and 1 2] 3]]"
-      it 'should parse if and 1 2:\n 3', ->
-        x = parse('if and 1 2:\n 3')
-        expect(x).to.equal "[[if [and 1 2] 3]]"
+        expect(x).to.equal "[[if [and 1 2] 3 undefined]]"
+      it 'should parse if and 1 2 then\n 3', ->
+        x = parse('if and 1 2 then\n 3')
+        expect(x).to.equal "[[if [and 1 2] 3 undefined]]"
       it 'should parse if add : add 1 2 , add 3 4 then 5', ->
         x = parse('if add : add 1 2 , add 3 4 then 5')
-        expect(x).to.equal "[[if [add [add 1 2] [add 3 4]] 5]]"
+        expect(x).to.equal "[[if [add [add 1 2] [add 3 4]] 5 undefined]]"
       it 'should parse print : and 1 2 , or : eq 3 4 , eq 5 6', ->
         x = parse('print : and 1 2 , or : eq 3 4 , eq 5 6')
         expect(x).to.equal '[[print [and 1 2] [or [eq 3 4] [eq 5 6]]]]'
 
-    describe "old test 2: ",  ->
+    idescribe "old test 2: ",  ->
       it 'should parse if 2 then 3 else 4', ->
         x = parse('if 2 then 3 else 4')
         expect(x).to.equal "[[if 2 3 4]]"

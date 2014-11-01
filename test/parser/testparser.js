@@ -382,7 +382,7 @@ describe("parse: ", function() {
         return expect(x).to.equal('[unquote-splice a]');
       });
     });
-    describe('expression clause', function() {
+    describe('expression clause:', function() {
       it('should parse 1+2', function() {
         var x;
         x = parse('1+2');
@@ -398,7 +398,7 @@ describe("parse: ", function() {
         x = parse('print (1+2)');
         return expect(x).to.equal('[print [+ 1 2]]');
       });
-      it('should parse print 1 + 2', function() {
+      it('should parse print (1 + 2)', function() {
         var x;
         x = parse('print (1 + 2)');
         return expect(x).to.equal('[print [+ 1 2]]');
@@ -447,7 +447,7 @@ describe("parse: ", function() {
     parse = function(text) {
       var parser, x;
       parser = new Parser();
-      x = parser.parse(text, parser.sentence, 0);
+      x = parser.parse(text, matchRule(parser, parser.sentence), 0);
       return str(x);
     };
     describe("old test: ", function() {
@@ -459,17 +459,17 @@ describe("parse: ", function() {
       it('should parse if and 1 2 then 3', function() {
         var x;
         x = parse('if and 1 2 then 3');
-        return expect(x).to.equal("[[if [and 1 2] 3]]");
+        return expect(x).to.equal("[[if [and 1 2] 3 undefined]]");
       });
-      it('should parse if and 1 2:\n 3', function() {
+      it('should parse if and 1 2 then\n 3', function() {
         var x;
-        x = parse('if and 1 2:\n 3');
-        return expect(x).to.equal("[[if [and 1 2] 3]]");
+        x = parse('if and 1 2 then\n 3');
+        return expect(x).to.equal("[[if [and 1 2] 3 undefined]]");
       });
       it('should parse if add : add 1 2 , add 3 4 then 5', function() {
         var x;
         x = parse('if add : add 1 2 , add 3 4 then 5');
-        return expect(x).to.equal("[[if [add [add 1 2] [add 3 4]] 5]]");
+        return expect(x).to.equal("[[if [add [add 1 2] [add 3 4]] 5 undefined]]");
       });
       return it('should parse print : and 1 2 , or : eq 3 4 , eq 5 6', function() {
         var x;
@@ -477,7 +477,7 @@ describe("parse: ", function() {
         return expect(x).to.equal('[[print [and 1 2] [or [eq 3 4] [eq 5 6]]]]');
       });
     });
-    describe("old test 2: ", function() {
+    idescribe("old test 2: ", function() {
       it('should parse if 2 then 3 else 4', function() {
         var x;
         x = parse('if 2 then 3 else 4');
