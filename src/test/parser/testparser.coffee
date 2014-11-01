@@ -189,7 +189,7 @@ describe "parse: ",  ->
         x = parse('forx# for i, v in x then print i, print v')
         expect(x).to.equal "[label! forx [forIn! i v x [begin! [print i] [print v]]]]"
 
-    idescribe 'var', ->
+    describe 'var', ->
       it 'should parse var a', ->
         x = parse('var a')
         expect(x).to.equal '[var a]'
@@ -218,9 +218,9 @@ describe "parse: ",  ->
         expect(parse('var 1')).to.equal "[var undefined]"
 
     describe 'extern!', ->
-      it 'should parse extern! a', ->
-        x = parse('extern! add a b')
-        expect(x).to.equal '[extern! add a b]'
+      it 'should parse extern! x a b', ->
+        x = parse('extern! x a b')
+        expect(x).to.equal '[extern! x a b]'
 
     describe 'assign', ->
       it 'should parse a = 1', ->
@@ -249,15 +249,15 @@ describe "parse: ",  ->
 
       it 'should parse {a b c} = x', ->
         x = parse('{a b c} = x')
-        expect(x).to.equal "[hashAssign! [a b c] x]"
+        expect(x).to.equal "[hashAssign! = [a b c] x]"
 
       it 'should parse {a b c\\\ne f} = x', ->
         x = parse('{a b c\\\n e f} = x')
-        expect(x).to.equal "[hashAssign! [a b c e f] x]"
+        expect(x).to.equal "[hashAssign! = [a b c e f] x]"
 
       it 'should parse {a} = x', ->
         x = parse('{a} = x')
-        expect(x).to.equal "[hashAssign! [a] x]"
+        expect(x).to.equal "[hashAssign! = [a] x]"
 
     describe 'unquote!', ->
       it 'should parse ^ a', ->

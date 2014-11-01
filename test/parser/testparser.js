@@ -276,7 +276,7 @@ describe("parse: ", function() {
         return expect(x).to.equal("[label! forx [forIn! i v x [begin! [print i] [print v]]]]");
       });
     });
-    idescribe('var', function() {
+    describe('var', function() {
       it('should parse var a', function() {
         var x;
         x = parse('var a');
@@ -312,10 +312,10 @@ describe("parse: ", function() {
       });
     });
     describe('extern!', function() {
-      return it('should parse extern! a', function() {
+      return it('should parse extern! x a b', function() {
         var x;
-        x = parse('extern! add a b');
-        return expect(x).to.equal('[extern! add a b]');
+        x = parse('extern! x a b');
+        return expect(x).to.equal('[extern! x a b]');
       });
     });
     describe('assign', function() {
@@ -352,17 +352,17 @@ describe("parse: ", function() {
       it('should parse {a b c} = x', function() {
         var x;
         x = parse('{a b c} = x');
-        return expect(x).to.equal("[hashAssign! [a b c] x]");
+        return expect(x).to.equal("[hashAssign! = [a b c] x]");
       });
       it('should parse {a b c\\\ne f} = x', function() {
         var x;
         x = parse('{a b c\\\n e f} = x');
-        return expect(x).to.equal("[hashAssign! [a b c e f] x]");
+        return expect(x).to.equal("[hashAssign! = [a b c e f] x]");
       });
       return it('should parse {a} = x', function() {
         var x;
         x = parse('{a} = x');
-        return expect(x).to.equal("[hashAssign! [a] x]");
+        return expect(x).to.equal("[hashAssign! = [a] x]");
       });
     });
     describe('unquote!', function() {

@@ -1,14 +1,16 @@
 2014
+2014-11
+  11-1 for statement, var initialization
 
 2014-10
-10-20
-  interpolate string that starts with $: identifier.identifier...identifier
-  interpolate string that starts with $: identifier.identifier...identifier
-  can not use matchToken in string, so use a simpler definition.
-10-14
-  pass more tests of expression
-10-13 
-  compact clause expression pass several tests: a.b.c, `.^1
+  10-20
+    interpolate string that starts with $: identifier.identifier...identifier
+    interpolate string that starts with $: identifier.identifier...identifier
+    can not use matchToken in string, so use a simpler definition.
+  10-14
+    pass more tests of expression
+  10-13 
+    compact clause expression pass several tests: a.b.c, `.^1
 
 2014-9
   9-28->10-1
@@ -30,6 +32,7 @@
     more preprocess clause
   8-4
     transform string to symbol by escaping it. e.g.: \"x...", \"...x", \"..."
+
 2014-7
   7-31
     ":" at the end of line can replace 'then'

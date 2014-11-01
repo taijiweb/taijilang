@@ -158,7 +158,7 @@ exports.Parser = ->
   # it means anything piece like white space, e.g. ' ', '\t', etc.
 
   concatenateLine = ->
-    cur = cursor-1; column = cursor-lineStart; indent = lexIndent
+    cur = cursor-1; line = lineno; column = cursor-lineStart; indent = lexIndent
     if char=='\n'
       char = text[++cursor]
       if char=='\r' then char = text[++cursor]
@@ -186,7 +186,7 @@ exports.Parser = ->
       char = text[++cursor]
       if char=='\n' or c=='\r'
         token.next = tkn = concatenateLine()
-        tkn.cursor = cur; tkn.column = column; tkn.value = text[cur...cursor]
+        tkn.cursor = cur; tkn.line = line; tkn.column = column; tkn.value = text[cur...cursor]
         return tkn
       else
         cursor--
@@ -364,7 +364,9 @@ exports.Parser = ->
     line = lineno
     if firstIdentifierCharSet[char]
       tkn = tokenOnIdentifierChar()
+      tkn.type = IDENTIFIER
       tkn.escaped = true; tkn.cursor = cur
+      tkn.atom = true
       return token.next = tkn
     else if firstSymbolCharset[char]
       tkn = tokenOnSymbolChar()
@@ -496,10 +498,13 @@ exports.Parser = ->
     cursor:cur, stopCursor:cursor,
     line:line, column:column, indent:lexIndent}
 
+  identifierCharSet = taijiIdentifierCharSet
+
   tokenOnIdentifierChar = ->
     cur = cursor; char = text[++cursor]; column = cursor-lineStart
     while char and identifierCharSet[char] then char=text[++cursor]
-    txt=text.slice(cur, cursor)
+    if char=='=' and text[cursor-1]=='!' then char = text[--cursor]
+    txt = text.slice(cur, cursor)
     if keywordHasOwnProperty(txt) then type = KEYWORD; isAtom = false
     else if conjunctionHasOwnProperty(txt) then type = CONJUNCTION; isAtom = false
     else type = IDENTIFIER; isAtom = true
@@ -990,7 +995,7 @@ exports.Parser = ->
   bracketVariantMap = {}
 
   tokenFnMap['{'] = ->
-    cur = cursor; char = text[++cursor]; line = lineno; column = cursor-lineStart
+    cur = cursor; char = text[++cursor]; line = lineno; column = cursor-lineStart; ind = lexIndent
     start = token; matchToken()
     if (curveVariantFn=curveVariantMap[token.value])
       token = curveVariantFn()
@@ -1216,7 +1221,7 @@ exports.Parser = ->
     if not hasOwnProperty.call(binaryOperatorDict, opValue) or not (op=binaryOperatorDict[opValue])
       start[binaryOperatorMemoIndex+mode] = {}
       token = start; return
-    if op.definition and priInc<600
+    if (op.definition or op.assign) or mode==SPACE_CLAUSE_EXPRESSION
       start[binaryOperatorMemoIndex+mode] = {}
       token = start; return
 
@@ -1987,14 +1992,20 @@ exports.Parser = ->
         else return {value:[head, exp], start:start, stop:token}
       else token = tkn
 
-    if op and op.assign
+    if (op=binaryOperatorDict[token.value]) and op.assign
       nextToken()
       if (type=token.type)==SPACE then nextToken(); type  =token.type
       if type==UNDENT then error 'unexpected undent after assign symbol'+op.value
       else if type==NEWLINE then error 'unexpected new line after assign symbol'+op.value
       else if type==EOI then error 'unexpected end of input'+op.value
-      right = parser.block() or parser.clause()
-      return {value:[op, head, right], start:start, stop:token}
+      if right = parser.block()
+        if right.length==1 then right = right[0]
+        else if right.length==0 then right = 'undefined'
+        else right.unshift 'begin!'
+      else right = parser.clause()
+      if head.type==CURVE then return {value:['hashAssign!', op, head, right], start:start, stop:token}
+      else if head.type==BRACKET then  return {value:['listAssign!', op, head, right], start:start, stop:token}
+      else return {value:[op, head, right], start:start, stop:token}
 
     else if token.value=='#' and nextToken()
       if token.type==SPACE then clauses = parser.clauses()
