@@ -401,7 +401,7 @@ describe "parse: ",  ->
         x = parse('while 1 then\n while 2 then 3 \n else 4')
         expect(x).to.equal "[[while 1 [while 2 3 4]]]"
 
-    idescribe "try statement: ",  ->
+    describe "try statement: ",  ->
       describe "group1: ",  ->
         it 'should parse try 1 catch e then 2', ->
           x = parse('try 1 catch e then 2')
@@ -448,48 +448,54 @@ describe "parse: ",  ->
     describe "try if statement: ",  ->
       it 'should parse try if 1 then 2 catch e then 3', ->
         x = parse('try if 1 then 2 catch e then 3')
-        expect(x).to.equal "[[try [if 1 2] [e 3] undefined]]"
+        expect(x).to.equal "[[try [if 1 2] e 3 undefined]]"
 
-    describe "switch statement: ",  ->
+    idescribe "switch statement: ",  ->
       describe "group1: ",  ->
         it 'should parse switch 1 case e: 2', ->
           x = parse('switch 1 case e: 2')
-          expect(x).to.equal "[[switch 1 [list! [[list! e] 2]] undefined]]"
+          expect(x).to.equal "[[switch 1 [[[e] 2]] undefined]]"
         it 'should parse switch 1 else 2', ->
           x = parse('switch 1 else 2')
-          expect(x).to.equal "[[switch 1 [list!] 2]]"
+          expect(x).to.equal "[[switch 1 [] 2]]"
         it 'should parse switch 1 case e: 2 else 3', ->
           x = parse('switch 1 case e: 2 else 3')
-          expect(x).to.equal "[[switch 1 [list! [[list! e] 2]] 3]]"
+          expect(x).to.equal "[[switch 1 [[[e] 2]] 3]]"
         it 'should parse switch 1 case e: 2 \nelse 3', ->
-          x = parse('switch 1 case e: 2 \nelse 3')
-          expect(x).to.equal "[[switch 1 [list! [[list! e] 2]] 3]]"
+          # else is not belong to this switch
+          expect(parse('switch 1 case e: 2 \nelse 3')).to.equal '[[switch 1 [[[e] 2]] undefined]]'
+        it 'should parse switch 1 case e: 2 \n  else 3', ->
+          # else is not belong to this switch
+          expect(parse('switch 1 case e: 2 \n  else 3')).to.equal "[[switch 1 [[[e] 2]] 3]]"
         it 'should parse switch 1 case e: \n  2 \nelse 3', ->
           x = parse('switch 1 case e: \n  2 \nelse 3')
-          expect(x).to.equal "[[switch 1 [list! [[list! e] 2]] 3]]"
+          expect(x).to.equal "[[switch 1 [[[e] 2]] undefined]]"
         it 'should parse switch 1 \n case e: 2 \n else 3', ->
           x = parse('switch 1 \n case e: 2 \n else 3')
-          expect(x).to.equal "[[switch 1 [list! [[list! e] 2]] 3]]"
+          expect(x).to.equal "[[switch 1 [[[e] 2]] 3]]"
+        it 'should parse switch 1 \n case 2: 4 \n else 3', ->
+          expect(parse('switch 1 \n case 2: 4 \n else 3')).to.equal "[[switch 1 [[[2] 4]] 3]]"
         it 'should parse switch 1 \n  case 2: 4 \n else 3', ->
-          expect(parse('switch 1 \n case 2: 4 \n else 3')).to.equal "[[switch 1 [list! [[list! 2] 4]] 3]]"
+          expect(parse('switch 1 \n  case 2: 4 \n else 3')).to.equal "[[switch 1 [[[2] 4]] undefined]]"
         it 'should parse switch 1 case e: switch 2 case e: 3', ->
           x = parse('switch 1 case e: switch 2 case e: 3')
-          expect(x).to.equal "[[switch 1 [list! [[list! e] [switch 2 [list! [[list! e] 3]] undefined]]] undefined]]"
+          expect(x).to.equal "[[switch 1 [[[e] [switch 2 [[[e] 3]] undefined]]] undefined]]"
       describe "group2: ",  ->
         it 'should parse switch 1 case e: switch 2 case e: 3 else 4', ->
           x = parse('switch 1 case e: switch 2 case e: 3 else 4')
-          expect(x).to.equal "[[switch 1 [list! [[list! e] [switch 2 [list! [[list! e] 3]] 4]]] undefined]]"
+          expect(x).to.equal "[[switch 1 [[[e] [switch 2 [[[e] 3]] 4]]] undefined]]"
         it 'should parse switch 1 case e: switch 2 case e: 3 \nelse 4', ->
           x = parse('switch 1 case e: switch 2 case e: 3 \nelse 4')
-          expect(x).to.equal "[[switch 1 [list! [[list! e] [switch 2 [list! [[list! e] 3]] undefined]]] 4]]"
+          expect(x).to.equal "[[switch 1 [[[e] [switch 2 [[[e] 3]] undefined]]] undefined]]"
         it 'should parse switch 1 case e: \n switch 2 case e: 3 \nelse 4', ->
           x = parse('switch 1 case e: \n switch 2 case e: 3 \nelse 4')
-          expect(x).to.equal "[[switch 1 [list! [[list! e] [switch 2 [list! [[list! e] 3]] undefined]]] 4]]"
+          expect(x).to.equal "[[switch 1 [[[e] [switch 2 [[[e] 3]] undefined]]] undefined]]"
         it 'should parse switch 1 case e:\n switch 2 case e: 3 \n else 4', ->
-          x = parse('switch 1 case e:\n switch 2 case e: 3 \n else 4')
-          expect(x).to.equal "[[switch 1 [list! [[list! e] [switch 2 [list! [[list! e] 3]] 4]]] undefined]]"
+          expect(-> parse('switch 1 case e:\n switch 2 case e: 3 \n else 4')).to.throw /unexpected conjunction "else" following a indent block/
+        it 'should parse switch 1 case e:\n   switch 2 case e: 3 \n else 4', ->
+          expect(parse('switch 1 case e:\n   switch 2 case e: 3 \n else 4')).to.equal '[[switch 1 [[[e] [switch 2 [[[e] 3]] undefined]]] 4]]'
 
-    describe "let statement: ",  ->
+    xdescribe "let statement: ",  ->
       it 'should parse let a = 1 then 2', ->
         x = parse('let a = 1 then 2')
         expect(x).to.equal "[[let [[a = 1]] 2]]"

@@ -593,7 +593,7 @@ describe("parse: ", function() {
         return expect(x).to.equal("[[while 1 [while 2 3 4]]]");
       });
     });
-    idescribe("try statement: ", function() {
+    describe("try statement: ", function() {
       describe("group1: ", function() {
         it('should parse try 1 catch e then 2', function() {
           var x;
@@ -671,74 +671,81 @@ describe("parse: ", function() {
       return it('should parse try if 1 then 2 catch e then 3', function() {
         var x;
         x = parse('try if 1 then 2 catch e then 3');
-        return expect(x).to.equal("[[try [if 1 2] [e 3] undefined]]");
+        return expect(x).to.equal("[[try [if 1 2] e 3 undefined]]");
       });
     });
-    describe("switch statement: ", function() {
+    idescribe("switch statement: ", function() {
       describe("group1: ", function() {
         it('should parse switch 1 case e: 2', function() {
           var x;
           x = parse('switch 1 case e: 2');
-          return expect(x).to.equal("[[switch 1 [list! [[list! e] 2]] undefined]]");
+          return expect(x).to.equal("[[switch 1 [[[e] 2]] undefined]]");
         });
         it('should parse switch 1 else 2', function() {
           var x;
           x = parse('switch 1 else 2');
-          return expect(x).to.equal("[[switch 1 [list!] 2]]");
+          return expect(x).to.equal("[[switch 1 [] 2]]");
         });
         it('should parse switch 1 case e: 2 else 3', function() {
           var x;
           x = parse('switch 1 case e: 2 else 3');
-          return expect(x).to.equal("[[switch 1 [list! [[list! e] 2]] 3]]");
+          return expect(x).to.equal("[[switch 1 [[[e] 2]] 3]]");
         });
         it('should parse switch 1 case e: 2 \nelse 3', function() {
-          var x;
-          x = parse('switch 1 case e: 2 \nelse 3');
-          return expect(x).to.equal("[[switch 1 [list! [[list! e] 2]] 3]]");
+          return expect(parse('switch 1 case e: 2 \nelse 3')).to.equal('[[switch 1 [[[e] 2]] undefined]]');
+        });
+        it('should parse switch 1 case e: 2 \n  else 3', function() {
+          return expect(parse('switch 1 case e: 2 \n  else 3')).to.equal("[[switch 1 [[[e] 2]] 3]]");
         });
         it('should parse switch 1 case e: \n  2 \nelse 3', function() {
           var x;
           x = parse('switch 1 case e: \n  2 \nelse 3');
-          return expect(x).to.equal("[[switch 1 [list! [[list! e] 2]] 3]]");
+          return expect(x).to.equal("[[switch 1 [[[e] 2]] undefined]]");
         });
         it('should parse switch 1 \n case e: 2 \n else 3', function() {
           var x;
           x = parse('switch 1 \n case e: 2 \n else 3');
-          return expect(x).to.equal("[[switch 1 [list! [[list! e] 2]] 3]]");
+          return expect(x).to.equal("[[switch 1 [[[e] 2]] 3]]");
+        });
+        it('should parse switch 1 \n case 2: 4 \n else 3', function() {
+          return expect(parse('switch 1 \n case 2: 4 \n else 3')).to.equal("[[switch 1 [[[2] 4]] 3]]");
         });
         it('should parse switch 1 \n  case 2: 4 \n else 3', function() {
-          return expect(parse('switch 1 \n case 2: 4 \n else 3')).to.equal("[[switch 1 [list! [[list! 2] 4]] 3]]");
+          return expect(parse('switch 1 \n  case 2: 4 \n else 3')).to.equal("[[switch 1 [[[2] 4]] undefined]]");
         });
         return it('should parse switch 1 case e: switch 2 case e: 3', function() {
           var x;
           x = parse('switch 1 case e: switch 2 case e: 3');
-          return expect(x).to.equal("[[switch 1 [list! [[list! e] [switch 2 [list! [[list! e] 3]] undefined]]] undefined]]");
+          return expect(x).to.equal("[[switch 1 [[[e] [switch 2 [[[e] 3]] undefined]]] undefined]]");
         });
       });
       return describe("group2: ", function() {
         it('should parse switch 1 case e: switch 2 case e: 3 else 4', function() {
           var x;
           x = parse('switch 1 case e: switch 2 case e: 3 else 4');
-          return expect(x).to.equal("[[switch 1 [list! [[list! e] [switch 2 [list! [[list! e] 3]] 4]]] undefined]]");
+          return expect(x).to.equal("[[switch 1 [[[e] [switch 2 [[[e] 3]] 4]]] undefined]]");
         });
         it('should parse switch 1 case e: switch 2 case e: 3 \nelse 4', function() {
           var x;
           x = parse('switch 1 case e: switch 2 case e: 3 \nelse 4');
-          return expect(x).to.equal("[[switch 1 [list! [[list! e] [switch 2 [list! [[list! e] 3]] undefined]]] 4]]");
+          return expect(x).to.equal("[[switch 1 [[[e] [switch 2 [[[e] 3]] undefined]]] undefined]]");
         });
         it('should parse switch 1 case e: \n switch 2 case e: 3 \nelse 4', function() {
           var x;
           x = parse('switch 1 case e: \n switch 2 case e: 3 \nelse 4');
-          return expect(x).to.equal("[[switch 1 [list! [[list! e] [switch 2 [list! [[list! e] 3]] undefined]]] 4]]");
+          return expect(x).to.equal("[[switch 1 [[[e] [switch 2 [[[e] 3]] undefined]]] undefined]]");
         });
-        return it('should parse switch 1 case e:\n switch 2 case e: 3 \n else 4', function() {
-          var x;
-          x = parse('switch 1 case e:\n switch 2 case e: 3 \n else 4');
-          return expect(x).to.equal("[[switch 1 [list! [[list! e] [switch 2 [list! [[list! e] 3]] 4]]] undefined]]");
+        it('should parse switch 1 case e:\n switch 2 case e: 3 \n else 4', function() {
+          return expect(function() {
+            return parse('switch 1 case e:\n switch 2 case e: 3 \n else 4');
+          }).to["throw"](/unexpected conjunction "else" following a indent block/);
+        });
+        return it('should parse switch 1 case e:\n   switch 2 case e: 3 \n else 4', function() {
+          return expect(parse('switch 1 case e:\n   switch 2 case e: 3 \n else 4')).to.equal('[[switch 1 [[[e] [switch 2 [[[e] 3]] undefined]]] 4]]');
         });
       });
     });
-    describe("let statement: ", function() {
+    xdescribe("let statement: ", function() {
       it('should parse let a = 1 then 2', function() {
         var x;
         x = parse('let a = 1 then 2');
