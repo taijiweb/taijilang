@@ -19,7 +19,7 @@ CODE_BLOCK_COMMENT_LEAD_SYMBOL
 PREFIX, SUFFIX, BINARY
 END_INTERPOLATED_STRING
 
-OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION, INDENT_EXPRESSION
+OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION, INDENT_EXPRESSION, HASH_KEY_EXPRESSION
 
 } = constant
 
@@ -770,17 +770,17 @@ exports.Parser = ->
     char = text[++cursor]
     if char=='"'
       if text[cursor+1]=='"'
-        cursor += 2; char = text[cursor]; tkn = token; interolateStringNumber++
+        cursor += 2; char = text[cursor]; tkn = token
         tkn2 = leftRawInterpolateString()
-        interolateStringNumber--; tkn.next = tkn2
+        tkn.next = tkn2
         return tkn2
       else
         char = text[++cursor]
         return token.next = {value:'""', type:NON_INTERPOLATE_STRING, atom:true, line:lineno, cursor:cursor-2, column:cursor-2-lineStart}
     else
-      tkn = token;  interolateStringNumber++
+      tkn = token
       tkn2 = leftInterpolateString()
-      interolateStringNumber--; tkn.next = tkn2
+      tkn.next = tkn2
       return tkn2
 
   @leftRawInterpolateString = leftRawInterpolateString = ->
@@ -849,10 +849,10 @@ exports.Parser = ->
         else if ind<column then lexError 'expect equal to or more than the indent of first line of the string'
       else if char=='(' or char=='{' or char=='['
         # for efficiency, do not match next token while matching delimiter token (...), [...], {...} in tokenOnLeftParenChar, tokenOnLeftBracketChar, tokenOnLeftCurveChar
-        str += char+'"'; pieces.push str; pieces = '"'; char = text[++cursor]
+        pieces.push str+'"'
         matchToken()
-        char = text[--cursor] # let )]} can be output into next piece
         pieces.push token
+        str = '"'
       else if  char=='$'
         if (char=text[++cursor])
           if not firstIdentifierCharSet[char] then str += '$'
@@ -950,10 +950,10 @@ exports.Parser = ->
           pieces.push x
       else if char=='(' or char=='{' or char=='['
         # for efficiency, do not match next token while matching delimiter token (...), [...], {...} in tokenOnLeftParenChar, tokenOnLeftBracketChar, tokenOnLeftCurveChar
-        pieces.push str+char+'"'; str = '"'
+        pieces.push str+'"'
         matchToken()
         pieces.push token
-        str = '"'+text[cursor-1]
+        str = '"'
       else if char=='\\'
         if not (char=text[++cursor]) then break
         else if char=='\n' or char=='\r' then char = text[++cursor]; concatenating = true
@@ -965,39 +965,32 @@ exports.Parser = ->
   # do not match next token while matching delimiter token (...), [...], {...}
   tokenFnMap['('] = tokenOnLeftParenChar = ->
     cur = cursor; line = lineno; column = cursor-lineStart; char = text[++cursor] # skip "("
-    start = token; matchToken()
+    prev = token; matchToken()
     if (parenVariantFn=parenVariantMap[token.value])
-      token = parenVariantFn(); token.cursor = cursor; token.line = line; token.column = column; token.indent = lexIndent
+      prev.next = token = parenVariantFn(); token.cursor = cursor; token.line = line; token.column = column; token.indent = lexIndent
     else
       if (type=token.type)==UNDENT then lexError 'unexpected undent while parsing parenethis "(...)"'
       ind = indent = lexIndent
       if type==SPACE or type==NEWLINE or type==INDENT then matchToken()
       if token.value==')'
-        tkn = nextToken()
-        token = {type: PAREN, value:[], atom:true, cursor:cur, stopCursor: cursor, line:lineno, column:column, indent:lexIndent, next:tkn, empty:true, parameters:true }
-        start.next = token
+        token = {type: PAREN, value:[], atom:true, cursor:cur, stopCursor: cursor, line:lineno, column:column, indent:lexIndent, empty:true, parameters:true }
+        prev.next = token
         return token
       exp = parser.operatorExpression()
       if token.type==UNDENT
         if token.indent<ind then lexError 'expect ) indent equal to or more than ('
         else matchToken()
       else if token.value!=')' then lexError 'expect )'
-      tkn = nextToken()
+      # To make interpolated string happy, we can not call nextToken() here
       #else matchToken() # do not match token here, so token.next==undefined, and nextToken() will matchToken instead.
-      exp.type = PAREN; exp.cursor = cur; exp.stopCursor = cursor
-      exp.line = line; exp.column = column; exp.indent = lexIndent
-      exp.atom = true
-      exp.parameters = true
-      exp.next = tkn
-      token = exp
-    start.next = token
+      prev.next = token = {type:PAREN, value:exp, cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent, atom:true, parameters:true}
 
   parenVariantMap = {
   }
 
   tokenFnMap['['] = tokenOnLeftBracketChar = ->
     cur = cursor; char = text[++cursor]; line = lineno; column = cursor-lineStart
-    start = token; matchToken()
+    prev = token; matchToken()
     if (bracketVariantFn=bracketVariantMap[token.value])
       token = bracketVariantFn(); token.cursor = cursor; token.line = lineno; token.column = column; token.indent = indent
     else
@@ -1006,37 +999,38 @@ exports.Parser = ->
         if token.indent<ind then lexError 'unexpected undent while parsing parenethis "[...]"'
         else matchToken()
       if token.value!=']' then lexError 'expect ]'
-      tkn = nextToken()
+      # To make interpolated string happy, we can not call nextToken() here
       if expList then expList.unshift 'list!'
       else expList = []
-      token = {type: BRACKET, value:expList, cursor:cur, stopCursor: cursor, line:line, column:column, indent:lexIndent, next:tkn}
-    start.next = token; token.atom = true
+      token = {type: BRACKET, value:expList, cursor:cur, stopCursor: cursor, line:line, column:column, indent:lexIndent}
+    prev.next = token; token.atom = true
     token
 
   bracketVariantMap = {}
 
   tokenFnMap['{'] = ->
     cur = cursor; char = text[++cursor]; line = lineno; column = cursor-lineStart; ind = lexIndent
-    start = token; matchToken()
+    prev = token; matchToken()
     if (curveVariantFn=curveVariantMap[token.value])
-      token = curveVariantFn()
+      prev.next = token = curveVariantFn()
       token.cursor = cur; token.stopCursor = cursor; token.line = line; token.stopLine = lineno; token.column = column
       token.indent = lexIndent
       return token
     else
+      if token.type==SPACE then nextToken()
       if token.value=='}' and tkn=matchToken()
         token = {value:text[cur...cursor], value:['hash!'], cursor:cur, line:line, column:column, indent:lexIndent, next:tkn}
-        start.next = token
+        prev.next = token
         return token
       body = parser.block() or parser.lineBlock()
       if token.type==UNDENT and token.indent<ind then nextToken()
       if token.value!='}' then lexError 'expect }'
-      tkn = nextToken()
+      # To make interpolated string happy, we can not call nextToken() here
       if indent<ind then lexError 'unexpected undent while parsing parenethis "{...}"'
       if body.length==0 then return {type: CURVE, value:'', cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
       if body.length==1 then body = body[0]
       else body.unshift 'begin!'
-    {type: CURVE, value:body, atom:true, cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent, next:tkn}
+    prev.next = token = {type: CURVE, value:body, atom:true, cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
 
   curveVariantMap =
     '.': ->  matchToken(); return parser.hash()
@@ -1095,14 +1089,14 @@ exports.Parser = ->
   @hashItem = hashItem = ->
     if token.type==UNDENT then return
     start = token
-    if key=parser.compactClauseExpression()
+    if key=parser.hashKeyExpression()
       if (type=token.type)==NEWLINE or type==UNDENT then lexError 'unexpected new line after hash key'
       else if type==EOI then "unexpected end of input after hash key"
       else if type==SPACE then matchToken()
       if (value=token.value)==':' and matchToken()
         if (t=key.type)==IDENTIFIER or t==NUMBER or t==NON_INTERPOLATE_STRING then js = true
-      else if value=='=>' then matchToken()
-      else lexError 'expect : or => for hash item definition'
+      else if value=='->' then matchToken()
+      else lexError 'expect : or -> for hash item definition'
       if token.type==SPACE then matchToken()
       else if token.type==INDENT
         matchToken()
@@ -1155,18 +1149,19 @@ exports.Parser = ->
     if (mode==COMPACT_CLAUSE_EXPRESSION or mode==SPACE_CLAUSE_EXPRESSION) and op.definition then return
     if token.escaped then return
     opToken = token; nextToken()
-    if token.value==':' and nextToken()
-      if (type=token.type)==SPACE or type==INDENT or type==UNDENT or type==NEWLINE
-        if mode==OPERATOR_EXPRESSION then syntaxError 'unexpected spaces after :'
-        else token = opToken; return
-    else if (type=token.type)==INDENT then syntaxError 'unexpected indent after prefix operator'
+    if (type=token.type)==INDENT then syntaxError 'unexpected indent after prefix operator'
     else if type==NEWLINE then syntaxError 'unexpected new line after prefix operator'
     else if type==UNDENT then syntaxError 'unexpected undent after prefix operator'
     else if (tokenText=token.value)==")" or tokenText==']' or tokenText=="}" then syntaxError 'unexpected '+tokenText+' after prefix operator'
     else if type==SPACE
       if op.definition and mode==SPACE_CLAUSE_EXPRESSION then token = start; return
       matchToken(); priInc = 300
-    else priInc = 600
+    else
+      priInc = 600
+      if token.value=='.'
+        nextToken()
+        if (type=token.type)==SPACE or type==NEWLINE or type==UNDENT or type==INDENT or type==EOI
+          lexError 'unexpected spaces or new lines or end of lines after compact prefix Operaotr and "."'
     opToken.symbol = op.symbol; opToken.priority = op.priority+priInc
     extendSyntaxInfo opToken, opToken
 
@@ -1202,7 +1197,7 @@ exports.Parser = ->
         if mode==COMPACT_CLAUSE_EXPRESSION then token[binaryOperatorMemoIndex+mode] = {}; return
         else
           start = token; nextToken()
-          if token.type!=IDENTIFIER and token.type!=SYMBOL then start[binaryOperatorMemoIndex+mode] = {}; token = start; return
+          if token.type!=IDENTIFIER and token.type!=SYMBOL and token.type!=PUNCTUATION then start[binaryOperatorMemoIndex+mode] = {}; token = start; return
           if token.value=='.'
             if nextToken() and token.type==SPACE and nextToken()
               return {symbol:'attribute!', type: SYMBOL, priority: 800, start:start}
@@ -1246,6 +1241,7 @@ exports.Parser = ->
     if (op.definition or op.assign) and mode==SPACE_CLAUSE_EXPRESSION
       start[binaryOperatorMemoIndex+mode] = {}
       token = start; return
+    if op.value=='->' then start[binaryOperatorMemoIndex+mode] = {}; token = start; return
 
     opToken = token; nextToken()
 
@@ -1360,6 +1356,9 @@ exports.Parser = ->
     result = parser.expression(COMPACT_CLAUSE_EXPRESSION, 600, true)
     if result then result.atom = true
     result
+
+  # compact expression as clause item.
+  @hashKeyExpression = -> parser.expression(HASH_KEY_EXPRESSION, 600, true)
 
   # space expression as clause item.
   @spaceClauseExpression = spaceClauseExpression = ->
@@ -1725,6 +1724,9 @@ exports.Parser = ->
       start = token; nextToken()
       if token.type==SPACE then nextToken()
       varList = parser.varInitList()
+      if varList.length==0 then syntaxError 'expect variable name'
+      if (type=token.type)!=NEWLINE and type!=UNDENT and type!=EOI and type!=CONJUNCTION and type!=RIGHT_DELIMITER and type!=PUNCTUATION
+        syntaxError 'unexpected token after var initialization list "' + token.value+'"'
       varList.unshift 'var'
       {value:varList, start:start, stop:token}
 
@@ -1842,18 +1844,22 @@ exports.Parser = ->
     'do': (isHeadStatement) ->
       start = token; ind = indent; nextToken(); # skip "do"
       if token.type==SPACE then nextToken()
-      body=parser.block() or parser.line()
+      body = parser.block() or parser.line()
+      if body.length==1 then body = body[0]
+      else if body.length==0 then body = 'undefined'
+      else body.unshift 'begin!'
       if indent==ind
         if token.type==UNDENT then nextToken()
-        if not isHeadStatement and token.type==CONJUNCTION and (conjValue=token.value)=='where' or conjValue=='when' or conjValue=='until'
-          conj = token; nextToken()
+        if atStatementHead and not isHeadStatement then return {value:body, start:start, stop:token}
+        if token.type==CONJUNCTION and (conjValue=token.value)=='where' or conjValue=='when' or conjValue=='until'
+          conj = token; nextToken(); if token.type==SPACE then nextToken()
       else if indent>ind then syntaxError "wrong indent after the block of do statement"
       if not conj then return {value:body, start:start, stop:token}
       if conjValue=='where' then tailClause = parser.varInitList()
       else tailClause = parser.clause()
-      if conjValue=='where' then ['let', tailClause, body]
-      else if conjValue=='when' then ['doWhile!', body, tailClause]
-      else ['doWhile!', body, ['!x', tailClause]]
+      if conjValue=='where' then {value:['let', tailClause, body], start:start, stop:token}
+      else if conjValue=='when' then {value:['doWhile!', body, tailClause], start:start, stop:token}
+      else {value:['doWhile!', body, ['!x', tailClause]], start:start, stop:token}
 
     # switch value case 1: body1 case 2 3: body2 else: body
     # switch value
@@ -2021,7 +2027,7 @@ exports.Parser = ->
   for key, fn of leadWordClauseMap then symbol2clause[key] = leadTokenClause(fn)
 
 
-  definitionSymbolBody = ->
+  @definitionSymbolBody = definitionSymbolBody = ->
     start = token; nextToken()
     if token.type==SPACE then nextToken()
     if token.type==INDENT then body = parser.block()
@@ -2047,10 +2053,15 @@ exports.Parser = ->
         isStatementHead = atStatementHead
         atStatementHead = false
         return keyword2statement[token.value](isStatementHead)
-      when type==IDENTIFIER
+      when IDENTIFIER
         nextToken()
-        if token.value=='#' and nextToken() and token.value==':' and nextToken() and (blk=parser.lineBlock())
+        if token.value=='#' and nextToken() and token.value==':' and nextToken()
           # label statement
+          if token.type==SPACE then nextToken()
+          blk = parser.lineBlock()
+          if blk.length==1 then blk = blk[0]
+          else if blk.length==0 then blk = undefined
+          else blk.unshift 'begin!'
           return {value:['label!', start, blk], start:start, stop:token}
         else token = start
       when SYMBOL
@@ -2135,23 +2146,25 @@ exports.Parser = ->
             definition.value[1] = []
             definition.start = start
             clause = definition
-          else if clauseValue.push
-            if clauseValue.length==0
-              syntaxError 'unexpected [] in parameter list'
-            else if clauseValue[0]!=','
-              syntaxError 'syntax error in parameter list'
+          else
+            clauseValue = clauseValue.value
+            if clauseValue.push
+              if clauseValue.length==0
+                syntaxError 'unexpected [] in parameter list'
+              else if clauseValue[0]!=','
+                syntaxError 'syntax error in parameter list'
+              else
+                clauseValue.shift() # remove "," from list, e.g.(a, b, c) ==> [, a b c] ==> [a b c]
+                definition.value[1] = clauseValue
+                definition.start = start
+                clause = definition
             else
-              clauseValue.shift() # remove "," from list, e.g.(a, b, c) ==> [, a b c] ==> [a b c]
-              definition.value[1] = clauseValue
+              definition.value[1] = [clause]
               definition.start = start
               clause = definition
-          else
-            definition.value[1] = [clause]
-            definition.start = start
-            clause = definition
         else parser.customDefinitionParameterList(clause, definition)
       else if clauseValue.push and clauseValue.length>1
-          params = clauseValue[-1]
+          params = clauseValue[clauseValue.length-1]
           if params.parameters
             clauseValue.pop()
             definition.value[1] = params
@@ -2350,7 +2363,10 @@ exports.Parser = ->
 
   @syntaxError = syntaxError = (message, tkn) ->
     tkn = tkn or token; cur = tkn.cursor
-    throw cur+'('+tkn.line+':'+tkn.column+'): '+message+': \n'+text[cur-40...cur]+(text[cur...cur+40].red)
+    str =  cur+'('+tkn.line+':'+tkn.column+'): '+message+': \n'+text[cur-40...cur]+(text[cur...cur+40])
+    # todo: the code below works great! add it in some time.
+    # console.log str.red
+    throw str
 
   return @
 

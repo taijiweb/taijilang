@@ -18,7 +18,7 @@ matchRule = (parser, rule) -> ->
   if token.type==SPACE then parser.matchToken()
   rule()
 
-ndescribe "parse operator expression: ", ->
+describe "parse operator expression: ", ->
   parse = (text) ->
     parser = new Parser()
     x = parser.parse(text, matchRule(parser, parser.operatorExpression), 0)

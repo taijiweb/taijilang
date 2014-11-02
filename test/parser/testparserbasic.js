@@ -14,7 +14,9 @@ nit = function() {};
 
 lib = '../../lib/';
 
-_ref = require(lib + 'parser/base'), constant = _ref.constant, isArray = _ref.isArray, str = _ref.str;
+_ref = require(lib + 'parser/base'), constant = _ref.constant, isArray = _ref.isArray;
+
+str = require(lib + 'utils').str;
 
 Parser = require(lib + 'parser/parser').Parser;
 
@@ -22,7 +24,7 @@ matchRule = require('../utils').matchRule;
 
 IDENTIFIER = constant.IDENTIFIER, NUMBER = constant.NUMBER, NEWLINE = constant.NEWLINE, INDENT = constant.INDENT, UNDENT = constant.UNDENT, HALF_DENT = constant.HALF_DENT, PAREN = constant.PAREN, BLOCK_COMMENT = constant.BLOCK_COMMENT, EOI = constant.EOI, SPACE = constant.SPACE, PAREN_OPERATOR_EXPRESSION = constant.PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION = constant.COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION = constant.SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION = constant.OPERATOR_EXPRESSION;
 
-ndescribe("parser basic: ", function() {
+describe("parser basic: ", function() {
   describe("matchToken: ", function() {
     var parse, parser;
     parser = new Parser();
@@ -204,13 +206,13 @@ ndescribe("parser basic: ", function() {
         return expect(str(parse('"""a\\"\'\\n"""'))).to.equal("[string! \"a\\\\\"'\\\\n\"]");
       });
       it("parse \"a(1)\" ", function() {
-        return expect(str(parse('"a(1)"'))).to.equal("[string! \"a(\" 1 \")\"]");
+        return expect(str(parse('"a(1)"'))).to.equal("[string! \"a\" 1]");
       });
       it("parse \"a[1]\" ", function() {
-        return expect(str(parse('"a[1]"'))).to.equal("[string! \"a[\" [list! 1] \"]\"]");
+        return expect(str(parse('"a[1]"'))).to.equal("[string! \"a\" [list! 1]]");
       });
       return it("str parse \"a[1] = $a[1]\" ", function() {
-        return expect(str(parse('"a[1] = $a[1]"'))).to.equal("[string! \"a[\" [list! 1] \"] = \" [index! a [list! 1]]]");
+        return expect(str(parse('"a[1] = $a[1]"'))).to.equal("[string! \"a\" [list! 1] \" = \" [index! a [list! 1]]]");
       });
     });
     describe("parse raw string without interpolation: ", function() {
@@ -566,7 +568,7 @@ ndescribe("parser basic: ", function() {
       return expect(str(parse('a::b'))).to.equal('[attribute! [attribute! a ::] b]');
     });
     it('should parse ^1', function() {
-      return expect(str(parse('`.^1'))).to.equal("[quasiquote! [unquote! 1]]");
+      return expect(str(parse('^1'))).to.equal("[unquote! 1]");
     });
     it('should parse `.^1', function() {
       return expect(str(parse('`.^1'))).to.equal("[quasiquote! [unquote! 1]]");
@@ -617,7 +619,7 @@ ndescribe("parser basic: ", function() {
       var x;
       x = parse('(a)');
       expect(x.type).to.equal(PAREN);
-      return expect(x.value).to.equal('a');
+      return expect(str(x.value)).to.equal('a');
     });
     return it('should parse (a,b)', function() {
       var x;
@@ -677,7 +679,7 @@ ndescribe("parser basic: ", function() {
     parse = function(text) {
       var parser, x;
       parser = new Parser();
-      x = parser.parse(text, matchRule(parser, parser.definition), 0);
+      x = parser.parse(text, matchRule(parser, parser.definitionSymbolBody), 0);
       return x;
     };
     return it('should parse -> 1', function() {
@@ -800,8 +802,8 @@ ndescribe("parser basic: ", function() {
       it('should parse a:2', function() {
         return expect(str(parse('a:2'))).to.equal('[jshashitem! a 2]');
       });
-      return it('should parse a=>2', function() {
-        return expect(str(parse('a=>2'))).to.equal('[pyhashitem! a 2]');
+      return it('should parse a->2', function() {
+        return expect(str(parse('a->2'))).to.equal('[pyhashitem! a 2]');
       });
     });
     return describe("hash expression: ", function() {
@@ -826,8 +828,8 @@ ndescribe("parser basic: ", function() {
       it('should parse {. 1:2; 3:\n 5:6\n}', function() {
         return expect(str(parse('{. 1:2; 3:\n 5:6\n}'))).to.equal('[hash! [jshashitem! 1 2] [jshashitem! 3 [hash! [jshashitem! 5 6]]]]');
       });
-      return it('should parse {. 1:2; 3:\n 5:6;a=>8\n}', function() {
-        return expect(str(parse('{. 1:2; 3:\n 5:6;a=>8\n}'))).to.equal("[hash! [jshashitem! 1 2] [jshashitem! 3 [hash! [jshashitem! 5 6] [pyhashitem! a 8]]]]");
+      return it('should parse {. 1:2; 3:\n 5:6;a->8\n}', function() {
+        return expect(str(parse('{. 1:2; 3:\n 5:6;a->8\n}'))).to.equal("[hash! [jshashitem! 1 2] [jshashitem! 3 [hash! [jshashitem! 5 6] [pyhashitem! a 8]]]]");
       });
     });
   });

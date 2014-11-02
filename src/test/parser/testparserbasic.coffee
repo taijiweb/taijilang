@@ -7,14 +7,15 @@ ndescribe = ->
 nit = ->
 
 lib = '../../lib/'
-{constant, isArray, str} = require lib+'parser/base'
+{constant, isArray} = require lib+'parser/base'
+{str} = require lib+'utils'
 {Parser} = require lib+'parser/parser'
 {matchRule} = require '../utils'
 
 {IDENTIFIER, NUMBER, NEWLINE, INDENT, UNDENT, HALF_DENT, PAREN, BLOCK_COMMENT, EOI, SPACE
 PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION} = constant
 
-ndescribe "parser basic: ",  ->
+describe "parser basic: ",  ->
   describe "matchToken: ",  ->
     parser = new Parser()
     parse = (text) ->
@@ -142,11 +143,11 @@ ndescribe "parser basic: ",  ->
       it "parse '''a\"'\\n'''", ->
         expect(str parse('"""a\\"\'\\n"""')).to.equal "[string! \"a\\\\\"'\\\\n\"]"
       it """parse "a(1)" """, ->
-        expect(str parse('"a(1)"')).to.equal "[string! \"a(\" 1 \")\"]"
+        expect(str parse('"a(1)"')).to.equal "[string! \"a\" 1]"
       it """parse "a[1]" """, ->
-        expect(str parse('"a[1]"')).to.equal "[string! \"a[\" [list! 1] \"]\"]"
+        expect(str parse('"a[1]"')).to.equal "[string! \"a\" [list! 1]]"
       it """str parse "a[1] = $a[1]" """, ->
-        expect(str parse('"a[1] = $a[1]"')).to.equal "[string! \"a[\" [list! 1] \"] = \" [index! a [list! 1]]]"
+        expect(str parse('"a[1] = $a[1]"')).to.equal "[string! \"a\" [list! 1] \" = \" [index! a [list! 1]]]"
 
     describe "parse raw string without interpolation: ",  ->
       it "parse '''a\\b'''", ->
@@ -381,7 +382,7 @@ ndescribe "parser basic: ",  ->
     it 'should parse a::b ', ->
       expect(str parse('a::b')).to.equal '[attribute! [attribute! a ::] b]'
     it 'should parse ^1', ->
-      expect(str parse('`.^1')).to.equal "[quasiquote! [unquote! 1]]"
+      expect(str parse('^1')).to.equal "[unquote! 1]"
     it 'should parse `.^1', ->
       expect(str parse('`.^1')).to.equal "[quasiquote! [unquote! 1]]"
     # gotcha: prefixOperator['toString'] == Object.toString function!!!
@@ -417,7 +418,7 @@ ndescribe "parser basic: ",  ->
       x = parse('(a)')
       expect(x.type).to.equal PAREN
       #expect(x.value.type).to.equal IDENTIFIER
-      expect(x.value).to.equal 'a'
+      expect(str x.value).to.equal 'a'
     it 'should parse (a,b)', ->
       x = parse('(a,b)')
       expect(x.type).to.equal PAREN
@@ -456,7 +457,7 @@ ndescribe "parser basic: ",  ->
   describe "definition", ->
     parse = (text) ->
       parser = new Parser()
-      x = parser.parse(text,  matchRule(parser, parser.definition), 0)
+      x = parser.parse(text,  matchRule(parser, parser.definitionSymbolBody), 0)
       x
     it 'should parse -> 1', ->
       expect(str parse('-> 1')).to.equal "[-> [] 1]"
@@ -545,8 +546,8 @@ ndescribe "parser basic: ",  ->
         expect(str parse('1:2')).to.equal '[jshashitem! 1 2]'
       it 'should parse a:2', ->
         expect(str parse('a:2')).to.equal '[jshashitem! a 2]'
-      it 'should parse a=>2', ->
-        expect(str parse('a=>2')).to.equal '[pyhashitem! a 2]'
+      it 'should parse a->2', ->
+        expect(str parse('a->2')).to.equal '[pyhashitem! a 2]'
 
     describe "hash expression: ",  ->
       parse = (text) ->
@@ -562,8 +563,8 @@ ndescribe "parser basic: ",  ->
         expect(str parse('{. 1:2; 3:4;\n 5:6}')).to.equal '[hash! [jshashitem! 1 2] [jshashitem! 3 4] [jshashitem! 5 6]]'
       it 'should parse {. 1:2; 3:\n 5:6\n}', ->
         expect(str parse('{. 1:2; 3:\n 5:6\n}')).to.equal '[hash! [jshashitem! 1 2] [jshashitem! 3 [hash! [jshashitem! 5 6]]]]'
-      it 'should parse {. 1:2; 3:\n 5:6;a=>8\n}', ->
-        expect(str parse('{. 1:2; 3:\n 5:6;a=>8\n}')).to.equal "[hash! [jshashitem! 1 2] [jshashitem! 3 [hash! [jshashitem! 5 6] [pyhashitem! a 8]]]]"
+      it 'should parse {. 1:2; 3:\n 5:6;a->8\n}', ->
+        expect(str parse('{. 1:2; 3:\n 5:6;a->8\n}')).to.equal "[hash! [jshashitem! 1 2] [jshashitem! 3 [hash! [jshashitem! 5 6] [pyhashitem! a 8]]]]"
 
   describe  "line comment block",  ->
     parse = (text) ->

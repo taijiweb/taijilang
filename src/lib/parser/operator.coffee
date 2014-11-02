@@ -132,8 +132,10 @@ exports.makeExpression = (type, op, x, y) ->
       opValue = op.symbol; yValue = y.value
       if opValue=='call()'
         if y.empty then value = ['call!', x, []] # x()
-        else if yValue[0]==',' then value = ['call!', x, yValue[1...]]
-        else value = ['call!', x, [y]]
+        else
+          yValue = yValue.value
+          if yValue[0]==',' then value = ['call!', x, yValue[1...]]
+          else value = ['call!', x, [y]]
       else if opValue=='index[]'
         if y.empty then error 'error when parsing subscript index.', y
         else if y.type==BRACKET and yValue[0]=='list!'

@@ -36,8 +36,9 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 exports.str = str = (item) ->
   if isArray(item) then '['+(str(x) for x in item).join(' ')+']'
-  else if not item? then 'undefined'
-  else if item.value? then item.value.toString()
+  else if typeof item =='object' then str(item.value)
+  else if item==undefined then 'undefined'
+  else if item==null then 'null'
   else item.toString()
 
 exports.isArray = isArray = (exp) -> Object::toString.call(exp) == '[object Array]'

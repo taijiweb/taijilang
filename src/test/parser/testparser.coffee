@@ -64,7 +64,9 @@ describe "parse: ",  ->
       it 'should parse x = ->', ->
         expect(parse('x = ->')).to.equal "[= x [-> [] undefined]]"
       it 'should parse \\"x..." a', ->
-        expect(parse('\\"x..." a')).to.equal "[x... a]"
+        expect(parse('\\"x..." a')).to.equal 'undefined'
+      it '''should parse \\'x...' a''', ->
+        expect(parse("\\'x...' a")).to.equal '["x..." a]'
 
     describe "concatenated line clauses: ",  ->
       it 'should parse print 1 \\\n 2 3', ->
@@ -113,9 +115,9 @@ describe "parse: ",  ->
         x = parse('(a , b , c) -> -> 1')
         expect(x).to.equal '[-> [a b c] [-> [] 1]]'
       it 'should parse (a , b , 1) -> 1', ->
-        expect(-> parse('(a , b , 1) -> 1')).to.throw  /illegal parameters list for function definition/
+        expect(parse('(a , b , 1) -> 1')).to.equal '[-> [a b 1] 1]'
       it 'should parse (a , b + 1) -> 1', ->
-        expect(-> parse('(a , b + 1) -> 1')).to.throw  /illegal parameters list for function definition/
+        expect(parse('(a , b + 1) -> 1')).to.equal '[-> [a [+ b 1]] 1]'
       it 'should parse -> and 1 2 ; and 3 4', ->
         x = parse('-> and 1 2 ; and 3 4')
         expect(x).to.equal "[-> [] [begin! [and 1 2] [and 3 4]]]"
@@ -125,6 +127,8 @@ describe "parse: ",  ->
       it 'should parse print -> 2', ->
         x = parse('print -> 2')
         expect(x).to.equal "[print [-> [] 2]]"
+      it 'should parse -> 1 -> 2', ->
+        expect(parse('-> 1 -> 2')).to.equal "[-> [] [1 [-> [] 2]]]"
       it 'should parse -> and 1 2 , and 3 4 -> print x ; print 5 6', ->
         x = parse('-> and 1 2 , and 3 4 -> print x ; print 5 6')
         expect(x).to.equal "[-> [] [begin! [and 1 2] [and 3 4 [-> [] [begin! [print x] [print 5 6]]]]]]"
@@ -186,7 +190,7 @@ describe "parse: ",  ->
         expect(x).to.equal "[forOf! i v x [begin! [print i] [print v]]]"
 
       it 'should parse label: forx# for i, v in x then print i', ->
-        x = parse('forx# for i, v in x then print i, print v')
+        x = parse('forx#: for i, v in x then print i, print v')
         expect(x).to.equal "[label! forx [forIn! i v x [begin! [print i] [print v]]]]"
 
     describe 'var', ->
@@ -214,8 +218,11 @@ describe "parse: ",  ->
         x = parse('var a,b')
         expect(x).to.equal '[var a b]'
 
+      it 'should parse var a, 1', ->
+        expect( -> parse('var a, 1')).to.throw /unexpected token after var initialization list/
+
       it 'should parse var 1', ->
-        expect(parse('var 1')).to.equal "[var undefined]"
+        expect( -> parse('var 1')).to.throw /expect variable name/
 
     describe 'extern!', ->
       it 'should parse extern! x a b', ->
@@ -257,7 +264,7 @@ describe "parse: ",  ->
 
       it 'should parse {a} = x', ->
         x = parse('{a} = x')
-        expect(x).to.equal "[hashAssign! = [a] x]"
+        expect(x).to.equal "[hashAssign! = a x]"
 
     describe 'unquote!', ->
       it 'should parse ^ a', ->
@@ -300,18 +307,18 @@ describe "parse: ",  ->
     describe "do statement: ",  ->
       it 'should parse do print 1; print 2; where a = 1', ->
         x = parse('do print 1; print 2; where a = 1')
-        expect(x).to.equal "[let [[a = 1]] [[print 1] [print 2]]]"
+        expect(x).to.equal "[let [[a = 1]] [begin! [print 1] [print 2]]]"
       it 'should parse do print 1; print 2; where a = 1, b = 2', ->
         x = parse('do print 1; print 2; where a = 1, b = 2')
-        expect(x).to.equal "[let [[a = 1] [b = 2]] [[print 1] [print 2]]]"
+        expect(x).to.equal "[let [[a = 1] [b = 2]] [begin! [print 1] [print 2]]]"
       it 'should parse do print 1; print 2; when a==1', ->
         x = parse('do print 1; print 2; when a==1')
-        expect(x).to.equal "[doWhile! [[print 1] [print 2]] [== a 1]]"
+        expect(x).to.equal "[doWhile! [begin! [print 1] [print 2]] [== a 1]]"
       it 'should parse do print 1; print 2; while a==1', ->
-        expect(-> parse('do print 1; print 2; while a==1')).to.throw /expect keyword then/
+        expect(-> parse('do print 1; print 2; while a==1')).to.throw /unexpected end of input/
       it 'should parse do print 1; print 2; until a==1', ->
         x = parse('do print 1; print 2; until a==1')
-        expect(x).to.equal "[doWhile! [[print 1] [print 2]] [!x [== a 1]]]"
+        expect(x).to.equal "[doWhile! [begin! [print 1] [print 2]] [!x [== a 1]]]"
 
   describe "sentence: ",  ->
     parse = (text) ->

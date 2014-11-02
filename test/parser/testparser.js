@@ -97,8 +97,11 @@ describe("parse: ", function() {
       it('should parse x = ->', function() {
         return expect(parse('x = ->')).to.equal("[= x [-> [] undefined]]");
       });
-      return it('should parse \\"x..." a', function() {
-        return expect(parse('\\"x..." a')).to.equal("[x... a]");
+      it('should parse \\"x..." a', function() {
+        return expect(parse('\\"x..." a')).to.equal('undefined');
+      });
+      return it('should parse \\\'x...\' a', function() {
+        return expect(parse("\\'x...' a")).to.equal('["x..." a]');
       });
     });
     describe("concatenated line clauses: ", function() {
@@ -172,14 +175,10 @@ describe("parse: ", function() {
         return expect(x).to.equal('[-> [a b c] [-> [] 1]]');
       });
       it('should parse (a , b , 1) -> 1', function() {
-        return expect(function() {
-          return parse('(a , b , 1) -> 1');
-        }).to["throw"](/illegal parameters list for function definition/);
+        return expect(parse('(a , b , 1) -> 1')).to.equal('[-> [a b 1] 1]');
       });
       it('should parse (a , b + 1) -> 1', function() {
-        return expect(function() {
-          return parse('(a , b + 1) -> 1');
-        }).to["throw"](/illegal parameters list for function definition/);
+        return expect(parse('(a , b + 1) -> 1')).to.equal('[-> [a [+ b 1]] 1]');
       });
       it('should parse -> and 1 2 ; and 3 4', function() {
         var x;
@@ -195,6 +194,9 @@ describe("parse: ", function() {
         var x;
         x = parse('print -> 2');
         return expect(x).to.equal("[print [-> [] 2]]");
+      });
+      it('should parse -> 1 -> 2', function() {
+        return expect(parse('-> 1 -> 2')).to.equal("[-> [] [1 [-> [] 2]]]");
       });
       return it('should parse -> and 1 2 , and 3 4 -> print x ; print 5 6', function() {
         var x;
@@ -272,7 +274,7 @@ describe("parse: ", function() {
       });
       return it('should parse label: forx# for i, v in x then print i', function() {
         var x;
-        x = parse('forx# for i, v in x then print i, print v');
+        x = parse('forx#: for i, v in x then print i, print v');
         return expect(x).to.equal("[label! forx [forIn! i v x [begin! [print i] [print v]]]]");
       });
     });
@@ -307,8 +309,15 @@ describe("parse: ", function() {
         x = parse('var a,b');
         return expect(x).to.equal('[var a b]');
       });
+      it('should parse var a, 1', function() {
+        return expect(function() {
+          return parse('var a, 1');
+        }).to["throw"](/unexpected token after var initialization list/);
+      });
       return it('should parse var 1', function() {
-        return expect(parse('var 1')).to.equal("[var undefined]");
+        return expect(function() {
+          return parse('var 1');
+        }).to["throw"](/expect variable name/);
       });
     });
     describe('extern!', function() {
@@ -362,7 +371,7 @@ describe("parse: ", function() {
       return it('should parse {a} = x', function() {
         var x;
         x = parse('{a} = x');
-        return expect(x).to.equal("[hashAssign! = [a] x]");
+        return expect(x).to.equal("[hashAssign! = a x]");
       });
     });
     describe('unquote!', function() {
@@ -418,27 +427,27 @@ describe("parse: ", function() {
       it('should parse do print 1; print 2; where a = 1', function() {
         var x;
         x = parse('do print 1; print 2; where a = 1');
-        return expect(x).to.equal("[let [[a = 1]] [[print 1] [print 2]]]");
+        return expect(x).to.equal("[let [[a = 1]] [begin! [print 1] [print 2]]]");
       });
       it('should parse do print 1; print 2; where a = 1, b = 2', function() {
         var x;
         x = parse('do print 1; print 2; where a = 1, b = 2');
-        return expect(x).to.equal("[let [[a = 1] [b = 2]] [[print 1] [print 2]]]");
+        return expect(x).to.equal("[let [[a = 1] [b = 2]] [begin! [print 1] [print 2]]]");
       });
       it('should parse do print 1; print 2; when a==1', function() {
         var x;
         x = parse('do print 1; print 2; when a==1');
-        return expect(x).to.equal("[doWhile! [[print 1] [print 2]] [== a 1]]");
+        return expect(x).to.equal("[doWhile! [begin! [print 1] [print 2]] [== a 1]]");
       });
       it('should parse do print 1; print 2; while a==1', function() {
         return expect(function() {
           return parse('do print 1; print 2; while a==1');
-        }).to["throw"](/expect keyword then/);
+        }).to["throw"](/unexpected end of input/);
       });
       return it('should parse do print 1; print 2; until a==1', function() {
         var x;
         x = parse('do print 1; print 2; until a==1');
-        return expect(x).to.equal("[doWhile! [[print 1] [print 2]] [!x [== a 1]]]");
+        return expect(x).to.equal("[doWhile! [begin! [print 1] [print 2]] [!x [== a 1]]]");
       });
     });
   });
@@ -801,7 +810,7 @@ describe("parse: ", function() {
       });
     });
   });
-  idescribe("line: ", function() {
+  describe("line: ", function() {
     var parse;
     parse = function(text) {
       var parser, x;
