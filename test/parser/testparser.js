@@ -858,7 +858,7 @@ describe("parse: ", function() {
       x = parser.parse(head + text, parser.module, 0);
       return str(x.value[3]);
     };
-    idescribe("misc: ", function() {
+    describe("misc: ", function() {
       it('should parse 1', function() {
         return expect(parse('1 ')).to.equal('1');
       });
@@ -996,6 +996,18 @@ describe("parse: ", function() {
       it("parse while! 2 if 1 then console.log 1 else console.log 2", function() {
         return expect(parse('while! 2 if 1 then console.log 1 else console.log 2')).to.equal("[while! 2 [if 1 [[attribute! console log] 1] [[attribute! console log] 2]]]");
       });
+      it("parse if 1 then 2\nprint 3", function() {
+        return expect(parse('if 1 then 2\nprint 3')).to.equal("[begin! [if 1 2] [print 3]]");
+      });
+      it("parse if 1 then 2 else 3\nprint 4", function() {
+        return expect(parse('if 1 then 2 else 3\nprint 4')).to.equal("[begin! [if 1 2 3] [print 4]]");
+      });
+      it("parse while! 1 2 \nwhile! 3 4", function() {
+        return expect(parse('while! 1 2 \nwhile! 3 4')).to.equal("[begin! [while! 1 2] [while! 3 4]]");
+      });
+      it("parse while! 1 if 2 then 3 \nprint 4", function() {
+        return expect(parse('while! 1 if 2 then 3 \nprint 4')).to.equal("[begin! [while! 1 [if 2 3]] [print 4]]");
+      });
       it("parse while! 2 if 1 then console.log 1 else console.log 2\nwhile! 3\n if 1 then console.log 1 else console.log 2", function() {
         return expect(parse('while! 2 if 1 then console.log 1 else console.log 2\nwhile! 3\n if 1 then console.log 1 else console.log 2')).to.equal("[begin! [while! 2 [if 1 [[attribute! console log] 1] [[attribute! console log] 2]]] [while! 3 [if 1 [[attribute! console log] 1] [[attribute! console log] 2]]]]");
       });
@@ -1040,23 +1052,26 @@ describe("parse: ", function() {
         x = parse('x = /!-h\b|-r\b|-v\b|-b\b/');
         return expect(x).to.deep.equal("[= x [regexp! /-h\b|-r\b|-v\b|-b\b/]]");
       });
-      it('should parse a = 2\nx = : 1', function() {
+      xit('should parse a = 2\nx = : 1', function() {
         var x;
         x = parse('a = 2\nx = : 1');
         return expect(x).to.deep.equal("[begin! [= a 2] [= x [: 1]]]");
       });
-      it('should parse error: new: Error "Error: No Input file given" ', function() {
+      xit('should parse error: new: Error "Error: No Input file given" ', function() {
         var x;
         x = parse('error: new: Error "Error: No Input file given" ');
         return expect(x).to.deep.equal("[error [new [Error [string! \"Error: No Input file given\"]]]]");
       });
-      it('should parse new: Error "Error: No Input file given" ', function() {
+      xit('should parse new: Error "Error: No Input file given" ', function() {
         var x;
         x = parse('new : Error "Error: No Input file given"');
         return expect(x).to.deep.equal("[new [Error [string! \"Error: No Input file given\"]]]");
       });
-      return it('should parse node.spawn outfile() {.stdio: "inherit".}', function() {
-        return expect(parse('node.spawn outfile() {.stdio: "inherit".}')).to.equal("[[attribute! node spawn] [call! outfile []] [hash! [jshashitem! stdio [string! \"inherit\"]]]]");
+      it('should parse x {. a: b }', function() {
+        return expect(parse('x {. a: b }')).to.equal('[x [hash! [jshashitem! a b]]]');
+      });
+      return it('should parse node.spawn outfile() {.stdio: "inherit" }', function() {
+        return expect(parse('node.spawn outfile() {.stdio: "inherit" }')).to.equal("[[attribute! node spawn] [call! outfile []] [hash! [jshashitem! stdio [string! \"inherit\"]]]]");
       });
     });
     describe("indented string block: ", function() {
@@ -1119,7 +1134,7 @@ describe("parse: ", function() {
       });
     });
     describe("export!: ", function() {
-      return it('should parse export! a = A, #b, c, #b = d', function() {
+      return xit('should parse export! a = A, #b, c, #b = d', function() {
         var code, x;
         code = 'export! a = A, #b, c, #b = d ';
         x = parse(code);

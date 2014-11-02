@@ -28,7 +28,7 @@ OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION, INDENT_
 exports.escapeNewLine = escapeNewLine = (s) -> (for c in s then (if c=='\n' then '\\n' else '\\r')).join('')
 
 exports.keywordMap = keywordMap =
-  'if': 1, 'try':1, 'switch':1, 'while':1, 'let':1, 'letrec!':1, 'letloop!':1, 'do':1, 'repeat':1
+  'if': 1, 'try':1, 'switch':1, 'while':1, 'while!':1, 'let':1, 'letrec!':1, 'letloop!':1, 'do':1, 'repeat':1
   'return':1, 'break':1, 'continue':1, 'throw':1,'function':1,'for':1
   'loop':1, 'class':1, 'var':1, 'for':1
 
@@ -1102,7 +1102,7 @@ exports.Parser = ->
       else if value=='->' then matchToken()
       else lexError 'expect : or -> for hash item definition'
       if token.type==SPACE then matchToken()
-      else if token.type==INDENT
+      if token.type==INDENT
         matchToken()
         tkn = token
         blk = hashBlock()
@@ -1418,67 +1418,6 @@ exports.Parser = ->
         param
       if not meetError then result
 
-#  @expectIndentConj = expectIndentConj = (word, line1, isHeadStatement, options, clauseFn) ->
-#    start = token; ind = indent
-#    if options.optionalClause? then optionalClause = options.optionalClause
-#    else optionalClause = word!='then'
-#    if options.optionalWord? then optionalWord = options.optionalWord
-#    else optionalWord = word=='then'
-#    if token.type==SPACE then nextToken()
-#    if token.type==NEWLINE then nextToken()
-#    else if token.type==INDENT then 'unexpected indent'
-#    else if token.type==UNDENT
-#      if indent==ind and not isHeadStatement
-#        syntaxError 'meet new line, expect inline keyword "'+word+'" for inline statement'
-#      else if indent<ind
-#        if not optionalClause then syntaxError 'unexpected undent, expect '+word
-#        else token = start; return
-#    else if indent>ind
-#      if options.indentCol
-#        if indent!=options.indentCol then syntaxError 'unconsistent indent'
-#      else options.indentCol = indent
-#    nextToken()
-#    if token.type==CONJUNCTION
-#      if token.value==word then return  clauseFn()
-#      else
-#        if optionalClause then token = start; return
-#        else  syntaxError 'unexpected '+token.value+', expect '+word+' clause'
-#      else if (not optionalWord and not optionalClause) or (
-#          not optionalClause and optionalWord and spac.inline)
-#        if word!='then' or not options.colonAtEndOfLine then syntaxError 'expect keyword '+word
-#      else if not optionalWord then return rollbackToken spac
-#      else if optionalClause then return rollbackToken spac
-#    else return
-
-  conjClause = (conj, line1, isHeadStatement, options) ->
-    begin(expectIndentConj(conj, line1, isHeadStatement, options, parser.lineBlock))
-
-  thenClause  = (line1, isHeadStatement, options) -> conjClause 'then', line1, isHeadStatement, options
-  elseClause  = (line1, isHeadStatement, options) -> conjClause 'else', line1, isHeadStatement, options
-  finallyClause  = (line1, isHeadStatement, options) -> conjClause 'finally', line1, isHeadStatement, options
-  catchClause = (line1, isHeadStatement, options) ->
-    expectIndentConj 'catch', line1, isHeadStatement, options, ->
-      line2 = lineno
-      if token.type==SPACE then nextToken()
-      atStatementHead = false
-      catchVar = parser.identifier()
-      if token.type==SPACE then nextToken()
-      then_ = thenClause(line2, false, {})
-      [catchVar, then_]
-
-  caseClauseOfSwitchStatement = (line1, isHeadStatement, options) ->
-    expectIndentConj 'case', line1, isHeadStatement, options, ->
-      line2 = lineno
-      if token.type==SPACE then nextToken()
-      atStatementHead = false
-      exp = parser.compactClauseExpression()
-      #if exp.isBracket then exp.shift()
-      if exp[0]!='list!' then exp = ['list!', exp]
-      if token.type==SPACE then nextToken()
-      expectChar(':', 'expect ":" after case values')
-      body = parser.line() or parser.block()
-      [exp, begin(body)]
-
   expectThen = (isHeadStatement, clauseIndent) ->
     if token.type==SPACE then nextToken()
     if atStatementHead and not isHeadStatement then syntaxError 'unexpected new line before "then" of inline keyword statement'
@@ -1523,25 +1462,46 @@ exports.Parser = ->
     if then_.length==1 then then_ = then_[0]
     else if then_.length==0 then then_ = undefined
     else then_.unshift 'begin!'
+    if token.type==NEWLINE then tkn = token; nextToken()
     if maybeConjunction('else', isHeadStatement, ind)
       else_ = parser.block() or parser.line()
       if else_.length==1 then else_ = else_[0]
       else if else_.length==0 then else_ = undefined
       else else_.unshift 'begin!'
+    else if tkn then token = tkn
     if else_ then {value:[keyword, test, then_, else_], start:start, stop:token}
     else {value:[keyword, test, then_], start:start, stop:token}
 
+  # whileTestStatement
+  whileTestStatement = (keyword) -> (isHeadStatement) ->
+    start = token; nextToken()
+    if token.type==SPACE then nextToken()
+    if not (test=parser.compactClauseExpression())
+      error "expect compact clause expression to be used as condition"
+    body = parser.block() or parser.line()
+    if body.length==1 then body = body[0]
+    else if body.length==0 then body = undefined
+    else body.unshift 'begin!'
+    {value:[keyword, test, body], start:start, stop:token}
+
   # throw or return value
   throwReturnStatement = (keyword) -> (isHeadStatement) ->
+    start = token; nextToken()
     if token.type==SPACE then nextToken()
-    if text[cursor]==':' and text[cursor+1]!=':' then cursor++;
-    if token.type==SPACE then nextToken()
-    if clause = parser.clause() then [keyword, clause] else [keyword]
+    if clause = parser.clause() then {value:[keyword, clause], start:start, stop:token}
+    else {value:[keyword], start:start, stop:token}
 
   # break; continue
   breakContinueStatement = (keyword) -> (isHeadStatement) ->
+    start = token; nextToken()
     if token.type==SPACE then nextToken()
-    if lbl = jsIdentifier() then [keyword, lbl] else [keyword]
+    if token.type==IDENTIFIER
+      label = token; nextToken()
+      if token.type==SPACE then nextToken()
+      {value:[keyword, label], start:start, stop:token}
+    else
+      if token.type==SPACE then nextToken()
+      {value:[keyword], start:start, stop:token}
 
   letLikeStatement = (keyword) -> (isHeadStatement) ->
     start = token; nextToken(); ind = indent; if token.type==SPACE then nextToken()
@@ -1723,6 +1683,8 @@ exports.Parser = ->
     'throw': throwReturnStatement('throw')
     'return': throwReturnStatement('return')
     'new': throwReturnStatement('new')
+
+    'while!': whileTestStatement('while!')
 
     'var': (isHeadStatement) ->
       start = token; nextToken()
@@ -2251,7 +2213,6 @@ exports.Parser = ->
       return [{value:['codeBlockComment!', x], start:start, stop:token}]
     result = []
     while x = parser.sentence() then result.push.apply result, x
-    if token.type==NEWLINE then nextToken()
     result
 
   @block = (dent) -> if token.type==INDENT then nextToken(); return parser.blockWithoutIndentHead(indent)
@@ -2262,6 +2223,7 @@ exports.Parser = ->
     result = []
     while (x=parser.line())
       result.push.apply(result, x)
+      if token.type==NEWLINE then nextToken(); continue
       if token.type==EOI then break
       else if token.type==UNDENT
         if indent==dent then nextToken(); break
@@ -2272,6 +2234,7 @@ exports.Parser = ->
 
   @lineBlock = (dent) ->
     result = parser.line()
+    if token.type==NEWLINE then nextToken()
     tkn = token
     if token.type==INDENT then nextToken()
     if token.type==SPACE then nextToken()
@@ -2289,6 +2252,7 @@ exports.Parser = ->
     body = []
     while 1
       if not x=parser.line() then break
+      if token.type==NEWLINE then nextToken()
       body.push.apply body, x
     if token.type!=EOI then syntaxError 'expect end of input, but meet "'+text.slice(cursor)+'"'
     if body.length>1 then body.unshift 'begin!'
@@ -2353,7 +2317,6 @@ exports.Parser = ->
     # matchToken() should be called in moduleBody() instead
     memoMap = {}
     atStatementHead = true
-    interolateStringNumber = 0
     @environment = environment = env
     @meetEllipsis = false
     endCursorOfDynamicBlockStack = []

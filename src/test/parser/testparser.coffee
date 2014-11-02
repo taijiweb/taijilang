@@ -579,7 +579,7 @@ describe "parse: ",  ->
       parser = new Parser()
       x = parser.parse(head+text, parser.module, 0)
       str x.value[3]
-    idescribe "misc: ",  ->
+    describe "misc: ",  ->
       it 'should parse 1', ->
         expect(parse('1 ')).to.equal '1'
       it 'should parse 1.', ->
@@ -684,6 +684,14 @@ describe "parse: ",  ->
     describe "new parser tests from samples: ",  ->
       it "parse while! 2 if 1 then console.log 1 else console.log 2", ->
         expect(parse('while! 2 if 1 then console.log 1 else console.log 2')).to.equal "[while! 2 [if 1 [[attribute! console log] 1] [[attribute! console log] 2]]]"
+      it "parse if 1 then 2\nprint 3", ->
+        expect(parse('if 1 then 2\nprint 3')).to.equal "[begin! [if 1 2] [print 3]]"
+      it "parse if 1 then 2 else 3\nprint 4", ->
+        expect(parse('if 1 then 2 else 3\nprint 4')).to.equal "[begin! [if 1 2 3] [print 4]]"
+      it "parse while! 1 2 \nwhile! 3 4", ->
+        expect(parse('while! 1 2 \nwhile! 3 4')).to.equal "[begin! [while! 1 2] [while! 3 4]]"
+      it "parse while! 1 if 2 then 3 \nprint 4", ->
+        expect(parse('while! 1 if 2 then 3 \nprint 4')).to.equal "[begin! [while! 1 [if 2 3]] [print 4]]"
       it "parse while! 2 if 1 then console.log 1 else console.log 2\nwhile! 3\n if 1 then console.log 1 else console.log 2", ->
         expect(parse('while! 2 if 1 then console.log 1 else console.log 2\nwhile! 3\n if 1 then console.log 1 else console.log 2')).to.equal "[begin! [while! 2 [if 1 [[attribute! console log] 1] [[attribute! console log] 2]]] [while! 3 [if 1 [[attribute! console log] 1] [[attribute! console log] 2]]]]"
       it "parse var a=1, b=2", ->
@@ -720,20 +728,23 @@ describe "parse: ",  ->
         x = parse('x = /!-h\b|-r\b|-v\b|-b\b/')
         expect(x).to.deep.equal "[= x [regexp! /-h\b|-r\b|-v\b|-b\b/]]"
 
-      it 'should parse a = 2\nx = : 1', ->
+      xit 'should parse a = 2\nx = : 1', ->
         x = parse('a = 2\nx = : 1')
         expect(x).to.deep.equal "[begin! [= a 2] [= x [: 1]]]"
 
-      it 'should parse error: new: Error "Error: No Input file given" ', ->
+      xit 'should parse error: new: Error "Error: No Input file given" ', ->
         x = parse('error: new: Error "Error: No Input file given" ')
         expect(x).to.deep.equal "[error [new [Error [string! \"Error: No Input file given\"]]]]"
 
-      it 'should parse new: Error "Error: No Input file given" ', ->
+      xit 'should parse new: Error "Error: No Input file given" ', ->
         x = parse('new : Error "Error: No Input file given"')
         expect(x).to.deep.equal "[new [Error [string! \"Error: No Input file given\"]]]"
 
-      it 'should parse node.spawn outfile() {.stdio: "inherit".}', ->
-        expect(parse('node.spawn outfile() {.stdio: "inherit".}')).to.equal "[[attribute! node spawn] [call! outfile []] [hash! [jshashitem! stdio [string! \"inherit\"]]]]"
+      it 'should parse x {. a: b }', ->
+        expect(parse('x {. a: b }')).to.equal '[x [hash! [jshashitem! a b]]]'
+
+      it 'should parse node.spawn outfile() {.stdio: "inherit" }', ->
+          expect(parse('node.spawn outfile() {.stdio: "inherit" }')).to.equal "[[attribute! node spawn] [call! outfile []] [hash! [jshashitem! stdio [string! \"inherit\"]]]]"
 
     describe "indented string block: ",  ->
       it 'should parse indented string ', ->
@@ -784,7 +795,7 @@ describe "parse: ",  ->
         expect(x).to.deep.equal "[import! \"x.tj\" undefined undefined undefined [] []]" # import path method alias metaAlias runtimeImportList metaImportItemList
 
     describe "export!: ",  ->
-      it '''should parse export! a = A, #b, c, #b = d''', ->
+      xit '''should parse export! a = A, #b, c, #b = d''', ->
         code = '''export! a = A, #b, c, #b = d '''
         x = parse(code)
         expect(x).to.deep.equal "[export! [a A runtime undefined] [b undefined undefined meta] [c undefined runtime undefined] [b d undefined meta]]"

@@ -1,7 +1,9 @@
 2014
 2014-11
   11-1 for statement, var initialization, if-then, while-else, try-catch
-  11-2 switch-case, let, parser.line, label
+  11-2 
+    switch-case, let, parser.line, label
+    pass 472 tests, only letloop!, import!, export! do not be tested.
 
 2014-10
   10-20
