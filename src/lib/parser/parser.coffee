@@ -1466,8 +1466,9 @@ exports.Parser = ->
     if token.type==INDENT then syntaxError 'unexpected indent before "then"'
     else if token.type==EOI
       syntaxError 'unexpected end of input, expect "then"'
-    if atStatementHead and indent!=clauseIndent then syntaxError 'wrong indent before "then"'
     if token.type==NEWLINE then nextToken()
+    else if token.type==UNDENT and token.indent>=clauseIndent then nextToken()
+    if atStatementHead and indent!=clauseIndent then syntaxError 'wrong indent before "then"'
     if token.type==CONJUNCTION
       if token.value=="then" then nextToken(); return true
       else syntaxError 'unexpected conjunction "'+token.value+'", expect "then"'
@@ -1524,9 +1525,14 @@ exports.Parser = ->
     if lbl = jsIdentifier() then [keyword, lbl] else [keyword]
 
   letLikeStatement = (keyword) -> (isHeadStatement) ->
-    line1 = lineno; if token.type==SPACE then nextToken()
+    start = token; nextToken(); ind = indent; if token.type==SPACE then nextToken()
     varDesc = parser.varInitList() or parser.clause()
-    [keyword, varDesc, thenClause(line1, isHeadStatement, {})]
+    expectThen(isHeadStatement, ind)
+    body = parser.block() or parser.line()
+    if body.length==1 then body = body[0]
+    else if body.length==0 then body = 'undefined'
+    else body.unshift 'begin!'
+    {value:[keyword, varDesc, body], start:start, stop:token}
 
   # no cursor and lineno is attached in result, so can not be memorized directly.
   @identifierLine = ->
@@ -1576,8 +1582,7 @@ exports.Parser = ->
     result
 
   @varInitList = ->
-    start = token; ind0 = indent; nextToken()
-    if token.type==SPACE then nextToken()
+    ind0 = indent
     if token.type==UNDENT then syntaxError 'unexpected undent'
     else if token.type==NEWLINE then syntaxError 'unexpected new line, expect at least one variable in var statement'
     if token.type!=INDENT
@@ -1764,7 +1769,7 @@ exports.Parser = ->
     'while': keywordThenElseStatement('while')
 
     'for': (isHeadStatement) ->
-      start = token;
+      start = token; ind = indent
       skipToken() # skip "for"
       skipSpace()
       if char=='(' and char=text[++cursor]
@@ -1785,7 +1790,7 @@ exports.Parser = ->
         if token.value==')' then nextToken()
         else 'expect ")"'
         if token.type==SPACE then nextToken()
-        expectThen()
+        expectThen(isHeadStatement, ind)
         body = parser.block() or parser.line()
         if body.length==1 then body = body[0]
         else if body.length==0 then body = 'undefined'
@@ -1808,7 +1813,7 @@ exports.Parser = ->
         else  'expect "in" or "of"'
       if token.type==SPACE then nextToken()
       obj = parser.clause()
-      expectThen()
+      expectThen(isHeadStatement, ind)
       body = parser.block() or parser.line()
       if inOf=='in' then kw = 'forIn!' else kw = 'forOf!'
       if body.length==1 then body = body[0]

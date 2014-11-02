@@ -674,7 +674,7 @@ describe("parse: ", function() {
         return expect(x).to.equal("[[try [if 1 2] e 3 undefined]]");
       });
     });
-    idescribe("switch statement: ", function() {
+    describe("switch statement: ", function() {
       describe("group1: ", function() {
         it('should parse switch 1 case e: 2', function() {
           var x;
@@ -745,7 +745,7 @@ describe("parse: ", function() {
         });
       });
     });
-    xdescribe("let statement: ", function() {
+    idescribe("let statement: ", function() {
       it('should parse let a = 1 then 2', function() {
         var x;
         x = parse('let a = 1 then 2');
@@ -769,7 +769,7 @@ describe("parse: ", function() {
       it('should parse letrec! f = (x) -> if! x==1 1 f(x-1) then f(3)', function() {
         return expect(parse('letrec! f = (x) -> if! x==1 1 f(x-1) then f(3)')).to.equal("[[letrec! [[f = [-> [x] [if! [== x 1] 1 [call! f [[- x 1]]]]]]] [call! f [3]]]]");
       });
-      it('should parse letloop! f = (x) -> if! x==1 1 x+f(x-1)', function() {
+      xit('should parse letloop! f = (x) -> if! x==1 1 x+f(x-1)', function() {
         return expect(parse('letloop! f = (x) -> if! x==1 1 x+f(x-1) then f(3)')).to.equal("[[letloop! [[f = [-> [x] [if! [== x 1] 1 [+ x [call! f [[- x 1]]]]]]]] [call! f [3]]]]");
       });
       it('should parse let a=[\ 1 \] then a[1]', function() {
@@ -777,7 +777,7 @@ describe("parse: ", function() {
         x = parse('let a=[\ 1 \] then a[1]');
         return expect(x).to.equal("[[let [[a = [list! 1]]] [index! a 1]]]");
       });
-      return it('should parse let a=[\\ 1 \\] then a[1]', function() {
+      return nit('should parse let a=[\\ 1 \\] then a[1]', function() {
         var x;
         x = parse('let a=[\\ 1 \\] then a[1]');
         return expect(x).to.equal("[[let [[a = [list! 1]]] [index! a 1]]]");
@@ -801,12 +801,12 @@ describe("parse: ", function() {
       });
     });
   });
-  xdescribe("line: ", function() {
+  describe("line: ", function() {
     var parse;
     parse = function(text) {
       var parser, x;
       parser = new Parser();
-      x = parser.parse(text, parser.line, 0);
+      x = parser.parse(text, matchRule(parser, parser.line), 0);
       return str(x);
     };
     it('should parse print 1 ; print 2', function() {
@@ -838,30 +838,6 @@ describe("parse: ", function() {
       var x;
       x = parse('let a=[\ 1 \] then a[1]');
       return expect(x).to.equal("[[let [[a = [list! 1]]] [index! a 1]]]");
-    });
-  });
-  describe("data bracket: ", function() {
-    var parse;
-    parse = function(text) {
-      var parser, x;
-      parser = new Parser();
-      x = parser.parse(text, parser.dataBracket, 0);
-      return str(x);
-    };
-    it('should parse [\\ 1 \\]', function() {
-      var x;
-      x = parse('[\\ 1 \\]');
-      return expect(x).to.equal("[list! 1]");
-    });
-    it('should parse [\\1\n2 \\]', function() {
-      var x;
-      x = parse('[\\1\n2 \\]');
-      return expect(x).to.equal("[list! 1 2]");
-    });
-    return it('should parse [\\ 1 2\n3 4 \\]', function() {
-      var x;
-      x = parse('[\\ 1 2\n3 4 \\]');
-      return expect(x).to.equal("[list! [list! 1 2] [list! 3 4]]");
     });
   });
   return ndescribe("module: ", function() {

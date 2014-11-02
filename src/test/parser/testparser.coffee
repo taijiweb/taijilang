@@ -450,7 +450,7 @@ describe "parse: ",  ->
         x = parse('try if 1 then 2 catch e then 3')
         expect(x).to.equal "[[try [if 1 2] e 3 undefined]]"
 
-    idescribe "switch statement: ",  ->
+    describe "switch statement: ",  ->
       describe "group1: ",  ->
         it 'should parse switch 1 case e: 2', ->
           x = parse('switch 1 case e: 2')
@@ -480,6 +480,7 @@ describe "parse: ",  ->
         it 'should parse switch 1 case e: switch 2 case e: 3', ->
           x = parse('switch 1 case e: switch 2 case e: 3')
           expect(x).to.equal "[[switch 1 [[[e] [switch 2 [[[e] 3]] undefined]]] undefined]]"
+
       describe "group2: ",  ->
         it 'should parse switch 1 case e: switch 2 case e: 3 else 4', ->
           x = parse('switch 1 case e: switch 2 case e: 3 else 4')
@@ -495,7 +496,7 @@ describe "parse: ",  ->
         it 'should parse switch 1 case e:\n   switch 2 case e: 3 \n else 4', ->
           expect(parse('switch 1 case e:\n   switch 2 case e: 3 \n else 4')).to.equal '[[switch 1 [[[e] [switch 2 [[[e] 3]] undefined]]] 4]]'
 
-    xdescribe "let statement: ",  ->
+    idescribe "let statement: ",  ->
       it 'should parse let a = 1 then 2', ->
         x = parse('let a = 1 then 2')
         expect(x).to.equal "[[let [[a = 1]] 2]]"
@@ -510,13 +511,13 @@ describe "parse: ",  ->
         expect(x).to.equal "[[let [[a = [abs 1]] [b = 3]] 2]]"
       it 'should parse letrec! f = (x) -> if! x==1 1 f(x-1) then f(3)', ->
         expect(parse('letrec! f = (x) -> if! x==1 1 f(x-1) then f(3)')).to.equal "[[letrec! [[f = [-> [x] [if! [== x 1] 1 [call! f [[- x 1]]]]]]] [call! f [3]]]]"
-      it 'should parse letloop! f = (x) -> if! x==1 1 x+f(x-1)', ->
+      nit 'should parse letloop! f = (x) -> if! x==1 1 x+f(x-1)', ->
         expect(parse('letloop! f = (x) -> if! x==1 1 x+f(x-1) then f(3)')).to.equal "[[letloop! [[f = [-> [x] [if! [== x 1] 1 [+ x [call! f [[- x 1]]]]]]]] [call! f [3]]]]"
       # single \ is invalid escape, will lost
       it '''should parse let a=[\ 1 \] then a[1]''', ->
         x = parse('''let a=[\ 1 \] then a[1]''')
         expect(x).to.equal "[[let [[a = [list! 1]]] [index! a 1]]]"
-      it '''should parse let a=[\\ 1 \\] then a[1]''', ->
+      nit '''should parse let a=[\\ 1 \\] then a[1]''', ->
         x = parse('''let a=[\\ 1 \\] then a[1]''')
         expect(x).to.equal "[[let [[a = [list! 1]]] [index! a 1]]]"
 
@@ -532,10 +533,10 @@ describe "parse: ",  ->
       it 'should parse print : 2', ->
         expect(parse("print : 2")).to.equal '[[print 2]]'
 
-  xdescribe "line: ",  ->
+  describe "line: ",  ->
     parse = (text) ->
       parser = new Parser()
-      x = parser.parse(text, parser.line, 0)
+      x = parser.parse(text, matchRule(parser, parser.line), 0)
       str x
     it 'should parse print 1 ; print 2', ->
       x = parse('print 1 ; print 2')
@@ -563,21 +564,6 @@ describe "parse: ",  ->
     it '''should parse let a=[\ 1 \] then a[1]''', ->
       x = parse('''let a=[\ 1 \] then a[1]''')
       expect(x).to.equal "[[let [[a = [list! 1]]] [index! a 1]]]"
-
-  describe "data bracket: ",  ->
-    parse = (text) ->
-      parser = new Parser()
-      x = parser.parse(text, parser.dataBracket, 0)
-      str x
-    it 'should parse [\\ 1 \\]', ->
-      x = parse('[\\ 1 \\]')
-      expect(x).to.equal "[list! 1]"
-    it 'should parse [\\1\n2 \\]', ->
-      x = parse('[\\1\n2 \\]')
-      expect(x).to.equal "[list! 1 2]"
-    it 'should parse [\\ 1 2\n3 4 \\]', ->
-      x = parse('[\\ 1 2\n3 4 \\]')
-      expect(x).to.equal "[list! [list! 1 2] [list! 3 4]]"
 
   ndescribe "module: ",  ->
     head = 'taiji language 0.1\n'
