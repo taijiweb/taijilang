@@ -496,7 +496,7 @@ describe "parse: ",  ->
         it 'should parse switch 1 case e:\n   switch 2 case e: 3 \n else 4', ->
           expect(parse('switch 1 case e:\n   switch 2 case e: 3 \n else 4')).to.equal '[[switch 1 [[[e] [switch 2 [[[e] 3]] undefined]]] 4]]'
 
-    idescribe "let statement: ",  ->
+    describe "let statement: ",  ->
       it 'should parse let a = 1 then 2', ->
         x = parse('let a = 1 then 2')
         expect(x).to.equal "[[let [[a = 1]] 2]]"
@@ -552,6 +552,7 @@ describe "parse: ",  ->
       expect(parse('/ print \n abs 3 \n abs 4')).to.equal "[[codeBlockComment! [[print [abs 3] [abs 4]]]]]"
 
     nit 'should parse / try 1 \n  2 \nelse 3', ->
+      # es5 does not support try-else
       expect(parse('/ try 1 \n  2 \nelse 3')).to.equal "[[codeBlockComment! [[try [1 2] [list!] 3 undefined]]]]"
 
     it '''should parse '#a=1;a''', ->

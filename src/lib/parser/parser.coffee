@@ -124,6 +124,27 @@ exports.Parser = ->
 
   tokenOnSymbolChar = ->
     cur = cursor
+    while char = text[++cursor]
+      if symbolStopChars[char] then break
+
+      # //, /*, /!
+      # "/!" always start a regexp
+      if char=='/' and ((c2=text[cursor+1])=='/' or c2=='*' or c2=='!') then break
+      # else if c2=='.' # should not reach here, because this /. is always in the middle of the symbol, not in the front
+      # "\" should not be concatenated symbol if following symbol characters
+      #else if char=='\\' and ((c2=text[cursor+1])=='\n'  or c2=='\r') then break
+
+    token.next = {type:SYMBOL, value: text.slice(cur, cursor),
+    cursor:cur, stopCursor:cursor, line: lineno, column:cursor-lineStart}
+
+  symbolStopChars = {}
+  for c in ' \t\v\n\r()[]{},;:#\'\".@\\' then symbolStopChars[c] = true
+  for c of firstIdentifierCharSet then symbolStopChars[c] = true
+  for c in '0123456789' then symbolStopChars[c] = true
+
+  tokenFnMap['#'] = tokenOnSharpChar = ->
+    cur = cursor
+    while 1 then if (char=text[++cursor])!='#' then break
     while char
       if symbolStopChars[char] then break
 
@@ -137,11 +158,6 @@ exports.Parser = ->
 
     token.next = {type:SYMBOL, value: text.slice(cur, cursor),
     cursor:cur, stopCursor:cursor, line: lineno, column:cursor-lineStart}
-
-  symbolStopChars = {}
-  for c in ' \t\v\n\r()[]{},;:\'\".@\\' then symbolStopChars[c] = true
-  for c in firstIdentifierCharSet then symbolStopChars[c] = true
-  for c in '0123456789' then symbolStopChars[c] = true
 
   tokenFnMap['@'] = tokenFnMap['.'] = tokenOnAtChar = ->
     cur = cursor; column = cursor-lineStart; first = char; char = text[++cursor]
@@ -2212,8 +2228,10 @@ exports.Parser = ->
       return
     if type==INDENT then return parser.block(indent)
     if type==CODE_BLOCK_COMMENT_LEAD_SYMBOL
+      start = token; nextToken()
+      if token.type==SPACE then nextToken()
       x = parser.line()
-      return {value:['codeBlockComment!', x], start:start, stop:stop}
+      return [{value:['codeBlockComment!', x], start:start, stop:token}]
     result = []
     while x = parser.sentence() then result.push.apply result, x
     if token.type==NEWLINE then nextToken()
