@@ -466,7 +466,8 @@ exports.Parser = ->
         char = text[++cursor]
         leftIndentBlockComment(indent)
         skipSpaceLines(indent)
-        if lexIndent>indent then t = INDENT
+        if not char then t = EOI
+        else if lexIndent>indent then t = INDENT
         else if lexIndent==indent then t = NEWLINE
         else t = UNDENT
         return token.next = {type: t, value: text[cur...cursor], cursor:cur, stopCursor:cursor, line:line, column:column}
@@ -540,7 +541,8 @@ exports.Parser = ->
     if char=='0' and c2 = text[cursor+1]
       if c2=='b' or c2=='B' then base = 2; baseStart = cursor += 2; char = text[cursor]
       else if c2=='x' or c2=='X' then base = 16; baseStart = cursor += 2; char = text[cursor]
-      else char = text[++cursor]; meetDigit = true
+      else char = text[++cursor]; meetDigit = true; baseStart = cursor
+    else meetDigit = true; baseStart = cursor
     if base==2
       while char
         if char=='0' or char=='1' then char = text[++cursor]
@@ -980,7 +982,9 @@ exports.Parser = ->
       if token.type==UNDENT
         if token.indent<ind then lexError 'expect ) indent equal to or more than ('
         else matchToken()
-      else if token.value!=')' then lexError 'expect )'
+      else
+        if token.type==SPACE then nextToken()
+        if token.value!=')' then lexError 'expect )'
       # To make interpolated string happy, we can not call nextToken() here
       #else matchToken() # do not match token here, so token.next==undefined, and nextToken() will matchToken instead.
       prev.next = token = {type:PAREN, value:exp, cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent, atom:true, parameters:true}
@@ -2286,10 +2290,10 @@ exports.Parser = ->
     while 1
       if not x=parser.line() then break
       body.push.apply body, x
-    if token!=eoi then syntaxError 'expect end of input, but meet "'+text.slice(cursor)+'"'
+    if token.type!=EOI then syntaxError 'expect end of input, but meet "'+text.slice(cursor)+'"'
     if body.length>1 then body.unshift 'begin!'
     else if body.length==1 then body = body[0]
-    else body = 'undefined'
+    else body = undefined
     {value:body, start:start, stop:eoi}
 
   # #!use/bin/node taiji
@@ -2335,7 +2339,9 @@ exports.Parser = ->
 
   @module = ->
     scriptDirective = ['scriptDirective!', parser.binShellDirective()]
-    result = {value:['module!', scriptDirective, parser.moduleHeader(), parser.moduleBody()],
+    header = parser.moduleHeader()
+    body = parser.moduleBody()
+    result = {value:['module!', scriptDirective, header, body],
     cursor:0, stopCursor:text.length, line:1, column:0}
     result.start = result
     result

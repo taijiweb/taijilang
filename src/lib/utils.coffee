@@ -36,7 +36,9 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 exports.str = str = (item) ->
   if isArray(item) then '['+(str(x) for x in item).join(' ')+']'
-  else if typeof item =='object' then str(item.value)
+  else if typeof item =='object'
+    if item.symbol? then item.symbol
+    else str(item.value)
   else if item==undefined then 'undefined'
   else if item==null then 'null'
   else item.toString()
@@ -57,13 +59,6 @@ exports.debugging = false
 exports.testing = false
 exports.debug = (message) -> if exports.debugging then console.log message
 exports.warn = (message) -> if exports.debugging or exports.testing then console.log message
-
-exports.str = str = (item) ->
-  if isArray(item) then '['+(str(x) for x in item).join(' ')+']'
-  else if not item? then 'undefined'
-  else if item.symbol? then item.symbol
-  else if item.value? then str(item.value)
-  else item.toString()
 
 exports.charset = (string) ->
   result = {}
