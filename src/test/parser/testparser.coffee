@@ -644,7 +644,7 @@ describe "parse: ",  ->
       it '''should parse while! (1) {print 1} ''', ->
         expect(parse('''while! (1) {print 1}''')).to.equal "[while! 1 [print 1]]"
 
-      xit '''should parse while! (1) ''', ->
+      it '''should parse while! (1) ''', ->
         expect(-> parse('''while! (1)''')).to.throw /expect the body for while! statement/
 
       it '''should parse (1) ''', ->
@@ -728,15 +728,17 @@ describe "parse: ",  ->
         x = parse('x = /!-h\b|-r\b|-v\b|-b\b/')
         expect(x).to.deep.equal "[= x [regexp! /-h\b|-r\b|-v\b|-b\b/]]"
 
-      xit 'should parse a = 2\nx = : 1', ->
-        x = parse('a = 2\nx = : 1')
-        expect(x).to.deep.equal "[begin! [= a 2] [= x [: 1]]]"
+      it 'should parse a = 2\nx = : 1', ->
+        expect(-> parse('a = 2\nx = : 1')).to.throw /oops/
 
-      xit 'should parse error: new: Error "Error: No Input file given" ', ->
+      it 'should parse a = 2\nx = 1', ->
+        expect(parse('a = 2\nx = 1')).to.equal '[begin! [= a 2] [= x 1]]'
+
+      it 'should parse error: new: Error "Error: No Input file given" ', ->
         x = parse('error: new: Error "Error: No Input file given" ')
         expect(x).to.deep.equal "[error [new [Error [string! \"Error: No Input file given\"]]]]"
 
-      xit 'should parse new: Error "Error: No Input file given" ', ->
+      it 'should parse new: Error "Error: No Input file given" ', ->
         x = parse('new : Error "Error: No Input file given"')
         expect(x).to.deep.equal "[new [Error [string! \"Error: No Input file given\"]]]"
 
@@ -795,7 +797,7 @@ describe "parse: ",  ->
         expect(x).to.deep.equal "[import! \"x.tj\" undefined undefined undefined [] []]" # import path method alias metaAlias runtimeImportList metaImportItemList
 
     describe "export!: ",  ->
-      xit '''should parse export! a = A, #b, c, #b = d''', ->
+      it '''should parse export! a = A, #b, c, #b = d''', ->
         code = '''export! a = A, #b, c, #b = d '''
         x = parse(code)
         expect(x).to.deep.equal "[export! [a A runtime undefined] [b undefined undefined meta] [c undefined runtime undefined] [b d undefined meta]]"

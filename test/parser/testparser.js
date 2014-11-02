@@ -946,7 +946,7 @@ describe("parse: ", function() {
       it('should parse while! (1) {print 1} ', function() {
         return expect(parse('while! (1) {print 1}')).to.equal("[while! 1 [print 1]]");
       });
-      xit('should parse while! (1) ', function() {
+      it('should parse while! (1) ', function() {
         return expect(function() {
           return parse('while! (1)');
         }).to["throw"](/expect the body for while! statement/);
@@ -1052,17 +1052,20 @@ describe("parse: ", function() {
         x = parse('x = /!-h\b|-r\b|-v\b|-b\b/');
         return expect(x).to.deep.equal("[= x [regexp! /-h\b|-r\b|-v\b|-b\b/]]");
       });
-      xit('should parse a = 2\nx = : 1', function() {
-        var x;
-        x = parse('a = 2\nx = : 1');
-        return expect(x).to.deep.equal("[begin! [= a 2] [= x [: 1]]]");
+      it('should parse a = 2\nx = : 1', function() {
+        return expect(function() {
+          return parse('a = 2\nx = : 1');
+        }).to["throw"](/oops/);
       });
-      xit('should parse error: new: Error "Error: No Input file given" ', function() {
+      it('should parse a = 2\nx = 1', function() {
+        return expect(parse('a = 2\nx = 1')).to.equal('[begin! [= a 2] [= x 1]]');
+      });
+      it('should parse error: new: Error "Error: No Input file given" ', function() {
         var x;
         x = parse('error: new: Error "Error: No Input file given" ');
         return expect(x).to.deep.equal("[error [new [Error [string! \"Error: No Input file given\"]]]]");
       });
-      xit('should parse new: Error "Error: No Input file given" ', function() {
+      it('should parse new: Error "Error: No Input file given" ', function() {
         var x;
         x = parse('new : Error "Error: No Input file given"');
         return expect(x).to.deep.equal("[new [Error [string! \"Error: No Input file given\"]]]");
@@ -1134,7 +1137,7 @@ describe("parse: ", function() {
       });
     });
     describe("export!: ", function() {
-      return xit('should parse export! a = A, #b, c, #b = d', function() {
+      return it('should parse export! a = A, #b, c, #b = d', function() {
         var code, x;
         code = 'export! a = A, #b, c, #b = d ';
         x = parse(code);

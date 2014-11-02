@@ -2189,7 +2189,12 @@ exports.Parser = ->
 
   @clauses = ->
     result = []
-    while clause=parser.clause() then result.push clause
+    tkn = token
+    while clause=parser.clause()
+      result.push clause
+      # this should be debug code
+      if tkn==token then syntaxError 'oops! inifinte loops!!!'
+      tkn = token;
     return result
 
   @sentence = ->
@@ -2212,7 +2217,11 @@ exports.Parser = ->
       x = parser.line()
       return [{value:['codeBlockComment!', x], start:start, stop:token}]
     result = []
-    while x = parser.sentence() then result.push.apply result, x
+    tkn = token
+    while x=parser.sentence()
+      result.push.apply result, x
+      if tkn==token then syntaxError 'oops! inifinte loops!!!'
+      tkn = token;
     result
 
   @block = (dent) -> if token.type==INDENT then nextToken(); return parser.blockWithoutIndentHead(indent)
@@ -2332,7 +2341,7 @@ exports.Parser = ->
 
   @syntaxError = syntaxError = (message, tkn) ->
     tkn = tkn or token; cur = tkn.cursor
-    str =  cur+'('+tkn.line+':'+tkn.column+'): '+message+': \n'+text[cur-40...cur]+(text[cur...cur+40])
+    str =  cur+'('+tkn.line+':'+tkn.column+'): '+message+", meet \"#{token.value}\"\n"+text[cur-40...cur]+(text[cur...cur+40])
     # todo: the code below works great! add it in some time.
     # console.log str.red
     throw str

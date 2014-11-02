@@ -1,3 +1,7 @@
+
+11-2
+  todo: replace matchToken() as nextToken() 
+
 todo: refactor parser for performance: more lexical analysis before parsing, record parent pointer, consistent tree expression, debug and test support
 
 todo: document
