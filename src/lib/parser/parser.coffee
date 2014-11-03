@@ -29,7 +29,7 @@ exports.escapeNewLine = escapeNewLine = (s) -> (for c in s then (if c=='\n' then
 
 exports.keywordMap = keywordMap =
   'if': 1, 'try':1, 'switch':1, 'while':1, 'while!':1, 'let':1, 'letrec!':1, 'letloop!':1, 'do':1, 'repeat':1
-  'return':1, 'break':1, 'continue':1, 'throw':1,'function':1,'for':1
+  'return':1, 'break':1, 'continue':1, 'throw':1,'function':1,'for':1, 'import!':1,  'export!':1
   'loop':1, 'class':1, 'var':1, 'for':1
 
 keywordHasOwnProperty = Object.hasOwnProperty.bind(exports.keywordMap)
@@ -1307,11 +1307,13 @@ exports.Parser = ->
     token = indentExp
 
   @prefixExpression = (mode, priority) ->
+    start = token
     # current global prority doesn't affect prefixOperator
     if op=parser.prefixOperator(mode)
       pri = if priority>op.priority then priority else op.priority
       x = parser.expression(mode, pri, true)
       if x then extendSyntaxInfo makeExpression(PREFIX, op, x)
+      else token = start; return
 
   expressionMemoIndex = memoIndex
   memoIndex += 5
@@ -1584,51 +1586,44 @@ exports.Parser = ->
     result
 
   @importItem = ->
-    start = cursor; line1 = lineno
-    sym = parser.symbol()
-    if sym and (symValue=sym.text)!='#' and symValue!='#/'
-      syntaxError 'unexpected symbol after "as" in import! statement'
-    name = parser.identifier()
-    if name
-      if name.text=='from'
-        if sym
-          syntaxError 'keyword "from" should not follow "#" or "#/" immediately in import! statement, expect variable name'
-        else return rollback(start, lineno)
-    else if text[cursor]=="'" or text[cursor]=='"'
+    start = token
+    if token.type==SYMBOL
+      sym = token; nextToken()
+      if (symValue=sym.value)!='#' and symValue!='#/'
+        syntaxError 'unexpected symbol after "as" in import! statement'
+    if token.type==IDENTIFIER
+      if token.value=='from'
+        if sym then syntaxError 'keyword "from" should not follow "#" or "#/" immediately in import! statement, expect variable name'
+        else  return
+      name = token; nextToken()
+    else if token.type==NON_INTERPOLATE_STRING or token.type==INTERPOLATE_STRING
       if sym
         syntaxError 'file path should not follow "#" or "#/" immediately in import! statement, expect variable name'
-      else return  rollback(start, lineno)
+      else token = start; return
     if token.type==SPACE then nextToken()
-    start1 = cursor; line2 = lineno
-    if (as_=taijiIdentifier())
-      if as_.text=='from' then as_ = undefined; rollback start1, line2
-      else if as_.text!='as' then syntaxError 'unexpected word '+as_.text+', expect "as", "," or "from [module path...]"'
-      else
-        if token.type==SPACE then nextToken()
-        sym2 = parser.symbol()
-        if sym2 and (symValue2=sym2.text)!='#' and symValue2!='#/'
-          syntaxError 'unexpected symbol after "as" in import! statement'
-        if symValue=='#/'
-          if symValue2=='#'
-            syntaxError 'expect "as #/alias" or or "as alias #alias2" after "#/'+name.text+'"'
-        else if symValue=='#'
-          if not symValue
-            syntaxError 'meta variable can not be imported as runtime variable'
-          else if symValue=='#/'
-            syntaxError 'meta variable can not be imported as both meta and runtime variable'
-        else if not symValue
-          if symValue2=='#'
-            syntaxError 'runtime variable can not be imported as meta variable'
-          else if symValue2=='#/'
-            'runtime variable can not be imported as both meta and runtime variable'
-        if token.type==SPACE then nextToken()
-        asName = expectIdentifier()
-        if symValue=='#/' and not symValue2
-          if token.type==SPACE then nextToken()
-          sym3 = parser.symbol()
-          if not sym3 then syntaxError 'expect # after "#/'+name.text+' as '+asName.text+'"'
-          else if sym3.text!='#' then syntaxError 'unexpected '+sym3.text+' after "#/'+name.text+'as '+asName.text+'"'
-          asName2 = expectIdentifier()
+    if token.type==IDENTIFIER and token.value!='from'
+      if token.value!='as' then syntaxError 'unexpected word '+as_.value+', expect "as", "," or "from [module path...]"'
+      as_ = token; nextToken(); if token.type==SPACE then nextToken()
+      if token.type==SYMBOL and (sym2=token) and nextToken() and (symValue2=sym2.value)!='#' and symValue2!='#/'
+        syntaxError 'unexpected symbol after "as" in import! statement'
+      if symValue=='#/'
+        if symValue2=='#' then syntaxError 'expect "as #/alias" or or "as alias #alias2" after "#/'+name.value+'"'
+      else if symValue=='#'
+        if not symValue then syntaxError 'meta variable can not be imported as runtime variable'
+        else if symValue=='#/' then syntaxError 'meta variable can not be imported as both meta and runtime variable'
+      else if not symValue
+        if symValue2=='#' then syntaxError 'runtime variable can not be imported as meta variable'
+        else if symValue2=='#/' then 'runtime variable can not be imported as both meta and runtime variable'
+      if token.type!=IDENTIFIER then syntaxError "expect identifier"
+      asName = token; nextToken(); if token.type==SPACE then nextToken()
+      if symValue=='#/' and not symValue2
+        if token.type!=SYMBOL then syntaxError 'expect # after "#/'+name.value+' as '+asName.value+'"'
+        if token.type==SYMBOL
+          sym3 = token
+          if sym3.value!='#' then syntaxError 'unexpected '+sym3.value+' after "#/'+name.value+'as '+asName.value+'"'
+          nextToken()
+          if token.type!=IDENTIFIER then syntaxError "expect identifier"
+          asName2 = token; nextToken(); if token.type==SPACE then nextToken()
     if not as_
       if symValue=='#/' then return [[name, name], [name, name, 'meta']]
       else if symValue=='#' then return [[name, name, 'meta']]
@@ -1709,38 +1704,46 @@ exports.Parser = ->
 
     # import [#/]name [as [#/]name] ... from path as [#/]name #name [by method]
     'import!': (isHeadStatement) ->
+      start = token; nextToken()
       if token.type==SPACE then nextToken()
       items = parser.importItemList()
       if token.type==SPACE then nextToken()
-      if items.length then from_ = expectWord('from') # or items[0][2]
-      else from_ = word('from')
-      if token.type==SPACE then nextToken()
-      srcModule = parser.string()
+      if token.type==IDENTIFIER # keyword "from"
+        nextToken(); if token.type==SPACE then nextToken()
+      else if items.length then syntaxError 'expect "from"'
+      if token.type!=NON_INTERPOLATE_STRING then syntaxError 'expect the path of module file'
+      srcModule = token; nextToken()
       if token.type==SPACE then nextToken()
       if token.value=='as'
         nextToken(); if token.type==SPACE then nextToken()
-        if token.type==SYMBOL and (symValue=token.value) and symValue!='#' and symbolValue!='#/'
-            syntaxError 'unexpected symbol before import module name', sym
-        alias = expectIdentifier('expect an alias for module')
+        if token.type==SYMBOL
+          if (symValue=token.value) and symValue!='#' and symValue!='#/'
+            syntaxError 'unexpected symbol before import module name', token
+          sym = token; nextToken()
+        if token.type!=IDENTIFIER then syntaxError 'expect an alias for module'
+        alias = token; nextToken()
+        if token.type==SPACE then nextToken()
         if symValue=='#' then metaAlias = alias; alias = undefined
         else if symValue=='#/' then metaAlias = alias
-        if token.type==SPACE then nextToken()
-        sym2 = parser.symbol()
-        if sym and sym2 then syntaxError 'unexpected symbol after meta alias'
-        if token.type==SPACE then nextToken()
-        alias2 = parser.identifier()
-        # sym is the first symbol # or #/
-        if sym  and alias2 then 'unexpected identifier '+alias2+' after '+symValue+alias
-        if alias2 then metaAlias = alias2
-        if token.type==SPACE then nextToken()
+        if not metaAlias
+          if token.type==SYMBOL
+            if token.value!='#' then syntaxError 'unexpected symbol'
+            else
+              nextToken(); if token.type==SPACE then nextToken()
+              if token.type==IDENTIFIER and token.value!='by'
+                metaAlias = token; nextToken()
+                if token.type==SPACE then nextToken()
       if token.value=='by' and nextToken()
-        if token.type==SPACE then nextToken(); parseMethod = expect('taijiIdentifier', 'expect a parser method')
+        if token.type==SPACE then nextToken()
+        if token.type!=IDENTIFIER then syntaxError 'expect parser method'
+        if token.type==SPACE then nextToken()
+        parseMethod = token
       runtimeImportList = []; metaImportList = []
       for item in items
         for x in item
           if x[2] then  metaImportList.push x
           else runtimeImportList.push x
-      ['import!'].concat [srcModule, parseMethod, alias, metaAlias, runtimeImportList, metaImportList]
+      {value: ['import!', srcModule, parseMethod, alias, metaAlias, runtimeImportList, metaImportList], start:start, stop:token}
 
     'export!': (isHeadStatement) ->
       if token.type==SPACE then nextToken()

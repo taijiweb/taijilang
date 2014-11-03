@@ -734,9 +734,17 @@ describe "parse: ",  ->
       it 'should parse a = 2\nx = 1', ->
         expect(parse('a = 2\nx = 1')).to.equal '[begin! [= a 2] [= x 1]]'
 
+      it 'should parse error: 1', ->
+        x = parse('error: 1 ')
+        expect(x).to.deep.equal "[error 1]"
+
       it 'should parse error: new: Error "Error: No Input file given" ', ->
         x = parse('error: new: Error "Error: No Input file given" ')
         expect(x).to.deep.equal "[error [new [Error [string! \"Error: No Input file given\"]]]]"
+
+      it 'should parse new : Error', ->
+        x = parse('new : Error')
+        expect(x).to.deep.equal "[new Error]"
 
       it 'should parse new: Error "Error: No Input file given" ', ->
         x = parse('new : Error "Error: No Input file given"')
@@ -770,7 +778,7 @@ describe "parse: ",  ->
           caption cite' '''
         expect(-> parse(code)).to.throw /unexpected end of input/
 
-    describe "import module: ",  ->
+    idescribe "import module: ",  ->
       it '''should parse import! a as A, #b as #b from 'x.tj' as x''', ->
         code = '''import! a as A, #b as #b from 'x.tj' as x '''
         x = parse(code)
@@ -787,6 +795,10 @@ describe "parse: ",  ->
         code = '''import! a as A, #/b from 'x.tj' as x '''
         x = parse(code)
         expect(x).to.deep.equal "[import! \"x.tj\" undefined x undefined [[a A] [b b]] [[b b meta]]]"
+      it "should parse import! #/b as b1 #b2 from 'x.tj'", ->
+        code = "import! #/b as b1 #b2 from 'x.tj'"
+        x = parse(code)
+        expect(x).to.deep.equal "[import! \"x.tj\" undefined undefined undefined [[b b1]] [[b b2 meta]]]"
       it '''should parse import! a as A, #/b as b1 #b2 from 'x.tj' as x''', ->
         code = '''import! a as A, #/b as b1 #b2 from 'x.tj' as x '''
         x = parse(code)

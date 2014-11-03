@@ -1060,10 +1060,20 @@ describe("parse: ", function() {
       it('should parse a = 2\nx = 1', function() {
         return expect(parse('a = 2\nx = 1')).to.equal('[begin! [= a 2] [= x 1]]');
       });
+      it('should parse error: 1', function() {
+        var x;
+        x = parse('error: 1 ');
+        return expect(x).to.deep.equal("[error 1]");
+      });
       it('should parse error: new: Error "Error: No Input file given" ', function() {
         var x;
         x = parse('error: new: Error "Error: No Input file given" ');
         return expect(x).to.deep.equal("[error [new [Error [string! \"Error: No Input file given\"]]]]");
+      });
+      it('should parse new : Error', function() {
+        var x;
+        x = parse('new : Error');
+        return expect(x).to.deep.equal("[new Error]");
       });
       it('should parse new: Error "Error: No Input file given" ', function() {
         var x;
@@ -1098,7 +1108,7 @@ describe("parse: ", function() {
         }).to["throw"](/unexpected end of input/);
       });
     });
-    describe("import module: ", function() {
+    idescribe("import module: ", function() {
       it('should parse import! a as A, #b as #b from \'x.tj\' as x', function() {
         var code, x;
         code = 'import! a as A, #b as #b from \'x.tj\' as x ';
@@ -1122,6 +1132,12 @@ describe("parse: ", function() {
         code = 'import! a as A, #/b from \'x.tj\' as x ';
         x = parse(code);
         return expect(x).to.deep.equal("[import! \"x.tj\" undefined x undefined [[a A] [b b]] [[b b meta]]]");
+      });
+      it("should parse import! #/b as b1 #b2 from 'x.tj'", function() {
+        var code, x;
+        code = "import! #/b as b1 #b2 from 'x.tj'";
+        x = parse(code);
+        return expect(x).to.deep.equal("[import! \"x.tj\" undefined undefined undefined [[b b1]] [[b b2 meta]]]");
       });
       it('should parse import! a as A, #/b as b1 #b2 from \'x.tj\' as x', function() {
         var code, x;
