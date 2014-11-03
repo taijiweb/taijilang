@@ -1108,7 +1108,7 @@ describe("parse: ", function() {
         }).to["throw"](/unexpected end of input/);
       });
     });
-    idescribe("import module: ", function() {
+    describe("import module: ", function() {
       it('should parse import! a as A, #b as #b from \'x.tj\' as x', function() {
         var code, x;
         code = 'import! a as A, #b as #b from \'x.tj\' as x ';
@@ -1157,7 +1157,7 @@ describe("parse: ", function() {
         var code, x;
         code = 'export! a = A, #b, c, #b = d ';
         x = parse(code);
-        return expect(x).to.deep.equal("[export! [a A runtime undefined] [b undefined undefined meta] [c undefined runtime undefined] [b d undefined meta]]");
+        return expect(x).to.deep.equal("[export! [a A runtime undefined] [b undefined undefined meta] [c undefined runtime undefined] [b d undefined meta] undefined]");
       });
     });
     describe("assign to outer scope var: ", function() {

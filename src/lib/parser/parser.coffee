@@ -1641,9 +1641,9 @@ exports.Parser = ->
     else if token.value=='#' then nextToken(); meta = 'meta'; if token.type==SPACE then nextToken()
     else runtime = 'runtime'
     if meta
-      if token.type==IDENTIFIER then name = token else syntaxError 'expect identifier'
+      if token.type==IDENTIFIER then name = token; nextToken() else syntaxError 'expect identifier'
     else if token.type!=IDENTIFIER then return
-    else name = token
+    else name = token; nextToken()
     if token.type==SPACE then nextToken()
     if token.value=='=' and nextToken()
       if token.type==SPACE then nextToken()
@@ -1746,8 +1746,8 @@ exports.Parser = ->
       {value: ['import!', srcModule, parseMethod, alias, metaAlias, runtimeImportList, metaImportList], start:start, stop:token}
 
     'export!': (isHeadStatement) ->
-      if token.type==SPACE then nextToken()
-      ['export!'].concat parser.exportItemList()
+      start = token; nextToken(); if token.type==SPACE then nextToken()
+      {value: ['export!'].concat parser.exportItemList(), start:start, stop:token}
 
     'let': letLikeStatement('let')
     'letrec!': letLikeStatement('letrec!')

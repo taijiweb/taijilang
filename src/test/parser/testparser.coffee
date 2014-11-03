@@ -778,7 +778,7 @@ describe "parse: ",  ->
           caption cite' '''
         expect(-> parse(code)).to.throw /unexpected end of input/
 
-    idescribe "import module: ",  ->
+    describe "import module: ",  ->
       it '''should parse import! a as A, #b as #b from 'x.tj' as x''', ->
         code = '''import! a as A, #b as #b from 'x.tj' as x '''
         x = parse(code)
@@ -812,7 +812,7 @@ describe "parse: ",  ->
       it '''should parse export! a = A, #b, c, #b = d''', ->
         code = '''export! a = A, #b, c, #b = d '''
         x = parse(code)
-        expect(x).to.deep.equal "[export! [a A runtime undefined] [b undefined undefined meta] [c undefined runtime undefined] [b d undefined meta]]"
+        expect(x).to.deep.equal "[export! [a A runtime undefined] [b undefined undefined meta] [c undefined runtime undefined] [b d undefined meta] undefined]"
 
     describe "assign to outer scope var: ",  ->
       it "should parse @@a", ->
