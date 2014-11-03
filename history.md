@@ -4,6 +4,7 @@
   11-2 
     switch-case, let, parser.line, label
     pass 472 tests, only letloop!, import!, export! do not be tested.
+  11-3 import! and export! statement
 
 2014-10
   10-20

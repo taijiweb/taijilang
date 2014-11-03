@@ -1479,8 +1479,9 @@ exports.Parser = ->
     start = token; nextToken()
     if token.type==SPACE then nextToken()
     if not (test=parser.compactClauseExpression())
-      error "expect compact clause expression to be used as condition"
+      syntaxError "expect compact clause expression to be used as condition"
     body = parser.block() or parser.line()
+    if not body then syntaxError 'expect the body for while! statement'
     if body.length==1 then body = body[0]
     else if body.length==0 then body = undefined
     else body.unshift 'begin!'
@@ -1582,7 +1583,9 @@ exports.Parser = ->
           else if indent==ind0 then nextToken(); break
           else if indent<ind0 then break
           else syntaxError 'unconsistent indent in var initialization block'
-        else break
+        else if token.type==NEWLINE then nextToken(); continue
+        else if token.type==CONJUNCTION then break
+        else continue
     result
 
   @importItem = ->
