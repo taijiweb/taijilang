@@ -4,7 +4,11 @@
   11-2 
     switch-case, let, parser.line, label
     pass 472 tests, only letloop!, import!, export! do not be tested.
-  11-3 import! and export! statement
+  11-3 
+    import! and export! statement, letloop! statement
+    pass the original letloop! statement tests(1 tests)
+    fix bug in parsing while! statement
+    now pass all 488 tests for parser (except dynamic parsing)
 
 2014-10
   10-20

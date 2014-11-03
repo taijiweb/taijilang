@@ -82,28 +82,31 @@ exports.Parser = ->
   eoi = {type:EOI, value:'', cursor: text.length, column: -1, indent: -1} # line wait to be filled
   eoi.next = eoi  # eoi.next is always itself
 
+  # nextToken can do more things, like set global tokenType, tokenValue, etc, atStatementHead
   nextToken = ->
     if token.indent!=undefined then indent = token.indent
     switch token.type
       when NEWLINE, INDENT, UNDENT, EOI then atStatementHead = true
     if token.next then token = token.next
     else
-      if not char
+      if fn = tokenFnMap[char] then return token=fn(char)
+      else if not char
         if token==eoi then return eoi
         eoi.lineno = lineno+1; lineStart = cursor; lexIndent = -1
         token.next = eoi
         return token = eoi # while reaching the end of input, always return eoi
-      else if fn = tokenFnMap[char] then return token=fn(char)
       else return token=tokenOnSymbolChar()
 
-  #  tokenFnMap[char](char) and tokenOnSymbolChar should change the token
+  # tokenFnMap[char](char) and tokenOnSymbolChar should change the token
+  # matchToken() should be called by nextToken(with the expanded inline form for the performance)
+  # ONLY call matchToken() when after know the cursor and char, or changing cursor and char immediately.
   @matchToken = matchToken = ->
-    if not char
+    if fn = tokenFnMap[char] then return token=fn(char)
+    else if not char
       if token==eoi then return eoi
       eoi.lineno = lineno+1; lineStart = cursor; lexIndent = -1
       token.next = eoi
       return token = eoi # while reaching the end of input, always return eoi
-    else if fn = tokenFnMap[char] then return token=fn(char)
     else return token=tokenOnSymbolChar()
 
   # while parsing for (i=0; i<10; i++) then ..., we hope
@@ -971,9 +974,9 @@ exports.Parser = ->
     if (parenVariantFn=parenVariantMap[token.value])
       prev.next = token = parenVariantFn(); token.cursor = cursor; token.line = line; token.column = column; token.indent = lexIndent
     else
-      if (type=token.type)==UNDENT then lexError 'unexpected undent while parsing parenethis "(...)"'
+      if token.type==UNDENT then lexError 'unexpected undent while parsing parenethis "(...)"'
       ind = indent = lexIndent
-      if type==SPACE or type==NEWLINE or type==INDENT then matchToken()
+      if token.type==SPACE or token.type==NEWLINE or token.type==INDENT then nextToken()
       if token.value==')'
         token = {type: PAREN, value:[], atom:true, cursor:cur, stopCursor: cursor, line:lineno, column:column, indent:lexIndent, empty:true, parameters:true }
         prev.next = token
@@ -981,12 +984,12 @@ exports.Parser = ->
       exp = parser.operatorExpression()
       if token.type==UNDENT
         if token.indent<ind then lexError 'expect ) indent equal to or more than ('
-        else matchToken()
+        else nextToken()
       else
         if token.type==SPACE then nextToken()
         if token.value!=')' then lexError 'expect )'
       # To make interpolated string happy, we can not call nextToken() here
-      #else matchToken() # do not match token here, so token.next==undefined, and nextToken() will matchToken instead.
+      #else nextToken() # do not match token here, so token.next==undefined, and nextToken() will matchToken instead.
       prev.next = token = {type:PAREN, value:exp, cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent, atom:true, parameters:true}
 
   parenVariantMap = {
@@ -1001,7 +1004,7 @@ exports.Parser = ->
       expList = parser.block() or parser.lineBlock()
       if token.type==UNDENT
         if token.indent<ind then lexError 'unexpected undent while parsing parenethis "[...]"'
-        else matchToken()
+        else nextToken()
       if token.value!=']' then lexError 'expect ]'
       # To make interpolated string happy, we can not call nextToken() here
       if expList then expList.unshift 'list!'
@@ -1022,7 +1025,7 @@ exports.Parser = ->
       return token
     else
       if token.type==SPACE then nextToken()
-      if token.value=='}' and tkn=matchToken()
+      if token.value=='}' and tkn=nextToken()
         token = {value:text[cur...cursor], value:['hash!'], cursor:cur, line:line, column:column, indent:lexIndent, next:tkn}
         prev.next = token
         return token
@@ -1037,23 +1040,23 @@ exports.Parser = ->
     prev.next = token = {type: CURVE, value:body, atom:true, cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
 
   curveVariantMap =
-    '.': ->  matchToken(); return parser.hash()
+    '.': ->  nextToken(); return parser.hash()
 
   @hash = ->
     start = token; ind = indent
     if token.type==SPACE
       if token.stopLine==token.line
-        matchToken()
+        nextToken()
         items = hashLineBlock(ind)
       else items = hashBlock(ind)
     else if token.type==INDENT
-      matchToken()
+      nextToken()
       items = parser.hashBlock(ind)
     else items = hashLineBlock(ind)
-    if token.type==UNDENT then matchToken()
+    if token.type==UNDENT then nextToken()
     if token.indent<ind then lexError "expect the same indent as or more indent as the start line of hash block"
     if token.value!='}' then lexError 'expect }'
-    matchToken()
+    nextToken()
     extendSyntaxInfo {value:['hash!'].concat(items), atom:true}, start, token
 
   hashLineBlock = (dent) ->
@@ -1069,19 +1072,19 @@ exports.Parser = ->
     result = []
     while (x=parser.hashItem())
       result.push x
-      if (value=token.value)==';' then matchToken(); if token.type==SPACE then matchToken()
-      else if (type=token.type)==NEWLINE then matchToken(); break
-      else if type==UNDENT or value=='}' then break
-      else if type==EOI then lexError "unexpected end of input while parsing hash block"
+      if (value=token.value)==';' then nextToken(); if token.type==SPACE then nextToken()
+      else if token.type==NEWLINE then nextToken(); break
+      else if token.type==UNDENT or value=='}' then break
+      else if token.type==EOI then lexError "unexpected end of input while parsing hash block"
     return result
 
   hashBlock = ->
     start = token; result = []
     while (items=hashLine())
       result.push.apply result, items
-      if (type=token.type)==EOI then lexError "unexpected end of input while parsing hash block"
-      else if type==UNDENT then break
-      else if (value=token.value)==';' then matchToken()
+      if token.type==EOI then lexError "unexpected end of input while parsing hash block"
+      else if token.type==UNDENT then break
+      else if (value=token.value)==';' then nextToken()
       else if value=='}' then break
       if token.type==INDENT
         if token.isComment
@@ -1094,16 +1097,16 @@ exports.Parser = ->
     if token.type==UNDENT then return
     start = token
     if key=parser.hashKeyExpression()
-      if (type=token.type)==NEWLINE or type==UNDENT then lexError 'unexpected new line after hash key'
-      else if type==EOI then "unexpected end of input after hash key"
-      else if type==SPACE then matchToken()
-      if (value=token.value)==':' and matchToken()
-        if (t=key.type)==IDENTIFIER or t==NUMBER or t==NON_INTERPOLATE_STRING then js = true
-      else if value=='->' then matchToken()
+      if token.type==NEWLINE or token.type==UNDENT then lexError 'unexpected new line after hash key'
+      else if token.type==EOI then "unexpected end of input after hash key"
+      else if token.type==SPACE then nextToken()
+      if (value=token.value)==':' and nextToken()
+        if (type=key.type)==IDENTIFIER or type==NUMBER or type==NON_INTERPOLATE_STRING then js = true
+      else if value=='->' then nextToken()
       else lexError 'expect : or -> for hash item definition'
-      if token.type==SPACE then matchToken()
+      if token.type==SPACE then nextToken()
       if token.type==INDENT
-        matchToken()
+        nextToken()
         tkn = token
         blk = hashBlock()
         value = {value:['hash!'].concat(blk), start:tkn, stop:token}
@@ -1153,18 +1156,18 @@ exports.Parser = ->
     if (mode==COMPACT_CLAUSE_EXPRESSION or mode==SPACE_CLAUSE_EXPRESSION) and op.definition then return
     if token.escaped then return
     opToken = token; nextToken()
-    if (type=token.type)==INDENT then syntaxError 'unexpected indent after prefix operator'
-    else if type==NEWLINE then syntaxError 'unexpected new line after prefix operator'
-    else if type==UNDENT then syntaxError 'unexpected undent after prefix operator'
+    if token.type==INDENT then syntaxError 'unexpected indent after prefix operator'
+    else if token.type==NEWLINE then syntaxError 'unexpected new line after prefix operator'
+    else if token.type==UNDENT then syntaxError 'unexpected undent after prefix operator'
     else if (tokenText=token.value)==")" or tokenText==']' or tokenText=="}" then syntaxError 'unexpected '+tokenText+' after prefix operator'
-    else if type==SPACE
+    else if token.type==SPACE
       if op.definition and mode==SPACE_CLAUSE_EXPRESSION then token = start; return
-      matchToken(); priInc = 300
+      nextToken(); priInc = 300
     else
       priInc = 600
       if token.value=='.'
         nextToken()
-        if (type=token.type)==SPACE or type==NEWLINE or type==UNDENT or type==INDENT or type==EOI
+        if token.type==SPACE or token.type==NEWLINE or token.type==UNDENT or token.type==INDENT or token.type==EOI
           lexError 'unexpected spaces or new lines or end of lines after compact prefix Operaotr and "."'
     opToken.symbol = op.symbol; opToken.priority = op.priority+priInc
     extendSyntaxInfo opToken, opToken
@@ -1174,9 +1177,9 @@ exports.Parser = ->
     if token.type!=SYMBOL then return
     if (op=suffixOperatorDict[token.value])
       token.symbol = op.symbol; token.priority = op.priority+600
-      opToken = token; matchToken()
+      opToken = token; nextToken()
       #  can not follow suffirx: SYMBOL IDENTIFIER  REGEXP PAREN BRACKET HASH etc
-      if (type=token.type)==SPACE or type==NEWLINE or type==INDENT or type==UNDENT or type==EOI or type==RIGHT_DELIMITER\
+      if token.type==SPACE or token.type==NEWLINE or token.type==INDENT or token.type==UNDENT or token.type==EOI or token.type==RIGHT_DELIMITER\
           or (value=token.value)==':' or value==',' or value==';'
         extendSyntaxInfo opToken, opToken
       else token = opToken; return
@@ -1224,11 +1227,11 @@ exports.Parser = ->
         if (value=tkn.value)=='#' and nextToken() then return {symbol:'#()', type: SYMBOL, priority: 800, start:tkn}
         else if value=='::' then return {symbol:'attribute!', type: SYMBOL, start:tkn, priority: 800}
         else if value=="." and (tkn=token) and nextToken()
-          if (type=token.type)==IDENTIFIER then return {symbol:'attribute!', type: SYMBOL, start:tkn, priority: 800}
-          else if type==SPACE or type==NEWLINE or type==INDENT or type==UNDENT or type==EOI
+          if token.type==IDENTIFIER then return {symbol:'attribute!', type: SYMBOL, start:tkn, priority: 800}
+          else if token.type==SPACE or token.type==NEWLINE or token.type==INDENT or token.type==UNDENT or token.type==EOI
             if mode==OPERATOR_EXPRESSION then syntaxError 'unexpected space or new line or end of line after "."'
             else token = tkn; return
-          else if type==NUMBER or type==NON_INTERPOLATE_STRING or type==INTERPOLATE_STRING
+          else if token.type==NUMBER or token.type==NON_INTERPOLATE_STRING or token.type==INTERPOLATE_STRING
             return {symbol:'index!', type: SYMBOL, start:tkn, priority: 800}
           else priInc = 600
         else priInc = 600
@@ -1300,7 +1303,7 @@ exports.Parser = ->
 
   indentExpression = ->
     indentExp = parser.expression(INDENT_EXPRESSION, 0, true)
-    if (type=token.type)!=UNDENT and type!=EOI and token.value!=')'
+    if token.type!=UNDENT and token.type!=EOI and token.value!=')'
       syntaxError 'expect an undent after a indented block expression'
     indentExp.priority = 1000
     indentExp[expressionMemoIndex+OPERATOR_EXPRESSION] = {result:indentExp, next:token}
@@ -1689,7 +1692,7 @@ exports.Parser = ->
       if token.type==SPACE then nextToken()
       varList = parser.varInitList()
       if varList.length==0 then syntaxError 'expect variable name'
-      if (type=token.type)!=NEWLINE and type!=UNDENT and type!=EOI and type!=CONJUNCTION and type!=RIGHT_DELIMITER and type!=PUNCTUATION
+      if token.type!=NEWLINE and token.type!=UNDENT and token.type!=EOI and token.type!=CONJUNCTION and token.type!=RIGHT_DELIMITER and token.type!=PUNCTUATION
         syntaxError 'unexpected token after var initialization list "' + token.value+'"'
       varList.unshift 'var'
       {value:varList, start:start, stop:token}
@@ -1786,7 +1789,7 @@ exports.Parser = ->
         else if body.length==0 then body = 'undefined'
         else body.unshift 'begin!'
         return {value:['cFor!', init, test, step, body], start:start, stop:token}
-      matchToken()
+      matchToken()  # here should not use nextToken, because we just skipToken and skipSpace, and switch to determined cursor and char.
       if token.type!=IDENTIFIER then syntaxError 'expect identifier'
       name1 = token
       nextToken()
@@ -1982,7 +1985,7 @@ exports.Parser = ->
       if token.type!=SPACE then return
       leadClause = parser.clause()
       code = compileExp(['return', ['%/', leadClause]], environment)
-      if token.type==SPACE then matchToken()
+      if token.type==SPACE then nextToken()
       if token.value=='then' and nextToken()
         result = new Function('__$taiji_$_$parser__', code)(parser)
         if indent<ind then syntaxError 'expect same or less indent after custom parsing'
@@ -1991,8 +1994,8 @@ exports.Parser = ->
 
   leadTokenClause = (fn) -> ->
     start = token
-    if (type=matchToken().type)!=SPACE and type!=INDENT then token = start; return
-    matchToken()
+    if (type=nextToken().type)!=SPACE and type!=INDENT then token = start; return
+    nextToken()
     if not (fn=leadWordClauseMap[start.value]) then token = start; return
     {value:fn(start, parser.clause()), start:start, stop:token}
 
@@ -2018,7 +2021,7 @@ exports.Parser = ->
   @customDefinitionParameterList = ->
 
   @clause = ->
-    if (type=token.type)==SPACE then nextToken(); type = token.type
+    if token.type==SPACE then nextToken(); type = token.type
     start = token
     switch token.type
       when KEYWORD
@@ -2058,7 +2061,7 @@ exports.Parser = ->
         if (value=token.value)==','
           nextToken(); if token.type==SPACE then nextToken()
           return exp
-        else if value!=';' and (type=token.type)!=NEWLINE and type!=UNDENT and type!=EOI
+        else if value!=';' and token.type!=NEWLINE and token.type!=UNDENT and token.type!=EOI
           if exp.priority<600 # spaces was met
             syntaxError 'after space expression clause, expect stop symbol of clause like colon, semicolon, new line, undent or end of input etc.'
           else token = op
@@ -2072,7 +2075,7 @@ exports.Parser = ->
         if (value=token.value)==','
           nextToken(); if token.type==SPACE then nextToken()
           return {value:[head, exp], start:start, stop:token}
-        else if value!=';' and (type=token.type)!=NEWLINE and type!=UNDENT and type!=EOI
+        else if value!=';' and token.type!=NEWLINE and type!=UNDENT and type!=EOI
           syntaxError 'after caller leading clause, expect stop symbol of clause like colon, semicolon, new line, undent or end of input etc.'
         else return {value:[head, exp], start:start, stop:token}
       else token = tkn
@@ -2080,10 +2083,10 @@ exports.Parser = ->
     if token.type==SPACE then nextToken()
     if (op=binaryOperatorDict[token.value]) and op.assign
       nextToken()
-      if (type=token.type)==SPACE then nextToken(); type  =token.type
-      if type==UNDENT then syntaxError 'unexpected undent after assign symbol'+op.value
-      else if type==NEWLINE then syntaxError 'unexpected new line after assign symbol'+op.value
-      else if type==EOI then syntaxError 'unexpected end of input'+op.value
+      if token.type==SPACE then nextToken(); type  =token.type
+      if token.type==UNDENT then syntaxError 'unexpected undent after assign symbol'+op.value
+      else if token.type==NEWLINE then syntaxError 'unexpected new line after assign symbol'+op.value
+      else if token.type==EOI then syntaxError 'unexpected end of input'+op.value
       if right = parser.block()
         if right.length==1 then right = right[0]
         else if right.length==0 then right = 'undefined'
@@ -2205,7 +2208,7 @@ exports.Parser = ->
 
   @sentence = ->
     start = token
-    if (type=token.type)==EOI or type==INDENT or type==UNDENT or type==NEWLINE or type==RIGHT_DELIMITER or type==CONJUNCTION
+    if token.type==EOI or token.type==INDENT or token.type==UNDENT or token.type==NEWLINE or token.type==RIGHT_DELIMITER or token.type==CONJUNCTION
       return
     result = parser.clauses()
     if token.value==';'
@@ -2214,10 +2217,10 @@ exports.Parser = ->
     extendSyntaxInfo result, start, token
 
   @line = ->
-    if (type=token.type)==UNDENT or type==RIGHT_DELIMITER or type==CONJUNCTION or type==EOI
+    if token.type==UNDENT or token.type==RIGHT_DELIMITER or token.type==CONJUNCTION or token.type==EOI
       return
-    if type==INDENT then return parser.block(indent)
-    if type==CODE_BLOCK_COMMENT_LEAD_SYMBOL
+    if token.type==INDENT then return parser.block(indent)
+    if token.type==CODE_BLOCK_COMMENT_LEAD_SYMBOL
       start = token; nextToken()
       if token.type==SPACE then nextToken()
       x = parser.line()
@@ -2262,8 +2265,8 @@ exports.Parser = ->
 
   @moduleBody = ->
     start = token; matchToken()
-    if token.type==NEWLINE then matchToken()
-    else if token.type==SPACE then matchToken()
+    if token.type==NEWLINE then nextToken()
+    else if token.type==SPACE then nextToken()
     body = []
     while 1
       if not x=parser.line() then break
