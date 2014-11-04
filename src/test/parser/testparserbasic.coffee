@@ -233,7 +233,7 @@ describe "parser basic: ",  ->
       x = parser.parse(text, matchRule(parser, prefixOperator), 0)
       if x then x.symbol                                                                        
       else return
-    it 'should parse ++', ->
+    it 'should parse ++1', ->
       expect(parse('++1')).to.equal '++x'
     it 'should parse new', ->
       expect(parse('new a')).to.equal 'new'

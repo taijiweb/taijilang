@@ -9,6 +9,8 @@
     pass the original letloop! statement tests(1 tests)
     fix bug in parsing while! statement
     now pass all 488 tests for parser (except dynamic parsing)
+  11-4
+    global tokenType: pass all original 488 tests!
 
 2014-10
   10-20

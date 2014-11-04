@@ -342,7 +342,7 @@ describe("parser basic: ", function() {
 
       }
     };
-    it('should parse ++', function() {
+    it('should parse ++1', function() {
       return expect(parse('++1')).to.equal('++x');
     });
     it('should parse new', function() {

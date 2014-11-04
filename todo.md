@@ -1,7 +1,5 @@
 
 11-2
-  todo: replace matchToken() as nextToken() 
-
 todo: refactor parser for performance: more lexical analysis before parsing, record parent pointer, consistent tree expression, debug and test support
 
 todo: document
@@ -37,8 +35,9 @@ todo: pattern match, e.g.
 todo: source map
   # a complicateful, hard and task with too much work to do
   # coffee-script is my friend.
-
-------------------------------------------------------------
+----------------------------------------------------------
+done: replace matchToken() as nextToken() 
+---------------------2014-11-1---------------------------------------
 done: add more preprocess operator
   # let, letrec!, letloop!, doWhere!, while, doWhile!, doUntil!, cFor!, forIn!, forOf!, forIn!!, forOf!!
 done: transform string to symbol by escaping it. e.g.: \"x...", \"...x", \"..."
