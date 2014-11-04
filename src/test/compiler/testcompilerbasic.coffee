@@ -34,7 +34,7 @@ iitParse = (srcCode, result) -> iit 'should parse '+srcCode, ->  expectParse(src
 
 ndescribe "compiler basic: ",  ->
   describe "compile number: ",  ->
-    it "compile 1", ->
+    iit "compile 1", ->
       expect(compile('1')).to.have.string '1'
     it "compile 01", ->
       expect(compile('01')).to.have.string '1'
@@ -46,7 +46,7 @@ ndescribe "compiler basic: ",  ->
     it "compile 1.", ->
       expect(-> compile('1.')).to.throw /fail to look up symbol from environment/
 
-  describe "compile string: ",  ->
+  ndescribe "compile string: ",  ->
     describe "compile interpolate string: ",  ->
       it "compile a", ->
         expect(compile('"a"')).to.have.string "\"a\""
@@ -61,7 +61,7 @@ ndescribe "compiler basic: ",  ->
       it """compile "a[1] = $a[1]" """, ->
         expect(compile('var a; "a[1] = $a[1]"')).to.have.string "var a;\n\"a[\" + JSON.stringify([1]) + \"] = \" + JSON.stringify(a[1])"
 
-    describe "compile raw string without interpolation: ",  ->
+    ndescribe "compile raw string without interpolation: ",  ->
       it "compile '''a\\b'''", ->
         expect(compile("'''a\\b'''")).to.have.string "\"a\\b\""
       it "compile '''a\\b\ncd'''", ->
@@ -69,7 +69,7 @@ ndescribe "compiler basic: ",  ->
       it "compile '''a\"'\\n'''", ->
         expect(compile("'''a\"'\\n'''")).to.have.string "\"a\\\"'\\n\""
 
-    describe "compile escape string without interpolation: ",  ->
+    ndescribe "compile escape string without interpolation: ",  ->
       it "compile 'a\\b'", ->
         expect(compile("'a\\b'")).to.have.string "\"a\\b\""
       it "compile 'a\\b\ncd'", ->
@@ -81,7 +81,7 @@ ndescribe "compiler basic: ",  ->
       it "compile 'a\"\\\"\n\'\\n'", ->
         expect(compile("'a\"\\\"\n\\'\\n\n'")).to.have.string "\"a\\\"\\\"\\n\\'\\n\\n\""
 
-  describe "parenthesis: ",  ->
+  ndescribe "parenthesis: ",  ->
     it 'should compile ()', ->
       expect(compile('()')).to.have.string ''
     it 'should compile (a)', ->
@@ -89,7 +89,7 @@ ndescribe "compiler basic: ",  ->
     it 'should compile (a,b)', ->
       expect(compile('var a, b; (a,b)')).to.have.string 'var a, b;\n[a, b]'
 
-  describe "@ as this", ->
+  ndescribe "@ as this", ->
     it 'should compile @', ->
       expect(compile('@')).to.have.string 'this'
     it 'should compile @a', ->
@@ -97,7 +97,7 @@ ndescribe "compiler basic: ",  ->
     it 'should compile @ a', ->
       expect(compile('var a; @ a')).to.have.string "var a;\nthis(a)"
 
-  describe ":: as prototype: ", ->
+  ndescribe ":: as prototype: ", ->
     it 'should compile @:: ', ->
       expect(compile('@::')).to.have.string "this.prototype"
     it 'should compile a:: ', ->
@@ -107,7 +107,7 @@ ndescribe "compiler basic: ",  ->
     it 'should compile ::a', ->
       expect(compile('::a')).to.have.string "this.prototype.a"
 
-  describe "quote expression:", ->
+  ndescribe "quote expression:", ->
     describe "quote expression:", ->
       it 'should compile ~ a.b', ->
         expect(compile('~ a.b')).to.have.string "[\"attribute!\",\"a\",\"b\"]"
@@ -120,7 +120,7 @@ ndescribe "compiler basic: ",  ->
       it 'should compile ` a.b', ->
         expect(compile('` a.b')).to.have.string "[\"attribute!\", \"a\", \"b\"]"
 
-  describe "unquote expression:", ->
+  ndescribe "unquote expression:", ->
     describe "unquote expression: ", ->
       it 'should compile ` ^ a.b', ->
         expect(compile('var a; ` ^ a.b')).to.have.string 'var a;\na.b'
@@ -133,7 +133,7 @@ ndescribe "compiler basic: ",  ->
       it 'should compile ` ^.~print a b', ->
         expect(compile('` ^.~print a b')).to.have.string "[\"print\", \"a\", \"b\"]"
 
-    describe "unquote-splice expression: ", ->
+    ndescribe "unquote-splice expression: ", ->
       it 'should compile `  ^& a.b', ->
         expect(compile('var a; ` ^& a.b')).to.have.string "var a;\na.b"
       it 'should compile `  ^&a.b', ->
@@ -149,7 +149,7 @@ ndescribe "compiler basic: ",  ->
       it 'should compile ` ^ print a b', ->
         expect(compile('var a, b; ` ^ {print a b}')).to.have.string "var a, b;\nconsole.log(a, b)"
 
-  describe "hash!: ",  ->
+  ndescribe "hash!: ",  ->
     describe "hash! expression: ",  ->
       itCompile '{}', "{ }"
 
@@ -166,7 +166,7 @@ ndescribe "compiler basic: ",  ->
       it 'should compile {. 1:2; 3:\n 5:6;a=>8\n.}', ->
         expect(compile('var a; {. 1:2; 3:\n 5:6;a=>8\n.}')).to.have.string "var a, hash = { 5: 6};\nhash[a] = 8;\n{ 1: 2, 3: hash}"
 
-  describe  "line comment block",  ->
+  ndescribe  "line comment block",  ->
     it 'should compile // line comment\n 1', ->
       expect(compile('// line comment\n 1')).to.have.string '1'
     it 'should compile // line comment\n 1', ->
@@ -182,7 +182,7 @@ ndescribe "compiler basic: ",  ->
     it 'should compile // \n 1 2, 3 4\n // \n5 6, 7 8', ->
       expect(compile('// \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12')).to.have.string "[1, 2];\n[3, 4];\n[5, 6];\n[7, 8];\n[9, 10];\n[11, 12]"
 
-  describe  "block comment ",  ->
+  ndescribe  "block comment ",  ->
     it 'should compile /. some comment', ->
       expect(compile('/. some comment')).to.have.string ''
     it 'should compile /. some \n  embedded \n  comment', ->

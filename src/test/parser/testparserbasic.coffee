@@ -15,7 +15,7 @@ lib = '../../lib/'
 {IDENTIFIER, NUMBER, NEWLINE, INDENT, UNDENT, HALF_DENT, PAREN, BLOCK_COMMENT, EOI, SPACE
 PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION} = constant
 
-describe "parser basic: ",  ->
+ndescribe "parser basic: ",  ->
   describe "matchToken: ",  ->
     parser = new Parser()
     parse = (text) ->
@@ -231,7 +231,7 @@ describe "parser basic: ",  ->
       prefixOperator = ->
         parser.prefixOperator('opExp')
       x = parser.parse(text, matchRule(parser, prefixOperator), 0)
-      if x then x.symbol                                                                        
+      if x then x.value
       else return
     it 'should parse ++1', ->
       expect(parse('++1')).to.equal '++x'
@@ -252,7 +252,7 @@ describe "parser basic: ",  ->
     parse = (text) ->
       parser = new Parser()
       x = parser.parse(text, (-> parser.matchToken(); parser.suffixOperator(OPERATOR_EXPRESSION, {value:0}, 0)), 0)
-      if x then x.symbol
+      if x then x.value
       else return
     it 'should parse ++', ->
       expect(parse('++')).to.equal 'x++'
@@ -267,7 +267,7 @@ describe "parser basic: ",  ->
         parser.matchToken()
         parser.binaryOperator(OPERATOR_EXPRESSION, {value:0}, 0, true)
       x = parser.parse(text, root, 0)
-      if x then x.symbol
+      if x then x.value
       else return
     it 'should parse ==1', ->
       expect(parse('==1')).to.equal '=='
@@ -283,7 +283,7 @@ describe "parser basic: ",  ->
         parser.matchToken()
         parser.binaryOperator(COMPACT_CLAUSE_EXPRESSION, {value:0}, 0, true)
       x = parser.parse(text, root, 0)
-      if x then x.symbol
+      if x then x.value
       else return
     it 'should parse ==1', ->
       expect(parse('==1')).to.equal '=='
@@ -301,7 +301,7 @@ describe "parser basic: ",  ->
         parser.matchToken()
         parser.binaryOperator(SPACE_CLAUSE_EXPRESSION, {value:0}, 0, true)
       x = parser.parse(text, root, 0)
-      if x then x.symbol
+      if x then x.value
       else return
     it 'should parse ==1', ->
       expect(parse('==1')).to.equal '=='

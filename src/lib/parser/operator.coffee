@@ -17,8 +17,8 @@ exports.prefixOperatorDict = prefixOperatorDict =
   '#/':  {priority: 5}, # compile in both meta and object level
   '#-':  {priority: 5}, # exit meta level
   '#&':  {priority: 5}, # #& metaConvert exp and get the current expression(not metaConverted raw program)
-  '~':  {priority: 5, symbol:'quote!'}
-  '`':  {priority: 5, symbol:'quasiquote!'}
+  '~':  {priority: 5, value:'quote!'}
+  '`':  {priority: 5, value:'quasiquote!'}
 
   'yield':  {priority: 20} # between assign and condition
 
@@ -27,38 +27,30 @@ exports.prefixOperatorDict = prefixOperatorDict =
   'void': {priority: 140}
   'delete': {priority: 140}
 
-  '..': {symbol: '..x', priority: 150}  # arr[..5]
-  '...': {symbol: '...x', priority: 150} #arr[..5]
+  '..': {value: '..x', priority: 150}  # arr[..5]
+  '...': {value: '...x', priority: 150} #arr[..5]
 
-  '^': {symbol: 'unquote!', priority: 160}
-  '^&': {symbol: 'unquote-splice', priority: 160}
+  '^': {value: 'unquote!', priority: 160}
+  '^&': {value: 'unquote-splice', priority: 160}
 
-  '+': {symbol: '+x', priority: 180}
-  '-': {symbol: '-x', priority: 180}
-  '!': {symbol: '!x', priority: 180},
-  '!!': {symbol: '!!x', priority: 180} # according the symbol matcher, !! is parsed one single symbol
+  '+': {value: '+x', priority: 180}
+  '-': {value: '-x', priority: 180}
+  '!': {value: '!x', priority: 180},
+  '!!': {value: '!!x', priority: 180} # according the symbol matcher, !! is parsed one single symbol
   'not': {priority: 180}
-  '|~': {symbol: '~', priority: 180}   #~, bit not
-  '++': {symbol: '++x', priority: 180}
-  '--': {symbol: '--x',priority: 180}
+  '|~': {value: '~', priority: 180}   #~, bit not
+  '++': {value: '++x', priority: 180}
+  '--': {value: '--x',priority: 180}
   # % used as parser attributer prefix operator
   # % parsing means dividing text to many parts, so use % is iconic and proper.
-  '%': {symbol: '%x', priority: 210}
+  '%': {value: '%x', priority: 210}
   '@@':  {priority: 210} # outer scope var
-
-do -> for op, result of exports.prefixOperatorDict
-  result.value = op
-  if not result.symbol then result.symbol = op
 
 # suffix exports should not conflict with binary operators
 exports.suffixOperatorDict = suffixOperatorDict =
-  '++': {symbol: 'x++', priority: 180}
-  '--': {symbol: 'x--', priority: 180}
-  '...': {symbol: 'x...', priority: 180}
-
-do -> for op, result of exports.suffixOperatorDict
-  result.value = op
-  if not result.symbol then result.symbol = op
+  '++': {value: 'x++', priority: 180}
+  '--': {value: 'x--', priority: 180}
+  '...': {value: 'x...', priority: 180}
 
 exports.binaryOperatorDict =
   '->': {priority: 4, definition:true} # defintion operator
@@ -74,8 +66,8 @@ exports.binaryOperatorDict =
   # condition, should transform it to proper form.
   #'?':{priority: 30}, ':':{priority: 31} # ? should be identifier character, : should lead clauses
   # ||| is logic xor
-  '&&': {priority: 50}, '||': {priority: 40}, #'|||': {symbol: '^', priority: 40}
-  'and': {symbol:'&&', priority: 50}, 'or': {symbol:'||', priority: 40}, #'xor': {symbol: '^', priority: 40}
+  '&&': {priority: 50}, '||': {priority: 40}, #'|||': {value: '^', priority: 40}
+  'and': {value:'&&', priority: 50}, 'or': {value:'||', priority: 40}, #'xor': {value: '^', priority: 40}
   # ^ will be used as unquote, so use |\ as bit xor
   #'|\\': {priority: 60},
   # update: use ^ as binary operator will not conflict with prefix ^
@@ -85,7 +77,7 @@ exports.binaryOperatorDict =
   '==': {priority: 90}, '!=': {priority: 90}, '===': {priority: 90}, '!==': {priority: 90},
   # because ! can be in identifier, so we use <> and <*> make a.!=b and a.!==b can be a<>b and a<*>b
   # update! the first character should not be !, and !! becomes a prefix operator, so <> and <*> become unnecessary.
-  # '<>': {symbol: '!==', priority: 90},  '<*>': {symbol: '!=', priority: 90}
+  # '<>': {value: '!==', priority: 90},  '<*>': {value: '!=', priority: 90}
   '<': {priority: 100}, '<=': {priority: 100}, '>': {priority: 100}, '>=': {priority: 100}
   'in': {priority: 100}, 'instanceof': {priority: 100}, 'isoneof': {priority: 100}
 
@@ -100,22 +92,18 @@ exports.binaryOperatorDict =
   # update: there is no integer division operator in javascript
   '*': {priority: 130}, '/': {priority: 130}, '%': {priority: 130}  #'/%': {priority: 130},
 
-  #'.': {priority: 200, symbol: 'attribute!'}  # attribute, become customed parser.binaryAttributeOperator
-  # '&/': {priority:200, symbol: 'index!'} # index
+  #'.': {priority: 200, value: 'attribute!'}  # attribute, become customed parser.binaryAttributeOperator
+  # '&/': {priority:200, value: 'index!'} # index
 
-  #'|||=': {priority:20, value:'|||=', symbol:'^=', rightAssoc: true, assign:true}
+  #'|||=': {priority:20, value:'|||=', value:'^=', rightAssoc: true, assign:true}
 
-  #'and=': {priority:20, value:'and=', symbol:'&&=', rightAssoc: true, assign:true}
-  #'or=': {priority:20, value:'or=', symbol:'||=', rightAssoc: true, assign:true}
-
-do -> for op, result of exports.binaryOperatorDict
-  result.value = op
-  if not result.symbol then result.symbol = op
+  #'and=': {priority:20, value:'and=', value:'&&=', rightAssoc: true, assign:true}
+  #'or=': {priority:20, value:'or=', value:'||=', rightAssoc: true, assign:true}
 
 #: #=: meta assign, assign meta value or macro to variable
 exports.assignOperators = ('= += -= *= /= %= <<= >>= >>>= &= |= ^= &&= ||= #= #/=').split(' ') # #&=
 do -> for op in exports.assignOperators
-  exports.binaryOperatorDict[op] = {priority:20, value: op, symbol:op, rightAssoc: true, assign:true}
+  exports.binaryOperatorDict[op] = {priority:20, value: op, value:op, rightAssoc: true, assign:true}
 
 exports.makeExpression = (type, op, x, y) ->
   switch type
@@ -129,7 +117,7 @@ exports.makeExpression = (type, op, x, y) ->
     when SUFFIX
       {value:[op, x], expressionType:type, priority:op.priority, rightAssoc:op.rightAssoc, start:x.start, stop:(op.stop or op.start)}
     when BINARY
-      opValue = op.symbol; yValue = y.value
+      opValue = op.value; yValue = y.value
       if opValue=='call()'
         if y.empty then value = ['call!', x, []] # x()
         else

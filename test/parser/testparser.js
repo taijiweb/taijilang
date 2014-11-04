@@ -778,7 +778,7 @@ describe("parse: ", function() {
       it('should parse letrec! f = (x) -> if! x==1 1 f(x-1) then f(3)', function() {
         return expect(parse('letrec! f = (x) -> if! x==1 1 f(x-1) then f(3)')).to.equal("[[letrec! [[f = [-> [x] [if! [== x 1] 1 [call! f [[- x 1]]]]]]] [call! f [3]]]]");
       });
-      nit('should parse letloop! f = (x) -> if! x==1 1 x+f(x-1)', function() {
+      it('should parse letloop! f = (x) -> if! x==1 1 x+f(x-1) then f(3)', function() {
         return expect(parse('letloop! f = (x) -> if! x==1 1 x+f(x-1) then f(3)')).to.equal("[[letloop! [[f = [-> [x] [if! [== x 1] 1 [+ x [call! f [[- x 1]]]]]]]] [call! f [3]]]]");
       });
       it('should parse let a=[\ 1 \] then a[1]', function() {

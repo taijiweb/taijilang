@@ -34,7 +34,7 @@ matchRule = function(parser, rule) {
   };
 };
 
-describe("parse operator expression: ", function() {
+ndescribe("parse operator expression: ", function() {
   var parse;
   parse = function(text) {
     var parser, x;

@@ -1172,14 +1172,14 @@ exports.Parser = ->
         nextToken()
         if tokenType==SPACE or tokenType==NEWLINE or tokenType==UNDENT or tokenType==INDENT or tokenType==EOI
           lexError 'unexpected spaces or new lines or end of lines after compact prefix Operaotr and "."'
-    opToken.symbol = op.symbol; opToken.priority = op.priority+priInc
+    opToken.value = op.value or opToken.value; opToken.priority = op.priority+priInc
     extendSyntaxInfo opToken, opToken
 
   # suffix operator must be symbol, should follow space, right delimiters or punctuations.
   @suffixOperator = (mode, x) ->
     if tokenType!=SYMBOL then return
     if (op=suffixOperatorDict[token.value])
-      token.symbol = op.symbol; token.priority = op.priority+600
+      token.value = op.value or opToken.value; token.priority = op.priority+600
       opToken = token; nextToken()
       #  can not follow suffirx: SYMBOL IDENTIFIER  REGEXP PAREN BRACKET HASH etc
       if tokenType==SPACE or tokenType==NEWLINE or tokenType==INDENT or tokenType==UNDENT or tokenType==EOI or tokenType==RIGHT_DELIMITER\
@@ -1210,7 +1210,7 @@ exports.Parser = ->
           if tokenType!=IDENTIFIER and tokenType!=SYMBOL and tokenType!=PUNCTUATION then start[binaryOperatorMemoIndex+mode] = {}; token = start; tokenType = token.type;  return
           if token.value=='.'
             if nextToken() and tokenType==SPACE and nextToken()
-              return {symbol:'attribute!', priority: 800, start:start}
+              return {value:'attribute!', priority: 800, start:start}
             else token[binaryOperatorMemoIndex+mode] = {}; token = start; tokenType = token.type;  return
           else priInc = 300
       when PUNCTUATION
@@ -1218,24 +1218,24 @@ exports.Parser = ->
           token[binaryOperatorMemoIndex+mode] = {}; return
         else priInc = 600
       when PAREN
-        return  {symbol:'call()', priority: 800, start:token}
-      when BRACKET then return {symbol:'index[]', priority: 800, start:token}
+        return  {value:'call()', priority: 800, start:token}
+      when BRACKET then return {value:'index[]', priority: 800, start:token}
       when IDENTIFIER
         cur = token.cursor
         if (x.value=='@' and x.stopCursor==cur) or (text[cur-2...cur]=='::' and text[cur-3]!=':')
-          return {symbol:'attribute!', priority: 800, start:token}
+          return {value:'attribute!', priority: 800, start:token}
         else start[binaryOperatorMemoIndex+mode] = {}; return
       when SYMBOL
         tkn = token
-        if (value=tkn.value)=='#' and nextToken() then return {symbol:'#()', priority: 800, start:tkn}
-        else if value=='::' then return {symbol:'attribute!', start:tkn, priority: 800}
+        if (value=tkn.value)=='#' and nextToken() then return {value:'#()', priority: 800, start:tkn}
+        else if value=='::' then return {value:'attribute!', start:tkn, priority: 800}
         else if value=="." and (tkn=token) and nextToken()
-          if tokenType==IDENTIFIER then return {symbol:'attribute!', start:tkn, priority: 800}
+          if tokenType==IDENTIFIER then return {value:'attribute!', start:tkn, priority: 800}
           else if tokenType==SPACE or tokenType==NEWLINE or tokenType==INDENT or tokenType==UNDENT or tokenType==EOI
             if mode==OPERATOR_EXPRESSION then syntaxError 'unexpected space or new line or end of line after "."'
             else token = tkn; tokenType = token.type;  return
           else if tokenType==NUMBER or tokenType==NON_INTERPOLATE_STRING or tokenType==INTERPOLATE_STRING
-            return {symbol:'index!', type:tokenType=SYMBOL, start:tkn, priority: 800}
+            return {value:'index!', type:tokenType=SYMBOL, start:tkn, priority: 800}
           else priInc = 600
         else priInc = 600
       else priInc = 600
@@ -1287,7 +1287,7 @@ exports.Parser = ->
         if mode!=OPERATOR_EXPRESSION then return
         else if priInc!=0 then syntaxError 'unexpected '+token.value
         if priInc==0
-          if opValue==',' or opValue==':' then syntaxError 'binary operator '+op.symbol+' should not be at begin of line'
+          if opValue==',' or opValue==':' then syntaxError 'binary operator '+(op.value or opValue)+' should not be at begin of line'
       else
         if priInc==300
           if mode==OPERATOR_EXPRESSION then syntaxError 'binary operator '+opValue+' should have spaces at its right side.'
@@ -1296,7 +1296,7 @@ exports.Parser = ->
           if opValue=='%' or op.assign then syntaxError 'binary operator '+opValue+' should not be at begin of line'
           if type1==INDENT then indentExpression()
 
-    opToken.symbol = op.symbol; pri = op.priority+priInc
+    opToken.value = op.value or opValue; pri = op.priority+priInc
     opToken.assign = op.assign; opToken.rightAssoc = op.rightAssoc
     # any operator near newline always have the priority 300, i.e. compute from up to down
     if pri<300 then pri = 300; opToken.rightAssoc = false
@@ -1400,18 +1400,18 @@ exports.Parser = ->
     if item.type==IDENTIFIER then return item
     else if item0=item[0]
       if item0=='attribute!' and item[1].text=='@' then return item
-      else if item0.symbol=='x...'
+      else if item0.value=='x...'
         parser.meetEllipsis = item[1].ellipsis = true
         return item
       else if entity(item0)=='=' # default parameter
         # default parameter should not be ellipsis parameter at the same time
         # and this is the behavior in coffee-script too
-        # and (item01[0].symbol!='x...' or not isIdentifier(item01[1]).type==IDENTIFIER)
+        # and (item01[0].value!='x...' or not isIdentifier(item01[1]).type==IDENTIFIER)
         if (item1=item[1]) and item1.type==IDENTIFIER then return item
         else if ((item10=item1[0]) and item10=='attribute!' and item1[1].text=='@') then return item
         else return
       # for dynamic parser and writing macro
-      else if item0.symbol=='unquote!' or item0.symbol=='unquote-splice'
+      else if item0.value=='unquote!' or item0.value=='unquote-splice'
         return item
 
   @toParameters = toParameters = (item) ->
@@ -1958,10 +1958,10 @@ exports.Parser = ->
       code=compileExp(['return', [tkn, clause]], environment)
       new Function('__$taiji_$_$parser__', code)(parser)
 
-    '~':  (tkn, clause) -> tkn.symbol = 'quote!'; [tkn, clause]
-    '`':  (tkn, clause) -> tkn.symbol = 'quasiquote!'; [tkn, clause]
-    '^':  (tkn, clause) -> tkn.symbol = 'unquote!'; [tkn, clause]
-    '^&': (tkn, clause) -> tkn.symbol = 'unquote-splice'; [tkn, clause]
+    '~':  (tkn, clause) -> tkn.value = 'quote!'; [tkn, clause]
+    '`':  (tkn, clause) -> tkn.value = 'quasiquote!'; [tkn, clause]
+    '^':  (tkn, clause) -> tkn.value = 'unquote!'; [tkn, clause]
+    '^&': (tkn, clause) -> tkn.value = 'unquote-splice'; [tkn, clause]
 
     # preprocess opertator
     # see # see metaConvertFnMap['#'] and preprocessMetaConvertFnMap for more information

@@ -93,7 +93,7 @@ exports.entity = entity = (exp) ->
     if exp.length==0 then return exp
     else return (for e in exp then entity e)
   if typeof exp == 'object'
-    return exp.symbol or entity(exp.value)
+    return entity(exp.value)
     #if (type=exp.type)==NUMBER or type==NON_INTERPOLATE_STRING or type==IDENTIFIER then return exp.value
   else if typeof exp == 'string' then return exp
   else return exp
@@ -166,10 +166,12 @@ exports.addPrelude = (parser, body) ->
   #result.push ['#/=', '__slice', ['attribute!', [], 'slice']]
   #result.push ['var', '__hasProp']
   #result.push ['#/=', '__hasProp', ['attribute!', ['hash!'], 'hasOwnProperty']]
-  result.push ['include!', '"prelude.tj"']
-  result.push ['directLineComment!', '/// end of prelude']
-  result.push body
-  begin(result)
+
+  #result.push ['include!', '"prelude.tj"']
+  #result.push ['directLineComment!', '/// end of prelude']
+  #result.push body
+  #begin(result)
+  body
 
 exports.realCode = (code) ->
   endModuleText = '/// end of prelude;\n'

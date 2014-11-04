@@ -18,7 +18,7 @@ matchRule = (parser, rule) -> ->
   if token.type==SPACE then parser.matchToken()
   rule()
 
-describe "parse operator expression: ", ->
+ndescribe "parse operator expression: ", ->
   parse = (text) ->
     parser = new Parser()
     x = parser.parse(text, matchRule(parser, parser.operatorExpression), 0)
@@ -185,6 +185,7 @@ describe "parse operator expression: ", ->
     it "parse a . b", ->
       expect(str parse('a . b')).to.deep.equal '[attribute! a b]'
 
+    # &/ as index operator is deprecated, because a[b] is more generally.
     nit "parse a&/b", ->
       expect(str parse('a&/b')).to.deep.equal '[index! a b]'
     nit "parse a&/(1,2)", ->

@@ -24,7 +24,7 @@ matchRule = require('../utils').matchRule;
 
 IDENTIFIER = constant.IDENTIFIER, NUMBER = constant.NUMBER, NEWLINE = constant.NEWLINE, INDENT = constant.INDENT, UNDENT = constant.UNDENT, HALF_DENT = constant.HALF_DENT, PAREN = constant.PAREN, BLOCK_COMMENT = constant.BLOCK_COMMENT, EOI = constant.EOI, SPACE = constant.SPACE, PAREN_OPERATOR_EXPRESSION = constant.PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION = constant.COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION = constant.SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION = constant.OPERATOR_EXPRESSION;
 
-describe("parser basic: ", function() {
+ndescribe("parser basic: ", function() {
   describe("matchToken: ", function() {
     var parse, parser;
     parser = new Parser();
@@ -337,7 +337,7 @@ describe("parser basic: ", function() {
       };
       x = parser.parse(text, matchRule(parser, prefixOperator), 0);
       if (x) {
-        return x.symbol;
+        return x.value;
       } else {
 
       }
@@ -376,7 +376,7 @@ describe("parser basic: ", function() {
         }, 0);
       }), 0);
       if (x) {
-        return x.symbol;
+        return x.value;
       } else {
 
       }
@@ -401,7 +401,7 @@ describe("parser basic: ", function() {
       };
       x = parser.parse(text, root, 0);
       if (x) {
-        return x.symbol;
+        return x.value;
       } else {
 
       }
@@ -429,7 +429,7 @@ describe("parser basic: ", function() {
       };
       x = parser.parse(text, root, 0);
       if (x) {
-        return x.symbol;
+        return x.value;
       } else {
 
       }
@@ -460,7 +460,7 @@ describe("parser basic: ", function() {
       };
       x = parser.parse(text, root, 0);
       if (x) {
-        return x.symbol;
+        return x.value;
       } else {
 
       }

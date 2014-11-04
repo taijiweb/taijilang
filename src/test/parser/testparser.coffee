@@ -518,12 +518,13 @@ describe "parse: ",  ->
         expect(x).to.equal "[[let [[a = [abs 1]] [b = 3]] 2]]"
       it 'should parse letrec! f = (x) -> if! x==1 1 f(x-1) then f(3)', ->
         expect(parse('letrec! f = (x) -> if! x==1 1 f(x-1) then f(3)')).to.equal "[[letrec! [[f = [-> [x] [if! [== x 1] 1 [call! f [[- x 1]]]]]]] [call! f [3]]]]"
-      nit 'should parse letloop! f = (x) -> if! x==1 1 x+f(x-1)', ->
+      it 'should parse letloop! f = (x) -> if! x==1 1 x+f(x-1) then f(3)', ->
         expect(parse('letloop! f = (x) -> if! x==1 1 x+f(x-1) then f(3)')).to.equal "[[letloop! [[f = [-> [x] [if! [== x 1] 1 [+ x [call! f [[- x 1]]]]]]]] [call! f [3]]]]"
       # single \ is invalid escape, will lost
       it '''should parse let a=[\ 1 \] then a[1]''', ->
         x = parse('''let a=[\ 1 \] then a[1]''')
         expect(x).to.equal "[[let [[a = [list! 1]]] [index! a 1]]]"
+      # data bracket is gone away.
       nit '''should parse let a=[\\ 1 \\] then a[1]''', ->
         x = parse('''let a=[\\ 1 \\] then a[1]''')
         expect(x).to.equal "[[let [[a = [list! 1]]] [index! a 1]]]"

@@ -51,7 +51,7 @@ madeCall = (head, tail, env) ->
   else tail.shift(); ['call!', head, tail]
 
 exports.convert = convert = (exp, env) ->
-  if Object.prototype.toString.call(exp) == '[object Array]'
+  if exp instanceof Array
     if exp.length==0 then return exp
     head = convert(exp[0], env)
     if typeof head == 'function' then result = head(exp[1...], env)
@@ -60,7 +60,7 @@ exports.convert = convert = (exp, env) ->
       if (t=typeof entity(head)) == 'string'
         if not head or head[0]=='"' then result = madeConcat head, tail
         else result = madeCall head, tail, env
-      else if Object.prototype.toString.call(head) == '[object Array]'
+      else if head instanceof Array
          result =  madeCall head, tail, env
       else if t == 'object'
         if (type=head.type)==NON_INTERPOLATE_STRING or type==NUMBER then result = madeConcat head, tail
@@ -383,7 +383,7 @@ metaConvertFnMap =
 
   '#': (exp, metaExpList, env) ->
     exp1 = exp[1]
-    if Object.prototype.toString.call(exp1) == '[object Array]'
+    if exp1 instanceof Array
       if not exp1.length then return exp[1]
       else if fn = preprocessMetaConvertFnMap[exp1[0]]
         return fn(exp1, metaExpList, env)
@@ -416,7 +416,7 @@ isMetaOperation = (head) -> (head[0]=='#' and head[1]!='-') or head=='include!' 
 # should be called by metaConvert while which is processing meta level code
 # exp should be the code which is known being at meta level.
 metaTransform = (exp, metaExpList, env) ->
-  if Object.prototype.toString.call(exp) == '[object Array]'
+  if exp instanceof Array
     if exp.length==0 then return exp
     head=entity(exp[0])
     # todo: #call may need special process
@@ -437,10 +437,10 @@ metaTransform = (exp, metaExpList, env) ->
 hasMeta = (exp) ->
   if not exp then return false
   if exp.hasMeta then return true
-  if Object.prototype.toString.call(exp) != '[object Array]'
+  if not (exp instanceof Array)
     exp.hasMeta = false; return false
   for e in exp
-    if  Object.prototype.toString.call(e) == '[object Array]'
+    if  e instanceof Array
       if (eLength=e.length)<=1 then continue
       else
         if (e0=entity(e[0])) and typeof e0 == 'string'
@@ -453,7 +453,7 @@ hasMeta = (exp) ->
 # all meta expression will be compiled to javascript code,
 # but original object level expression will be transformed to a _tjExp parameter index expression of the meta leval javascript function
 exports.metaConvert = metaConvert = (exp, metaExpList, env) ->
-  if Object.prototype.toString.call(exp) == '[object Array]'
+  if exp instanceof Array
     if exp.length==0 then return []
     exp0 = entity exp[0]
     if fn=metaConvertFnMap[exp0] then return fn(exp, metaExpList, env)
