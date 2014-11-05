@@ -1172,19 +1172,17 @@ exports.Parser = ->
         nextToken()
         if tokenType==SPACE or tokenType==NEWLINE or tokenType==UNDENT or tokenType==INDENT or tokenType==EOI
           lexError 'unexpected spaces or new lines or end of lines after compact prefix Operaotr and "."'
-    opToken.value = op.value or opToken.value; opToken.priority = op.priority+priInc
-    extendSyntaxInfo opToken, opToken
+    {value:op.value or opToken.value, start:opToken, stop:token, priority:op.priority+priInc}
 
   # suffix operator must be symbol, should follow space, right delimiters or punctuations.
   @suffixOperator = (mode, x) ->
     if tokenType!=SYMBOL then return
     if (op=suffixOperatorDict[token.value])
-      token.value = op.value or opToken.value; token.priority = op.priority+600
       opToken = token; nextToken()
       #  can not follow suffirx: SYMBOL IDENTIFIER  REGEXP PAREN BRACKET HASH etc
       if tokenType==SPACE or tokenType==NEWLINE or tokenType==INDENT or tokenType==UNDENT or tokenType==EOI or tokenType==RIGHT_DELIMITER\
           or (value=token.value)==':' or value==',' or value==';'
-        extendSyntaxInfo opToken, opToken
+        {value:op.value or opToken.value, start:opToken, stop:token, priority:op.priority+600}
       else token = opToken; tokenType = opToken.type; return
 
   binaryOperatorMemoIndex = memoIndex
@@ -1251,7 +1249,7 @@ exports.Parser = ->
     if (op.definition or op.assign) and mode==SPACE_CLAUSE_EXPRESSION
       start[binaryOperatorMemoIndex+mode] = {}
       token = start; tokenType = token.type;  return
-    if op.value=='->' then start[binaryOperatorMemoIndex+mode] = {}; token = start; tokenType = token.type;  return
+    if token.value=='->' and mode==HASH_KEY_EXPRESSION then start[binaryOperatorMemoIndex+mode] = {}; token = start; tokenType = token.type;  return
 
     opToken = token; nextToken()
 
@@ -1296,13 +1294,14 @@ exports.Parser = ->
           if opValue=='%' or op.assign then syntaxError 'binary operator '+opValue+' should not be at begin of line'
           if type1==INDENT then indentExpression()
 
-    opToken.value = op.value or opValue; pri = op.priority+priInc
-    opToken.assign = op.assign; opToken.rightAssoc = op.rightAssoc
     # any operator near newline always have the priority 300, i.e. compute from up to down
-    if pri<300 then pri = 300; opToken.rightAssoc = false
-    opToken.priority = pri
-    start[binaryOperatorMemoIndex+OPERATOR_EXPRESSION] = {result:opToken, next:token}
-    opToken
+    pri = op.priority+priInc
+    if pri<300 then pri = 300; rightAssoc = false
+    else rightAssoc = op.rightAssoc
+    result = {value:op.value or opValue, start:start, stop:token, priority:pri, rightAssoc:rightAssoc, assign:op.assign}
+    start[binaryOperatorMemoIndex+OPERATOR_EXPRESSION] = {result:result, next:token}
+    result
+
 
   indentExpression = ->
     indentExp = parser.expression(INDENT_EXPRESSION, 0, true)
