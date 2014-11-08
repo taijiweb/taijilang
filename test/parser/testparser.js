@@ -20,7 +20,7 @@ _ref = require(lib + 'parser/base'), constant = _ref.constant, isArray = _ref.is
 
 matchRule = require('../utils').matchRule;
 
-describe("parse: ", function() {
+ndescribe("parse: ", function() {
   describe("clause: ", function() {
     var parse;
     parse = function(text) {

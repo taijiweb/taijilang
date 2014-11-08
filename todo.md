@@ -1,6 +1,7 @@
 
-11-2
-todo: refactor parser for performance: more lexical analysis before parsing, record parent pointer, consistent tree expression, debug and test support
+11-2 todo: refactor parser for performance: more lexical analysis before parsing, record parent pointer, consistent tree expression, debug and test support
+11-8 todo: Grammatical element expression(语法成分表达式) 
+11-8 todo: indent stack should be back
 
 todo: document
   todo: tutorial：interactive samples
@@ -20,7 +21,7 @@ todo: remove "entity" utility function
   
 todo: [x, y, z] @= value # all= at --> all?
 
-todo: dummy var: can be assigned, but can not be readed
+todo: dummy var: can be assigned, but can not be readed(do nothing while assigning)
   # useful for expressiveness and optimization
   # while optimization, assigned to dummy var will be removed.
   # e.g. dummy! _; [x..., _] = lst; [_, y...] = lst
@@ -36,8 +37,10 @@ todo: source map
   # a complicateful, hard and task with too much work to do
   # coffee-script is my friend.
 ----------------------------------------------------------
+
 done: replace matchToken() as nextToken() 
 ---------------------2014-11-1---------------------------------------
+
 done: add more preprocess operator
   # let, letrec!, letloop!, doWhere!, while, doWhile!, doUntil!, cFor!, forIn!, forOf!, forIn!!, forOf!!
 done: transform string to symbol by escaping it. e.g.: \"x...", \"...x", \"..."
@@ -98,8 +101,8 @@ done: parser: class extends (x, y)
 done: var
 done: cFor!, forIn!, forOf!
 done: let-then
-
 -----------------------------------------------------------------
+
 cancel: implement {assign! left right} and {augmentAssign! left op right} so that programmer can define macros more easily.
   # hack for =, += in the parser is error-prone.
   # after implementing escape symbol with \, this todo may be unnessary.

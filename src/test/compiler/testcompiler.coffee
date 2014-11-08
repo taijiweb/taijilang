@@ -8,7 +8,7 @@ nit = ndescribe = ->
 lib = '../../lib/'
 {Parser} = require lib+'parser'
 {constant, isArray, str} = require lib+'parser/base'
-{} = require lib+'compiler/compile'
+require lib+'compiler/compile'
 taiji = require lib+'taiji'
 {realCode} = require lib+'utils'
 

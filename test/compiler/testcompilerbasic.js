@@ -1,79 +1,10 @@
-var Parser, chai, compile, compileNoOptimize, constant, expect, expectCompile, expectParse, head, idescribe, iit, iitCompile, iitParse, isArray, itCompile, itParse, lib, ndescribe, parse, realCode, str, taiji, _ref;
+var compile, expect, iit, ndescribe, nit, _ref;
 
-chai = require("chai");
-
-expect = chai.expect;
-
-iit = it.only;
-
-idescribe = describe.only;
-
-ndescribe = function() {};
-
-lib = '../../lib/';
-
-Parser = require(lib + 'parser').Parser;
-
-_ref = require(lib + 'parser/base'), constant = _ref.constant, isArray = _ref.isArray, str = _ref.str;
-
-taiji = require(lib + 'taiji');
-
-realCode = require(lib + 'utils').realCode;
-
-head = 'taiji language 0.1\n';
-
-parse = function(text) {
-  var parser, x;
-  parser = new Parser();
-  x = parser.parse(head + text, parser.module, 0);
-  return str(x.body);
-};
-
-compile = function(code) {
-  head = 'taiji language 0.1\n';
-  return realCode(taiji.compile(head + code, taiji.rootModule, taiji.builtins, {}));
-};
-
-compileNoOptimize = function(code) {
-  head = 'taiji language 0.1\n';
-  return realCode(taiji.compileNoOptimize(head + code, taiji.rootModule, taiji.builtins, {}));
-};
-
-expectCompile = function(srcCode, result) {
-  return expect(compile(srcCode)).to.have.string(result);
-};
-
-itCompile = function(srcCode, result) {
-  return it('should compile' + srcCode, function() {
-    return expectCompile(srcCode, result);
-  });
-};
-
-iitCompile = function(srcCode, result) {
-  return iit('should compile ' + srcCode, function() {
-    return expectCompile(srcCode, result);
-  });
-};
-
-expectParse = function(srcCode, result) {
-  return expect(parse(srcCode)).to.have.string(result);
-};
-
-itParse = function(srcCode, result) {
-  return it('should parse' + srcCode, function() {
-    return expectParse(srcCode, result);
-  });
-};
-
-iitParse = function(srcCode, result) {
-  return iit('should parse ' + srcCode, function() {
-    return expectParse(srcCode, result);
-  });
-};
+_ref = require('../utils'), expect = _ref.expect, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, compile = _ref.compile;
 
 ndescribe("compiler basic: ", function() {
   describe("compile number: ", function() {
-    iit("compile 1", function() {
+    it("compile 1", function() {
       return expect(compile('1')).to.have.string('1');
     });
     it("compile 01", function() {

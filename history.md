@@ -1,16 +1,16 @@
 2014
 2014-11
-  11-1 for statement, var initialization, if-then, while-else, try-catch
-  11-2 
-    switch-case, let, parser.line, label
-    pass 472 tests, only letloop!, import!, export! do not be tested.
-  11-3 
-    import! and export! statement, letloop! statement
-    pass the original letloop! statement tests(1 tests)
-    fix bug in parsing while! statement
-    now pass all 488 tests for parser (except dynamic parsing)
-  11-4
-    global tokenType: pass all original 488 tests!
+11-8 gramatical element expressoin pass many tests (all of testoperator.coffee)
+11-4
+  global tokenType: pass all original 488 tests!  11-1 for statement, var initialization, if-then, while-else, try-catch
+11-3 
+  import! and export! statement, letloop! statement
+  pass the original letloop! statement tests(1 tests)
+  fix bug in parsing while! statement
+  now pass all 488 tests for parser (except dynamic parsing)
+11-2 
+  switch-case, let, parser.line, label
+  pass 472 tests, only letloop!, import!, export! do not be tested.
 
 2014-10
   10-20

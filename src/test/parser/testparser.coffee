@@ -11,7 +11,7 @@ lib = '../../lib/'
 
 {matchRule} = require '../utils'
 
-describe "parse: ",  ->
+ndescribe "parse: ",  ->
   describe "clause: ",  ->
     parse = (text) ->
       parser = new Parser()

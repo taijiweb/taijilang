@@ -88,15 +88,12 @@ exports.extend = (object, args...) ->
 exports.isArray = isArray = (exp) -> Object::toString.call(exp) == '[object Array]'
 
 exports.entity = entity = (exp) ->
-  if not exp then return exp
-  if exp.push
+  if exp instanceof Array
     if exp.length==0 then return exp
     else return (for e in exp then entity e)
   if typeof exp == 'object'
     return entity(exp.value)
-    #if (type=exp.type)==NUMBER or type==NON_INTERPOLATE_STRING or type==IDENTIFIER then return exp.value
-  else if typeof exp == 'string' then return exp
-  else return exp
+  exp
 
 exports.isValue = isValue = (exp, env) ->
   if not exp then return true
