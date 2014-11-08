@@ -11,7 +11,7 @@ lib = '../../lib/'
 
 {matchRule} = require '../utils'
 
-ndescribe "parse: ",  ->
+describe "parse: ",  ->
   describe "clause: ",  ->
     parse = (text) ->
       parser = new Parser()
@@ -20,13 +20,15 @@ ndescribe "parse: ",  ->
 
     describe "normal clause: ",  ->
       it 'should parse 3+.#(1+1)', ->
-        expect(parse('3+.#(1+1)')).to.equal "[+ 3 [# [+ 1 1]]]"
+        expect(parse('3+.#(1+1)')).to.equal "[binary! + 3 [prefix! # [() [binary! + 1 1]]]]"
       it 'should parse 1', ->
         expect(parse('1 ')).to.equal "1"
       it 'should parse y+.!1', ->
-        expect(parse('y+.!1')).to.equal "[+ y [!x 1]]"
+        expect(parse('y+.!1')).to.equal "[binary! + y [prefix! ! 1]]"
       it 'should parse a.!=1', ->
-        expect(parse('a.!=1')).to.equal "[!= a 1]"
+        expect(parse('a.!=1')).to.equal "[binary! != a 1]"
+      it 'should parse a!=1', ->
+        expect(parse('a!=1')).to.equal "[binary! != a 1]"
       it 'should parse 1,2', ->
         expect(parse('1,2')).to.equal '1'
       it 'should parse 1 , 2', ->
@@ -34,33 +36,33 @@ ndescribe "parse: ",  ->
       it 'should parse 1 2', ->
         expect(parse('1 2 ')).to.equal '[1 2]'
       it 'should parse print : 1 , 2', ->
-        expect(parse('print : 1 , 2')).to.equal '[print 1 2]'
+        expect(parse('print : 1 , 2')).to.equal "[colonLeadClause! print [1 2]]"
       it 'should parse print : and 1 2', ->
         x = parse('print : and 1 2')
-        expect(x).to.equal '[print [and 1 2]]'
+        expect(x).to.equal "[colonLeadClause! print [[and 1 2]]]"
       it 'should parse print: and 1 2 , 3', ->
         x = parse('print: and 1 2 , 3')
-        expect(x).to.equal '[print [and 1 2] 3]'
+        expect(x).to.equal "[colonLeadClause! print [[and 1 2] 3]]"
       it 'should parse print : add 1 2 , add 3 4', ->
-        expect(parse('print : add 1 2 , add 3 4')).to.equal '[print [add 1 2] [add 3 4]]'
+        expect(parse('print : add 1 2 , add 3 4')).to.equal "[colonLeadClause! print [[add 1 2] [add 3 4]]]"
       it 'should parse select fn : 1 2 4', ->
         expect(parse('select fn : 1 2 4')).to.equal "[[select fn] 1 2 4]"
       it 'should parse print: add: add 1 2 , add 3 4', ->
-        expect(parse('print: add: add 1 2 , add 3 4')).to.equal '[print [add [add 1 2] [add 3 4]]]'
+        expect(parse('print: add: add 1 2 , add 3 4')).to.equal "[colonLeadClause! print [[colonLeadClause! add [[add 1 2] [add 3 4]]]]]"
       it 'should parse [2]', ->
-        expect(parse("[2]")).to.equal "[list! 2]"
+        expect(parse("[2]")).to.equal "[[] [line! [2]]]"
       it 'should parse [[2]]', ->
-        expect(parse("[[2]]")).to.equal "[list! [list! 2]]"
+        expect(parse("[[2]]")).to.equal "[[] [line! [[[] [line! [2]]]]]]"
       it 'should parse [[[2] 3]]', ->
-        expect(parse("[ [[2] 3] ]")).to.equal "[list! [list! [[list! 2] 3]]]"
+        expect(parse("[ [[2] 3] ]")).to.equal "[[] [line! [[[] [line! [[[[] [line! [2]]] 3]]]]]]]"
       it 'should parse require.extensions[".tj"] = 1', ->
-        expect(parse('require.extensions[".tj"] = 1')).to.equal "[= [index! [attribute! require extensions] [string! \".tj\"]] 1]"
+        expect(parse('require.extensions[".tj"] = 1')).to.equal "[= [binary! concat[] [binary! . require extensions] [[] [line! [[string! \".tj\"]]]]] 1]"
       it 'should parse a = ->', ->
         expect(parse('a = ->')).to.equal "[= a [-> [] undefined]]"
       it 'should parse require.extensions[".tj"] = ->', ->
-        expect(parse('require.extensions[".tj"] = ->')).to.equal "[= [index! [attribute! require extensions] [string! \".tj\"]] [-> [] undefined]]"
+        expect(parse('require.extensions[".tj"] = ->')).to.equal "[= [binary! concat[] [binary! . require extensions] [[] [line! [[string! \".tj\"]]]]] [-> [] undefined]]"
       it 'should parse require.extensions[".tj"] = (module, filename) ->', ->
-        expect(parse('require.extensions[".tj"] = (module, filename)  ->')).to.equal "[= [index! [attribute! require extensions] [string! \".tj\"]] [-> [module filename] undefined]]"
+        expect(parse('require.extensions[".tj"] = (module, filename)  ->')).to.equal "[= [binary! concat[] [binary! . require extensions] [[] [line! [[string! \".tj\"]]]]] [-> [() [binary! , module filename]] undefined]]"
       it 'should parse x = ->', ->
         expect(parse('x = ->')).to.equal "[= x [-> [] undefined]]"
       it 'should parse \\"x..." a', ->
@@ -68,13 +70,13 @@ ndescribe "parse: ",  ->
       it '''should parse \\'x...' a''', ->
         expect(parse("\\'x...' a")).to.equal '["x..." a]'
 
-    describe "concatenated line clauses: ",  ->
+    idescribe "concatenated line clauses: ",  ->
       it 'should parse print 1 \\\n 2 3', ->
         expect(parse('print 1 \\\n 2 3')).to.equal "[print 1 2 3]"
       it 'should parse print 1 \n 2 3', ->
-        expect(parse('print 1 \n 2 3')).to.equal "[print 1 [2 3]]"
+        expect(parse('print 1 \n 2 3')).to.equal "[clauseIndent! [print 1] [block! [line! [[2 3]]]]]"
       it 'should parse print 1 \\\n {print 2 \\\n 3 4} 5', ->
-        expect(parse('print 1 \\\n {print 2 \\\n 3 4} 5')).to.equal "[print 1 [print 2 3 4] 5]"
+        expect(parse('print 1 \\\n {print 2 \\\n 3 4} 5')).to.equal "[print 1 [{} [line! [[print 2 3 4]]]] 5]"
 
     describe "clauses which contain in curve or bracket: ",  ->
       it 'should parse [1]', ->

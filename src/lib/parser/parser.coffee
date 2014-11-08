@@ -2115,21 +2115,13 @@ exports.Parser = ->
 
     if tokenType==SPACE then nextToken()
     if (op=binaryOperatorDict[token.value]) and op.assign
-      nextToken()
+      opToken = token; opToken.priority = op.priority; nextToken()
       if tokenType==SPACE then nextToken(); type  =tokenType
       if tokenType==UNDENT then syntaxError 'unexpected undent after assign symbol'+op.value
       else if tokenType==NEWLINE then syntaxError 'unexpected new line after assign symbol'+op.value
       else if tokenType==EOI then syntaxError 'unexpected end of input'+op.value
-      if right = parser.block()
-        if right.length==1 then right = right[0]
-        else if right.length==0 then right = 'undefined'
-        else right.unshift 'begin!'
-      else right = parser.clause()
-      if head.type==CURVE then return {value:['hashAssign!', op, head, right], start:start, stop:token}
-      else if head.type==BRACKET then  return {value:['listAssign!', op, head, right], start:start, stop:token}
-      else
-        result = [op, head, right]
-        result.start = start; result.stop = token; return result
+      result = [opToken, head, parser.block() or parser.clause()]
+      result.start = start; result.stop = token; return result
 
     else if token.value=='#' and nextToken()
       if tokenType==SPACE then clauses = parser.clauses()
@@ -2151,27 +2143,7 @@ exports.Parser = ->
     if (op=binaryOperatorDict[token.value]) and op.definition
       definition = definitionSymbolBody()
       if clause.parameters
-        if clause.type==PAREN
-          if clause.empty
-            definition.value[1] = []
-            definition.start = start
-            clause = definition
-          else
-            if clause instanceof Array
-              if clause.length==0
-                syntaxError 'unexpected [] in parameter list'
-              else if clause[0]!=','
-                syntaxError 'syntax error in parameter list'
-              else
-                clause.shift() # remove "," from list, e.g.(a, b, c) ==> [, a b c] ==> [a b c]
-                definition[1] = clause
-                definition.start = start
-                clause = definition
-            else
-              definition[1] = [clause]
-              definition.start = start
-              clause = definition
-        else parser.customDefinitionParameterList(clause, definition)
+        definition[1] = clause; clause = definition; definition.start = start
       else if clause instanceof Array and clause.length>1
           params = clause[clause.length-1]
           if params.parameters

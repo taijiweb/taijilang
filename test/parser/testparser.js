@@ -20,7 +20,7 @@ _ref = require(lib + 'parser/base'), constant = _ref.constant, isArray = _ref.is
 
 matchRule = require('../utils').matchRule;
 
-ndescribe("parse: ", function() {
+describe("parse: ", function() {
   describe("clause: ", function() {
     var parse;
     parse = function(text) {
@@ -31,16 +31,19 @@ ndescribe("parse: ", function() {
     };
     describe("normal clause: ", function() {
       it('should parse 3+.#(1+1)', function() {
-        return expect(parse('3+.#(1+1)')).to.equal("[+ 3 [# [+ 1 1]]]");
+        return expect(parse('3+.#(1+1)')).to.equal("[binary! + 3 [prefix! # [() [binary! + 1 1]]]]");
       });
       it('should parse 1', function() {
         return expect(parse('1 ')).to.equal("1");
       });
       it('should parse y+.!1', function() {
-        return expect(parse('y+.!1')).to.equal("[+ y [!x 1]]");
+        return expect(parse('y+.!1')).to.equal("[binary! + y [prefix! ! 1]]");
       });
       it('should parse a.!=1', function() {
-        return expect(parse('a.!=1')).to.equal("[!= a 1]");
+        return expect(parse('a.!=1')).to.equal("[binary! != a 1]");
+      });
+      it('should parse a!=1', function() {
+        return expect(parse('a!=1')).to.equal("[binary! != a 1]");
       });
       it('should parse 1,2', function() {
         return expect(parse('1,2')).to.equal('1');
@@ -52,47 +55,47 @@ ndescribe("parse: ", function() {
         return expect(parse('1 2 ')).to.equal('[1 2]');
       });
       it('should parse print : 1 , 2', function() {
-        return expect(parse('print : 1 , 2')).to.equal('[print 1 2]');
+        return expect(parse('print : 1 , 2')).to.equal("[colonLeadClause! print [1 2]]");
       });
       it('should parse print : and 1 2', function() {
         var x;
         x = parse('print : and 1 2');
-        return expect(x).to.equal('[print [and 1 2]]');
+        return expect(x).to.equal("[colonLeadClause! print [[and 1 2]]]");
       });
       it('should parse print: and 1 2 , 3', function() {
         var x;
         x = parse('print: and 1 2 , 3');
-        return expect(x).to.equal('[print [and 1 2] 3]');
+        return expect(x).to.equal("[colonLeadClause! print [[and 1 2] 3]]");
       });
       it('should parse print : add 1 2 , add 3 4', function() {
-        return expect(parse('print : add 1 2 , add 3 4')).to.equal('[print [add 1 2] [add 3 4]]');
+        return expect(parse('print : add 1 2 , add 3 4')).to.equal("[colonLeadClause! print [[add 1 2] [add 3 4]]]");
       });
       it('should parse select fn : 1 2 4', function() {
         return expect(parse('select fn : 1 2 4')).to.equal("[[select fn] 1 2 4]");
       });
       it('should parse print: add: add 1 2 , add 3 4', function() {
-        return expect(parse('print: add: add 1 2 , add 3 4')).to.equal('[print [add [add 1 2] [add 3 4]]]');
+        return expect(parse('print: add: add 1 2 , add 3 4')).to.equal("[colonLeadClause! print [[colonLeadClause! add [[add 1 2] [add 3 4]]]]]");
       });
       it('should parse [2]', function() {
-        return expect(parse("[2]")).to.equal("[list! 2]");
+        return expect(parse("[2]")).to.equal("[[] [line! [2]]]");
       });
       it('should parse [[2]]', function() {
-        return expect(parse("[[2]]")).to.equal("[list! [list! 2]]");
+        return expect(parse("[[2]]")).to.equal("[[] [line! [[[] [line! [2]]]]]]");
       });
       it('should parse [[[2] 3]]', function() {
-        return expect(parse("[ [[2] 3] ]")).to.equal("[list! [list! [[list! 2] 3]]]");
+        return expect(parse("[ [[2] 3] ]")).to.equal("[[] [line! [[[] [line! [[[[] [line! [2]]] 3]]]]]]]");
       });
       it('should parse require.extensions[".tj"] = 1', function() {
-        return expect(parse('require.extensions[".tj"] = 1')).to.equal("[= [index! [attribute! require extensions] [string! \".tj\"]] 1]");
+        return expect(parse('require.extensions[".tj"] = 1')).to.equal("[= [binary! concat[] [binary! . require extensions] [[] [line! [[string! \".tj\"]]]]] 1]");
       });
       it('should parse a = ->', function() {
         return expect(parse('a = ->')).to.equal("[= a [-> [] undefined]]");
       });
       it('should parse require.extensions[".tj"] = ->', function() {
-        return expect(parse('require.extensions[".tj"] = ->')).to.equal("[= [index! [attribute! require extensions] [string! \".tj\"]] [-> [] undefined]]");
+        return expect(parse('require.extensions[".tj"] = ->')).to.equal("[= [binary! concat[] [binary! . require extensions] [[] [line! [[string! \".tj\"]]]]] [-> [] undefined]]");
       });
       it('should parse require.extensions[".tj"] = (module, filename) ->', function() {
-        return expect(parse('require.extensions[".tj"] = (module, filename)  ->')).to.equal("[= [index! [attribute! require extensions] [string! \".tj\"]] [-> [module filename] undefined]]");
+        return expect(parse('require.extensions[".tj"] = (module, filename)  ->')).to.equal("[= [binary! concat[] [binary! . require extensions] [[] [line! [[string! \".tj\"]]]]] [-> [() [binary! , module filename]] undefined]]");
       });
       it('should parse x = ->', function() {
         return expect(parse('x = ->')).to.equal("[= x [-> [] undefined]]");
@@ -104,15 +107,15 @@ ndescribe("parse: ", function() {
         return expect(parse("\\'x...' a")).to.equal('["x..." a]');
       });
     });
-    describe("concatenated line clauses: ", function() {
+    idescribe("concatenated line clauses: ", function() {
       it('should parse print 1 \\\n 2 3', function() {
         return expect(parse('print 1 \\\n 2 3')).to.equal("[print 1 2 3]");
       });
       it('should parse print 1 \n 2 3', function() {
-        return expect(parse('print 1 \n 2 3')).to.equal("[print 1 [2 3]]");
+        return expect(parse('print 1 \n 2 3')).to.equal("[clauseIndent! [print 1] [block! [line! [[2 3]]]]]");
       });
       return it('should parse print 1 \\\n {print 2 \\\n 3 4} 5', function() {
-        return expect(parse('print 1 \\\n {print 2 \\\n 3 4} 5')).to.equal("[print 1 [print 2 3 4] 5]");
+        return expect(parse('print 1 \\\n {print 2 \\\n 3 4} 5')).to.equal("[print 1 [{} [line! [[print 2 3 4]]]] 5]");
       });
     });
     describe("clauses which contain in curve or bracket: ", function() {
