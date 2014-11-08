@@ -10,6 +10,8 @@ exports.idescribe = describe.only;
 
 exports.ndescribe = function() {};
 
+exports.nit = function() {};
+
 lib = '../lib/';
 
 Parser = require(lib + 'parser').Parser;

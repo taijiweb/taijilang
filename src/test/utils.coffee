@@ -3,6 +3,7 @@ exports.expect = chai.expect
 exports.iit = it.only
 exports.idescribe = describe.only
 exports.ndescribe = ->
+exports.nit = ->
 
 lib = '../lib/'
 
