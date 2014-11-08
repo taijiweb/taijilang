@@ -1,6 +1,8 @@
 2014
 2014-11
-11-8 gramatical element expressoin pass many tests (all of testoperator.coffee)
+11-8 
+  gramatical element expressoin pass many tests (all of testoperator.coffee)
+  pass all tests in testbasic.coffee
 11-4
   global tokenType: pass all original 488 tests!  11-1 for statement, var initialization, if-then, while-else, try-catch
 11-3 

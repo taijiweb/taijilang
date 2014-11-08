@@ -175,13 +175,13 @@ describe "parse operator expression: ", ->
       expect(str parse('a . b')).to.deep.equal "[binary! . a b]"
 
     it "parse a[1]", ->
-      expect(str parse('a[1]')).to.deep.equal "[binary! concat[] a [[] [1]]]"
+      expect(str parse('a[1]')).to.deep.equal "[binary! concat[] a [[] [line! [1]]]]"
     it "parse a (1)", ->
       expect(str parse('a (1)')).to.equal 'a'
     it "parse a [1]", ->
       expect(str parse('a [1]')).to.equal 'a'
     it "parse a[1][2]", ->
-      expect(str parse('a[1][2]')).to.deep.equal "[binary! concat[] [binary! concat[] a [[] [1]]] [[] [2]]]"
+      expect(str parse('a[1][2]')).to.deep.equal "[binary! concat[] [binary! concat[] a [[] [line! [1]]]] [[] [line! [2]]]]"
 
     # &/ as index operator is deprecated, because a[b] is more generally.
     nit "parse a&/b", ->

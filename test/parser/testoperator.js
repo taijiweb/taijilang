@@ -1,6 +1,6 @@
-var BLOCK_COMMENT, COMPACT_CLAUSE_EXPRESSION, EOI, HALF_DENT, IDENTIFIER, INDENT, NEWLINE, NUMBER, OPERATOR_EXPRESSION, PAREN, PAREN_OPERATOR_EXPRESSION, Parser, SPACE, SPACE_CLAUSE_EXPRESSION, UNDENT, compile, constant, expect, iit, isArray, lib, matchRule, ndescribe, nit, str, _ref, _ref1;
+var BLOCK_COMMENT, COMPACT_CLAUSE_EXPRESSION, EOI, HALF_DENT, IDENTIFIER, INDENT, NEWLINE, NUMBER, OPERATOR_EXPRESSION, PAREN, PAREN_OPERATOR_EXPRESSION, Parser, SPACE, SPACE_CLAUSE_EXPRESSION, UNDENT, constant, expect, iit, isArray, lib, matchRule, ndescribe, nit, str, _ref, _ref1;
 
-_ref = require('../utils'), expect = _ref.expect, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, compile = _ref.compile, matchRule = _ref.matchRule;
+_ref = require('../utils'), expect = _ref.expect, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, matchRule = _ref.matchRule;
 
 lib = '../../lib/';
 
@@ -213,7 +213,7 @@ describe("parse operator expression: ", function() {
       return expect(str(parse('a . b'))).to.deep.equal("[binary! . a b]");
     });
     it("parse a[1]", function() {
-      return expect(str(parse('a[1]'))).to.deep.equal("[binary! concat[] a [[] [1]]]");
+      return expect(str(parse('a[1]'))).to.deep.equal("[binary! concat[] a [[] [line! [1]]]]");
     });
     it("parse a (1)", function() {
       return expect(str(parse('a (1)'))).to.equal('a');
@@ -222,7 +222,7 @@ describe("parse operator expression: ", function() {
       return expect(str(parse('a [1]'))).to.equal('a');
     });
     it("parse a[1][2]", function() {
-      return expect(str(parse('a[1][2]'))).to.deep.equal("[binary! concat[] [binary! concat[] a [[] [1]]] [[] [2]]]");
+      return expect(str(parse('a[1][2]'))).to.deep.equal("[binary! concat[] [binary! concat[] a [[] [line! [1]]]] [[] [line! [2]]]]");
     });
     nit("parse a&/b", function() {
       return expect(str(parse('a&/b'))).to.deep.equal('[index! a b]');

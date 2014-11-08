@@ -1173,11 +1173,11 @@ exports.Parser = ->
     else if tokenType==UNDENT then syntaxError 'unexpected undent after prefix operator'
     else if tokenType==RIGHT_DELIMITER then syntaxError 'unexpected '+token.value+' after prefix operator'
     else if tokenType==SPACE
-      if op.definition and mode==SPACE_CLAUSE_EXPRESSION then token = start; tokenType = start.type; return
-      if opToken.value=='@' or opToken.value=='::' then token = start; tokenType = start.type; return
+      if op.definition and mode==SPACE_CLAUSE_EXPRESSION then token = opToken; tokenType = opToken.type; return
+      else if opToken.value=='@' or opToken.value=='::' then token = opToken; tokenType = opToken.type; return
       nextToken(); priInc = 300
     else if tokenType==SYMBOL
-      if opToken.value=='@' or opToken.value=='::' then token = start; tokenType = start.type; return
+      if opToken.value=='@' or opToken.value=='::' then token = opToken; tokenType = opToken.type; return
       else if token.value=='.'
         nextToken()
         if tokenType==SPACE or tokenType==NEWLINE or tokenType==UNDENT or tokenType==INDENT or tokenType==EOI
@@ -1185,17 +1185,16 @@ exports.Parser = ->
       priInc = 600
     else
       priInc = 600
-    {value:op.value or opToken.value, start:opToken, stop:token, priority:op.priority+priInc}
+    {value:opToken.value, start:opToken, stop:token, priority:op.priority+priInc}
 
   # suffix operator must be symbol, should follow space, right delimiters or punctuations.
   @suffixOperator = (mode, x) ->
     if tokenType!=SYMBOL then return
     if (op=suffixOperatorDict[token.value])
       opToken = token; nextToken()
-      #  can not follow suffirx: SYMBOL IDENTIFIER  REGEXP PAREN BRACKET HASH etc
-      if tokenType==SPACE or tokenType==NEWLINE or tokenType==INDENT or tokenType==UNDENT or tokenType==EOI or tokenType==RIGHT_DELIMITER\
-          or (value=token.value)==':' or value==',' or value==';'
-        {value:op.value or opToken.value, start:opToken, stop:token, priority:op.priority+600}
+      if tokenType==SPACE or tokenType==NEWLINE or tokenType==INDENT or tokenType==UNDENT or tokenType==EOI or tokenType==RIGHT_DELIMITER
+        {value:opToken.value, start:opToken, stop:token, priority:op.priority+600}
+      #  suffix operator can not be followed by SYMBOL IDENTIFIER  REGEXP () [] {} etc
       else token = opToken; tokenType = opToken.type; return
 
   binaryOperatorMemoIndex = memoIndex
@@ -1239,9 +1238,7 @@ exports.Parser = ->
         else start[binaryOperatorMemoIndex+mode] = {}; return
       when SYMBOL
         tkn = token
-        if (value=tkn.value)=='#' and nextToken() then return {value:'#()', priority: 800, start:tkn}
-        else if value=='::' then return {value:'x::', start:tkn, priority: 800}
-        else if value=="." and (tkn=token) and nextToken()
+        if token.value=="." and (tkn=token) and nextToken()
           if tokenType==IDENTIFIER then return {value:'.', start:tkn, priority: 800}
           else if tokenType==SPACE or tokenType==NEWLINE or tokenType==INDENT or tokenType==UNDENT or tokenType==EOI
             if mode==OPERATOR_EXPRESSION then syntaxError 'unexpected space or new line or end of line after "."'
@@ -1299,7 +1296,7 @@ exports.Parser = ->
         if mode!=OPERATOR_EXPRESSION then return
         else if priInc!=0 then syntaxError 'unexpected '+token.value
         if priInc==0
-          if opValue==',' or opValue==':' then syntaxError 'binary operator '+(op.value or opValue)+' should not be at begin of line'
+          if opValue==',' or opValue==':' then syntaxError 'binary operator '+(opValue)+' should not be at begin of line'
       else
         if priInc==300
           if mode==OPERATOR_EXPRESSION then syntaxError 'binary operator '+opValue+' should have spaces at its right side.'
@@ -1312,7 +1309,7 @@ exports.Parser = ->
     pri = op.priority+priInc
     if pri<300 then pri = 300; rightAssoc = false
     else rightAssoc = op.rightAssoc
-    result = {value:op.value or opValue, start:start, stop:token, priority:pri, rightAssoc:rightAssoc, assign:op.assign}
+    result = {value:opValue, start:start, stop:token, priority:pri, rightAssoc:rightAssoc, assign:op.assign}
     start[binaryOperatorMemoIndex+OPERATOR_EXPRESSION] = {result:result, next:token}
     result
 
@@ -1989,10 +1986,10 @@ exports.Parser = ->
       code=compileExp(['return', [tkn, clause]], environment)
       new Function('__$taiji_$_$parser__', code)(parser)
 
-    '~':  (tkn, clause) -> tkn.value = 'quote!'; [tkn, clause]
-    '`':  (tkn, clause) -> tkn.value = 'quasiquote!'; [tkn, clause]
-    '^':  (tkn, clause) -> tkn.value = 'unquote!'; [tkn, clause]
-    '^&': (tkn, clause) -> tkn.value = 'unquote-splice'; [tkn, clause]
+    '~':  (tkn, clause) -> tkn.value = '~'; [tkn, clause]
+    '`':  (tkn, clause) -> tkn.value = '`'; [tkn, clause]
+    '^':  (tkn, clause) -> tkn.value = '^'; [tkn, clause]
+    '^&': (tkn, clause) -> tkn.value = '^&'; [tkn, clause]
 
     # preprocess opertator
     # see # see metaConvertFnMap['#'] and preprocessMetaConvertFnMap for more information
@@ -2043,10 +2040,6 @@ exports.Parser = ->
     if tokenType==SPACE then nextToken()
     if tokenType==INDENT then body = parser.block()
     else body = parser.line()
-    if body
-      if body.length==1 then body = body[0]
-      else if body.length==0 then body = 'undefined'
-      else body.unshift 'begin!'
     result = [start, [], body]
     result.start = start; result.stop = token; return result
 
@@ -2148,11 +2141,11 @@ exports.Parser = ->
       nextToken()
       if tokenType==SPACE then nextToken()
       clause = parser.clauses()
-      clause = ['colonLeadClause!', head, clauses]
+      clause = ['colonLeadClause!', head, clause]
       clause.start = head.start; clause.stop = token; return clause
 
     if clause = parser.sequenceClause()
-      clause.value.unshift head; clause.start = start
+      clause.unshift head; clause.start = start
     else clause = head
 
     if (op=binaryOperatorDict[token.value]) and op.definition
@@ -2229,14 +2222,8 @@ exports.Parser = ->
         token = tkn; tokenType = token.type;  atStatementHead = true
         # head clause with indented block
         # please pay attention to the difference between clause+':'+INDENT+block and clause+INDENT+block
-        clauses = parser.block()
-        if clause instanceof Array
-          clause.push.apply clause, clauses
-          clause.stop = token
-          clause
-        else
-          clauses.unshift clause
-          clauses.start = start; clauses.stop = token; return clauses
+        clause = ['clauseIndent!', clause, parser.block()]
+        clause.start = start; clause.stop = token; return clause
 
     else clause
 
@@ -2275,7 +2262,7 @@ exports.Parser = ->
       result.push.apply result, x
       if tkn==token then syntaxError 'oops! inifinte loops!!!'
       tkn = token;
-    result
+    ['line!', result]
 
   @block = (dent) ->
     if tokenType==INDENT then nextToken(); return parser.blockWithoutIndentHead(indent)
@@ -2283,9 +2270,9 @@ exports.Parser = ->
   # a block with out indent( the indent has been ate before).
   # stop until meet a undent (less indent than the intent of the start line)
   @blockWithoutIndentHead = (dent) ->
-    result = ['indentBlock!']
+    result = ['block!']
     while (x=parser.line())
-      result.push.apply(result, x)
+      result.push x
       if tokenType==NEWLINE then nextToken(); continue
       if tokenType==EOI then break
       else if tokenType==UNDENT
@@ -2316,12 +2303,10 @@ exports.Parser = ->
     while 1
       if not x=parser.line() then break
       if tokenType==NEWLINE then nextToken()
-      body.push.apply body, x
+      body.push x
     if tokenType!=EOI then syntaxError 'expect end of input, but meet "'+text.slice(cursor)+'"'
-    if body.length>1 then body.unshift 'begin!'
-    else if body.length==1 then body = body[0]
-    else body = undefined
-    {value:body, start:start, stop:eoi}
+    result = ['moduleBody!', body]; result.start = start; result.stop = token
+    result
 
   # #!use/bin/node taiji
   @binShellDirective = ->
