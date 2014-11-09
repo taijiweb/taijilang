@@ -23,37 +23,22 @@ VALUE, LIST
 
 {prefixOperatorDict, suffixOperatorDict, binaryOperatorDict} = require './operator'
 
-exports.escapeNewLine = escapeNewLine = (s) -> (for c in s then (if c=='\n' then '\\n' else '\\r')).join('')
+hasOwnProperty = Object::hasOwnProperty
 
 exports.keywordMap = keywordMap =
   'if': 1, 'try':1, 'switch':1, 'while':1, 'while!':1, 'let':1, 'letrec!':1, 'letloop!':1, 'do':1, 'repeat':1
   'return':1, 'break':1, 'continue':1, 'throw':1,'function':1,'for':1, 'import!':1,  'export!':1
   'loop':1, 'class':1, 'var':1
 
-keywordHasOwnProperty = Object.hasOwnProperty.bind(exports.keywordMap)
-
-exports.isKeyword = isKeyword = (item) ->
-  item and not item.escaped and keywordHasOwnProperty(item.text)
+keywordHasOwnProperty = hasOwnProperty.bind(exports.keywordMap)
 
 exports.conjMap = conjMap =
   'then':1, 'else':1, 'catch':1, 'finally':1, 'case':1, 'default':1, 'extends': 1
   'until':1, 'where':1, 'when':1
-conjunctionHasOwnProperty = Object.hasOwnProperty.bind(exports.conjMap)
-
-exports.isConjunction = isConjunction = (item) ->
-  item and not item.escaped and conjunctionHasOwnProperty(item.text)
-
-hasOwnProperty = Object::hasOwnProperty
-
-begin = (exp) ->
-  if not exp or not exp.push then return exp
-  if exp.length==0 then ''
-  else if exp.length==1 then exp[0]
-  else exp.unshift('begin!'); exp
+conjunctionHasOwnProperty = hasOwnProperty.bind(exports.conjMap)
 
 exports.Parser = ->
-  parser = @; @predefined = predefined = {}
-  unchangeable = ['cursor', 'setCursor', 'lineno', 'setLineno', 'atLineHead', 'atStatementHead', 'setAtStatementHead']
+  parser = @
 
   # global variable used by lexer
   text = '' # text to be parsed
@@ -74,7 +59,6 @@ exports.Parser = ->
   memoMap = {} # memorize the result for syntax matcher
   atStatementHead = true # whether is at head of statement
   environment = null # compiler environment used by dynamic evaluation while parsing
-  endCursorOfDynamicBlockStack = [] # used by "then" block of ? clause to identifier end of dynamic block
 
   memoIndex = 0  # don't need be set in parser.init, memoMap need to be set instead.
 
@@ -1281,7 +1265,7 @@ exports.Parser = ->
         else return
       when INDENT
         if opValue!=',' then syntaxError 'unexpected indent after binary operator '+opValue
-        priInc = 0; indentExpression()
+        priInc= 0; indentExpression()
       when EOI
         if mode!=OPERATOR_EXPRESSION then syntaxError 'unexpected end of input, expect right operand after binary operator'
       when RIGHT_DELIMITER
