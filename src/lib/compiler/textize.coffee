@@ -1,6 +1,4 @@
-{str, isArray, extend, entity, charset, begin, undefinedExp, isValue} = require '../utils'
-
-{digitCharSet, letterCharSet, identifierCharSet} = require '../parser/base'
+{str, isArray, extend, entity, charset, begin, undefinedExp, isValue, digitCharSet, letterCharSet, identifierCharSet} = require '../utils'
 
 PAREN=1; BRACKET = 2; CURVE=3; LIST=4; STATEMENT_LIST=5; WRAP_BLOCK=6; BLOCK=7; MAYBE=8; STATEMENT=9;
 CLAUSE=10; COMPOUND=11; FUNCTION=12; SEQUENCE = 13; LINE = 14; INDENT = 15; UNDENT = 16; BINARY = 17

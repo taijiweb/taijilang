@@ -1,15 +1,8 @@
-chai = require("chai")
-expect = chai.expect
-iit = it.only
-idescribe = describe.only
-ndescribe = ->
-nit = ->
+{expect, ndescribe, idescribe, iit, nit, matchRule} = require '../utils'
 
 lib = '../../lib/'
+{constant, isArray, str} = require lib+'utils'
 {Parser} = require lib+'parser'
-{constant, isArray, str} = require lib+'parser/base'
-
-{matchRule} = require '../utils'
 
 describe "parse: ",  ->
   describe "clause: ",  ->
@@ -592,7 +585,7 @@ describe "parse: ",  ->
     parse = (text) ->
       parser = new Parser()
       x = parser.parse(head+text, parser.module, 0)
-      str x.value[3]
+      str x[3]
     describe "misc: ",  ->
       it 'should parse 1', ->
         expect(parse('1 ')).to.equal "[moduleBody! [1]]"

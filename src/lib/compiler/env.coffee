@@ -1,5 +1,4 @@
-{extend, javascriptKeywordSet, entity} = require '../utils'
-{identifierCharSet} = require '../parser/base'
+{extend, javascriptKeywordSet, entity, identifierCharSet} = require '../utils'
 
 hasOwnProperty = Object::hasOwnProperty
 
@@ -15,8 +14,8 @@ error = (msg, exp) ->
   if exp then throw Error msg+': '+exp
   else throw Error msg
 
-class SymbolLookupError extends Error
-  constructor: (@msg, @exp) ->
+exports.SymbolLookupError = class SymbolLookupError extends Error
+  constructor: (@exp) ->
 
 # options: {module, functionInfo, parser, ...}
 exports.Environment = class Environment
@@ -109,8 +108,13 @@ exports.Environment = class Environment
     @scope[symbol] = value
 
   get: (symbol) ->
-    if hasOwnProperty.call(@scope, symbol) then  return @scope[symbol]
-    else if @parent then return @parent.get(symbol)
+    sym = symbol.value
+    env = @
+    while env
+      scope = env.scope
+      if hasOwnProperty.call(scope, sym) then  return scope[sym]
+      env =  env.parent
+    throw new SymbolLookupError(symbol)
 
   info: (symbol) ->
     if @optimizeInfoMap and hasOwnProperty.call(@optimizeInfoMap, symbol) then  return @optimizeInfoMap[symbol]

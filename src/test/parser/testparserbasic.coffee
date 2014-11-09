@@ -1,16 +1,8 @@
-chai = require("chai")
-expect = chai.expect
-iit = it.only
-idescribe = describe.only
-
-ndescribe = ->
-nit = ->
+{expect, ndescribe, idescribe, iit, nit, matchRule} = require '../utils'
 
 lib = '../../lib/'
-{constant, isArray} = require lib+'parser/base'
-{str} = require lib+'utils'
+{constant, isArray, str} = require lib+'utils'
 {Parser} = require lib+'parser/parser'
-{matchRule} = require '../utils'
 
 {IDENTIFIER, NUMBER, NEWLINE, INDENT, UNDENT, HALF_DENT, PAREN, BLOCK_COMMENT, EOI, SPACE
 PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION} = constant

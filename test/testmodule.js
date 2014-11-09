@@ -18,7 +18,7 @@ lib = '../lib/';
 
 Parser = require(lib + 'parser').Parser;
 
-_ref = require(lib + 'parser/base'), constant = _ref.constant, isArray = _ref.isArray, str = _ref.str;
+_ref = require(lib + 'utils'), constant = _ref.constant, isArray = _ref.isArray, str = _ref.str;
 
 require(lib + 'compiler/compile');
 

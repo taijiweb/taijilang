@@ -1,26 +1,14 @@
-var Parser, chai, compile, compileNoOptimize, constant, expect, idescribe, iit, isArray, lib, ndescribe, nit, realCode, str, taiji, _ref;
+var Parser, compile, compileNoOptimize, constant, expect, idescribe, iit, isArray, lib, ndescribe, nit, realCode, str, taiji, _ref, _ref1;
 
-chai = require("chai");
-
-expect = chai.expect;
-
-iit = it.only;
-
-idescribe = describe.only;
-
-ndescribe = function() {};
-
-nit = function() {};
+_ref = require('../utils'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit;
 
 lib = '../../lib/';
 
+_ref1 = require(lib + 'utils'), constant = _ref1.constant, isArray = _ref1.isArray, str = _ref1.str, realCode = _ref1.realCode;
+
 Parser = require(lib + 'parser').Parser;
 
-_ref = require(lib + 'parser/base'), constant = _ref.constant, isArray = _ref.isArray, str = _ref.str;
-
 taiji = require(lib + 'taiji');
-
-realCode = require(lib + 'utils').realCode;
 
 compile = function(code) {
   var head;

@@ -5,7 +5,7 @@
 fs = require 'fs'
 {convertIdentifier, entity, begin, return_, error, isArray, error, extend, splitSpace, undefinedExp, addPrelude} = require '../utils'
 {Parser} = require '../parser'
-{convert, convertList, convertEllipsisList, convertExps, compileExp, nonMetaCompileExp, transformToCode, metaProcessConvert, metaProcess} = require '../compiler'
+{convert, convertList, convertArgumentList, convertExps, compileExp, nonMetaCompileExp, transformToCode, metaProcessConvert, metaProcess} = require '../compiler'
 
 metaIndex = 0
 
@@ -263,15 +263,15 @@ do ->
 
 exports['begin!'] = (exp, env) -> begin(for e in exp then convert e, env)
 
-exports['list!'] = convertEllipsisList
+exports['list!'] = convertArgumentList
 
 #['try', body, catchClauses: [list! ...], else_, final]
 #['try! body, catchVar, catchBody, final] # attention: assume no else_ clause in current target javascript version
 
 exports['if'] = (exp, env) ->
   if exp[2]!=undefined
-    ['if', convert(exp[0], env), convert(exp[1], env), convert(exp[2], env)]
-  else ['if', convert(exp[0], env), convert(exp[1], env)]
+    ['if', convert(exp[0], env), convertList(exp[1], env), convertList(exp[2], env)]
+  else ['if', convert(exp[0], env), convertList(exp[1], env)]
 
 exports['switch!'] = (exp, env) ->
   result = ['switch', convert(exp[0], env)]
@@ -468,3 +468,7 @@ convertParserExpression = (exp) ->
       extend result, exp
     else exp
   else exp
+
+exports.binaryConverters = binaryConverters = {}
+
+exports['binary!'] = (exp, env, compiler) -> binaryConverters[(op=exp[0]).value](op, exp[1], exp[2], env)

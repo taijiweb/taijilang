@@ -1,6 +1,5 @@
-{str, entity, wrapInfo1, isValue, isArray, extend, error, begin, undefinedExp} = require '../utils'
+{str, entity, wrapInfo1, isValue, isArray, extend, error, begin, undefinedExp, constant} = require '../utils'
 
-{constant} = require '../parser/base'
 {NUMBER, STRING, IDENTIFIER, SYMBOL, REGEXP, HEAD_SPACES, CONCAT_LINE, PUNCT, FUNCTION,
 BRACKET, PAREN, DATA_BRACKET, CURVE, INDENT_EXPRESSION
 NEWLINE, SPACES, INLINE_COMMENT, SPACES_INLINE_COMMENT, LINE_COMMENT, BLOCK_COMMENT, CODE_BLOCK_COMMENT, CONCAT_LINE

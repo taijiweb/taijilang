@@ -4,7 +4,7 @@ _ref = require('../utils'), expect = _ref.expect, ndescribe = _ref.ndescribe, ii
 
 lib = '../../lib/';
 
-_ref1 = require(lib + 'parser/base'), constant = _ref1.constant, isArray = _ref1.isArray, str = _ref1.str;
+_ref1 = require(lib + 'utils'), constant = _ref1.constant, isArray = _ref1.isArray, str = _ref1.str;
 
 Parser = require(lib + 'parser').Parser;
 

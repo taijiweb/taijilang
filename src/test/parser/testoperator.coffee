@@ -1,7 +1,7 @@
 {expect, ndescribe, iit, nit, matchRule} = require '../utils'
 
 lib = '../../lib/'
-{constant, isArray, str} = require lib+'parser/base'
+{constant, isArray, str} = require lib+'utils'
 {Parser} = require lib+'parser'
 
 {IDENTIFIER, NUMBER, NEWLINE, INDENT, UNDENT, HALF_DENT, PAREN, BLOCK_COMMENT, EOI, SPACE

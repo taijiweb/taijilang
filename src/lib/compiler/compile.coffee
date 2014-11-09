@@ -1,14 +1,15 @@
 fs = require 'fs'
 path = require 'path'
-{evaljs, isArray, extend, str, formatTaijiJson, wrapInfo1, entity, pushExp, undefinedExp, begin} = require '../utils'
+{evaljs, isArray, extend, str, formatTaijiJson, wrapInfo1, entity, pushExp, undefinedExp, begin,
+__TJ__QUOTE, constant} = require '../utils'
 
-{constant} = require '../parser/base'
 {NUMBER, STRING, IDENTIFIER, SYMBOL, REGEXP, HEAD_SPACES, CONCAT_LINE, PUNCT, FUNCTION,
 BRACKET, PAREN, DATA_BRACKET, CURVE, INDENT_EXPRESSION
 NEWLINE, SPACES, INLINE_COMMENT, SPACES_INLINE_COMMENT, LINE_COMMENT, BLOCK_COMMENT, CODE_BLOCK_COMMENT, CONCAT_LINE
 MODULE_HEADER, MODULE
 NON_INTERPOLATE_STRING, INTERPOLATE_STRING
 INDENT, UNDENT, HALF_DENT
+VALUE, LIST
 } = constant
 
 {Environment} = require './env'
@@ -30,7 +31,8 @@ getStackTrace = ->
   Error.captureStackTrace(obj, getStackTrace)
   obj.stack
 
-error = (msg, exp) -> throw Error msg+exp
+exports.CompileError = class CompileError extends Error
+  constructor: (@exp, @message) ->
 
 madeConcat = (head, tail) ->
   if tail.concated then result = ['call!', ['attribute!', ['list', head], 'concat'], [tail]]
@@ -51,42 +53,36 @@ madeCall = (head, tail, env) ->
   else tail.shift(); ['call!', head, tail]
 
 exports.convert = convert = (exp, env) ->
-  if exp instanceof Array
-    if exp.length==0 then return exp
-    head = convert(exp[0], env)
-    if typeof head == 'function' then result = head(exp[1...], env)
-    else
-      tail = convertEllipsisList(exp[1...], env)
-      if (t=typeof entity(head)) == 'string'
-        if not head or head[0]=='"' then result = madeConcat head, tail
-        else result = madeCall head, tail, env
-      else if head instanceof Array
-         result =  madeCall head, tail, env
-      else if t == 'object'
-        if (type=head.type)==NON_INTERPOLATE_STRING or type==NUMBER then result = madeConcat head, tail
-        else if type==IDENTIFIER then result =  madeCall head, tail, env
-        else if typeof head.value != 'string' then result = madeConcat head, tail
-        else result = ['call!', head, tail]
-      else result = madeConcat head, tail
-  else if typeof exp=='object'
-    result = convert(entity(exp), env)
-  else if typeof entity(exp)=='string'
-    if not exp or exp[0]=='"' then return exp
-    if not (result = env.get(exp))
-      if exp.start
-        throw exp.start+'('+exp.lineno+'): '+message+': \n'+text[exp.start-40...exp.start]+'|   |'+text[exp.start...exp.start+40]
-      else error 'fail to look up symbol from environment:', exp
-  else result = exp
-  if typeof result=='function' then result
-  else
-    if exp==result then result
-    else wrapInfo1 result, exp
+  switch exp.kind
+    when LIST
+      exp0 = exp[0]
+      switch exp0.kind
+        when LIST
+          head = convert(exp0)
+          tail = convertArgumentList(exp[1...], env)
+          return madeCall head, tail, env
+        when SYMBOL
+          head = env.get(exp0)
+          if typeof head == 'function'
+            result = head(exp[1...])
+            result.start = exp.start; result.stop = exp.stop
+            return result
+          else
+            tail = convertArgumentList(exp[1...], env)
+            return madeCall head, tail, env
+        when VALUE
+          result = for e in exp then convert(e, env)
+          result.start = exp.start; result.stop = exp.stop
+        else throw new CompileError exp
+    when SYMBOL then return env.get(exp)
+    when VALUE then return exp
+    else throw new CompileError exp
 
 exports.convertExps = convertExps = (exp, env) -> begin(for e in exp then convert e, env)
 exports.convertList = (exp, env) -> for e in exp then convert(e, env)
 
 # convert list! construct which contains x..., e.g. [x, y, z..., m]
-exports.convertEllipsisList = convertEllipsisList = (exp, env) ->
+exports.convertArgumentList = convertArgumentList = (exp, env) ->
   if exp.length==0 then return []
   if exp.length==1
     if (e = exp[0]) and e[0]=='x...' then return convert e[0][1], env
@@ -253,6 +249,17 @@ taijiExports = ['jsvar!', 'exports']
 # if use 'attribute!' then "exports.undefined?" will be illegel javascript code
 exportsIndex = (name) -> ['index!',taijiExports , '"'+entity(name)+'"']
 
+
+# does exp contains any meta operations?
+# use the standard with most tolerance, avoid missing any possible meta operation
+hasMeta = (exp) ->
+  if exp.hasMeta!=undefined then exp.hasMeta
+  else if exp instanceof Array
+    for e in exp
+      if hasMeta(e) then return exp.hasMeta  = true
+    exp.hasMeta = false
+  else exp.hasMeta = exp.meta or false
+
 parseModule = (modulePath, env, parseMethod) ->
   filePath = modulePath.slice(1, modulePath.length-1)
   taijiModule = new TaijiModule(filePath, env.module)
@@ -410,19 +417,15 @@ metaConvertFnMap =
   'include!': include
   'import!': metaConvertImport
 
-# whehter head is a operator for meta expression?
-isMetaOperation = (head) -> (head[0]=='#' and head[1]!='-') or head=='include!' or head=='import!' or head=='export!'
-
 # should be called by metaConvert while which is processing meta level code
 # exp should be the code which is known being at meta level.
 metaTransform = (exp, metaExpList, env) ->
   if exp instanceof Array
-    if exp.length==0 then return exp
-    head=entity(exp[0])
+    head = exp[0]
     # todo: #call may need special process
-    if head=='#call!'
+    if head.value=='#call!'
       return ['list!', '"metaEval!"', metaConvert(exp, metaExpList, env)]
-    if head and isMetaOperation(head)
+    else if head.meta
       # no recursive embedded meta compilation
       metaConvert(exp, metaExpList, env)
     else if typeof head == 'string' and head[..2]=='#-'
@@ -433,34 +436,17 @@ metaTransform = (exp, metaExpList, env) ->
       metaTransform(e, metaExpList, env)
   else return exp
 
-# whether exp contains any meta operations?
-hasMeta = (exp) ->
-  if not exp then return false
-  if exp.hasMeta then return true
-  if not (exp instanceof Array)
-    exp.hasMeta = false; return false
-  for e in exp
-    if  e instanceof Array
-      if (eLength=e.length)<=1 then continue
-      else
-        if (e0=entity(e[0])) and typeof e0 == 'string'
-          if isMetaOperation(e0) then exp.hasMeta = true; return true
-        if hasMeta(e) then exp.hasMeta = true; return true
-  exp.hasMeta = false
-  return false
-
 # meta convert a hybrid meta and object level expression to a meta level expression, which will be the parameter of "convert" function.
 # all meta expression will be compiled to javascript code,
 # but original object level expression will be transformed to a _tjExp parameter index expression of the meta leval javascript function
 exports.metaConvert = metaConvert = (exp, metaExpList, env) ->
   if exp instanceof Array
-    if exp.length==0 then return []
-    exp0 = entity exp[0]
+    exp0 = exp[0]
     if fn=metaConvertFnMap[exp0] then return fn(exp, metaExpList, env)
     else
       # contrary to metaConvert, list! is unshifted to the head of exp and e is transformed to index form when necessary
       if hasMeta(exp)
-        result = ['list!']
+        result = [{value:'list!',kind:symbol}]
         for e, i in exp then result.push metaConvert(e, metaExpList, env)
         return result
       else metaExpList.push exp; return $atMetaExpList(env.metaIndex++)

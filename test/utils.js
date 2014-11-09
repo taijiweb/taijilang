@@ -1,4 +1,4 @@
-var INDENT, NEWLINE, Parser, SPACE, chai, constant, convert, head, isArray, lib, realCode, str, taiji, _ref;
+var INDENT, NEWLINE, Parser, SPACE, chai, constant, head, isArray, lib, realCode, str, taiji, _ref;
 
 chai = require("chai");
 
@@ -14,15 +14,15 @@ exports.nit = function() {};
 
 lib = '../lib/';
 
+_ref = require(lib + 'utils'), constant = _ref.constant, isArray = _ref.isArray, str = _ref.str;
+
 Parser = require(lib + 'parser').Parser;
-
-_ref = require(lib + 'parser/base'), constant = _ref.constant, isArray = _ref.isArray, str = _ref.str;
-
-convert = require(lib + 'compiler').convert;
 
 taiji = require(lib + 'taiji');
 
 realCode = require(lib + 'utils').realCode;
+
+exports.str = str;
 
 NEWLINE = constant.NEWLINE, INDENT = constant.INDENT, SPACE = constant.SPACE;
 
@@ -47,14 +47,6 @@ exports.parse = function(text) {
   parser = new Parser();
   x = parser.parse(head + text, parser.module, 0);
   return str(x.body);
-};
-
-exports.strConvert = function(text) {
-  var exp, parsed, parser;
-  parser = new Parser();
-  parsed = parser.parse(head + text, parser.module, 0);
-  exp = convert(parsed.body);
-  return str(exp);
 };
 
 exports.compile = function(code) {

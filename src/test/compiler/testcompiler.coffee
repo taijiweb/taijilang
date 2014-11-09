@@ -1,16 +1,10 @@
-chai = require("chai")
-expect = chai.expect
-iit = it.only
-idescribe = describe.only
-ndescribe = ->
-nit = ndescribe = ->
+{expect, idescribe, ndescribe, iit, nit} = require '../utils'
 
 lib = '../../lib/'
+{constant, isArray, str, realCode} = require lib+'utils'
 {Parser} = require lib+'parser'
-{constant, isArray, str} = require lib+'parser/base'
 require lib+'compiler/compile'
 taiji = require lib+'taiji'
-{realCode} = require lib+'utils'
 
 head = 'taiji language 0.1\n'
 parse = (text) ->

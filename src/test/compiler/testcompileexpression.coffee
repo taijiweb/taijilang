@@ -1,9 +1,4 @@
-chai = require("chai")
-expect = chai.expect
-iit = it.only
-idescribe = describe.only
-ndescribe = ->
-nit = ndescribe = ->
+{expect, idescribe, ndescribe, iit, nit} = require '../utils'
 
 lib = '../../lib/'
 {Environment, textizerOptions, builtins, initEnv, rootModule} = require lib+'taiji'

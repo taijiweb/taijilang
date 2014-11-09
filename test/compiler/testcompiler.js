@@ -1,28 +1,16 @@
-var Parser, chai, compile, compileNoOptimize, constant, expect, expectCompile, expectParse, head, idescribe, iit, iitCompile, iitParse, isArray, itCompile, itParse, lib, metaCompile, ndescribe, nit, parse, realCode, run, str, taiji, _ref;
+var Parser, compile, compileNoOptimize, constant, expect, expectCompile, expectParse, head, idescribe, iit, iitCompile, iitParse, isArray, itCompile, itParse, lib, metaCompile, ndescribe, nit, parse, realCode, run, str, taiji, _ref, _ref1;
 
-chai = require("chai");
-
-expect = chai.expect;
-
-iit = it.only;
-
-idescribe = describe.only;
-
-ndescribe = function() {};
-
-nit = ndescribe = function() {};
+_ref = require('../utils'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit;
 
 lib = '../../lib/';
 
-Parser = require(lib + 'parser').Parser;
+_ref1 = require(lib + 'utils'), constant = _ref1.constant, isArray = _ref1.isArray, str = _ref1.str, realCode = _ref1.realCode;
 
-_ref = require(lib + 'parser/base'), constant = _ref.constant, isArray = _ref.isArray, str = _ref.str;
+Parser = require(lib + 'parser').Parser;
 
 require(lib + 'compiler/compile');
 
 taiji = require(lib + 'taiji');
-
-realCode = require(lib + 'utils').realCode;
 
 head = 'taiji language 0.1\n';
 

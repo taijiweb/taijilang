@@ -1,6 +1,7 @@
-{isArray, error, entity, begin, undefinedExp, pushExp} = require '../utils'
-{identifierCharSet} = require '../parser/base'
+{isArray, error, entity, begin, undefinedExp, pushExp, identifierCharSet} = require '../utils'
 {convertList, convert} = require '../compiler'
+
+{binaryConverters} = require './core'
 
 ellipsisIndex = (kind, list, start, stop, env) ->
   if start==undefined then start = 0
@@ -40,8 +41,13 @@ exports['attribute!'] = (exp, env) ->
 
 call = (caller) -> (exp, env) -> convert ['call!', caller, exp], env
 
+idBinaryConvert = (op, left, right, env) -> ['binary!', op, convert(left, env), convert(right, env)]
+
 binary = (symbol) -> (exp, env) -> ['binary!', symbol].concat convertList exp, env
-for symbol in '+ - * / && || << >> >>> != !== > < >= <='.split(' ') then exports[symbol] = binary symbol
+for symbol in '+ - * / && || << >> >>> != !== > < >= <='.split(' ')
+  exports[symbol] = binary symbol
+  binaryConverters[symbol] = idBinaryConvert
+
 # learn coffee-script
 exports['=='] = binary '==='
 exports['!='] = binary '!=='

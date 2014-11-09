@@ -1,10 +1,9 @@
 # The current taiji version number.
 exports.VERSION = '0.1.0'
 
-{extend, begin, formatTaijiJson, addPrelude} = require './utils'
+{extend, begin, formatTaijiJson, addPrelude, entity} = require './utils'
 TaijiModule = require './module'
 {Parser} = require './parser'
-{entity} = require './parser/base'
 exports.Parser = Parser
 {Environment, metaConvert, transformExp, optimizeExp, compileExp, metaCompile, compileExpNoOptimize} = require './compiler'
 exports.Environment = Environment

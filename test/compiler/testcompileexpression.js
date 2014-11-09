@@ -1,22 +1,12 @@
-var Environment, builtins, chai, compile, compileExp, compileExpNoOptimize, compileNoOptimize, compiler, expect, extend, idescribe, iit, initEnv, lib, ndescribe, nit, rootModule, textizerOptions, transform, _ref, _ref1;
+var Environment, builtins, compile, compileExp, compileExpNoOptimize, compileNoOptimize, compiler, expect, extend, idescribe, iit, initEnv, lib, ndescribe, nit, rootModule, textizerOptions, transform, _ref, _ref1, _ref2;
 
-chai = require("chai");
-
-expect = chai.expect;
-
-iit = it.only;
-
-idescribe = describe.only;
-
-ndescribe = function() {};
-
-nit = ndescribe = function() {};
+_ref = require('../utils'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit;
 
 lib = '../../lib/';
 
-_ref = require(lib + 'taiji'), Environment = _ref.Environment, textizerOptions = _ref.textizerOptions, builtins = _ref.builtins, initEnv = _ref.initEnv, rootModule = _ref.rootModule;
+_ref1 = require(lib + 'taiji'), Environment = _ref1.Environment, textizerOptions = _ref1.textizerOptions, builtins = _ref1.builtins, initEnv = _ref1.initEnv, rootModule = _ref1.rootModule;
 
-_ref1 = compiler = require(lib + 'compiler'), compileExp = _ref1.compileExp, compileExpNoOptimize = _ref1.compileExpNoOptimize;
+_ref2 = compiler = require(lib + 'compiler'), compileExp = _ref2.compileExp, compileExpNoOptimize = _ref2.compileExpNoOptimize;
 
 extend = require(lib + 'utils').extend;
 

@@ -1,12 +1,9 @@
 colors = require('colors')
 
-{charset, isArray, str, entity, dict, list2dict, extendSyntaxInfo} = require '../utils'
-
-{extend, firstIdentifierChars, firstIdentifierCharSet, letterDigitSet, identifierChars,
-digitCharSet, letterCharSet, identifierCharSet, firstSymbolCharset
-taijiIdentifierCharSet, constant} = base = require './base'
-digitChars = base.digits
-letterChars = base.letters
+{charset, isArray, str, entity, dict, list2dict, extendSyntaxInfo, extend,
+firstIdentifierChars, firstIdentifierCharSet, letterDigitSet, identifierChars,
+digitCharSet, letterCharSet, identifierCharSet, firstSymbolCharset, digits, digitChars, letterChars
+taijiIdentifierCharSet, constant} = require '../utils'
 
 {NULL, NUMBER,  STRING,  IDENTIFIER, SYMBOL, REGEXP,  HEAD_SPACES, CONCAT_LINE, PUNCTUATION, FUNCTION, C_BLOCK_COMMENT
 PAREN, BRACKET, DATA_BRACKET, CURVE, INDENT_EXPRESSION
@@ -21,6 +18,7 @@ END_INTERPOLATED_STRING
 
 OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION, INDENT_EXPRESSION, HASH_KEY_EXPRESSION
 
+VALUE, LIST
 } = constant
 
 {prefixOperatorDict, suffixOperatorDict, binaryOperatorDict} = require './operator'
@@ -160,13 +158,13 @@ exports.Parser = ->
       # "\" should not be concatenated symbol if following symbol characters
       #else if char=='\\' and ((c2=text[cursor+1])=='\n'  or c2=='\r') then break
       char = text[++cursor]
-    token.next = {type:tokenType=SYMBOL, value: text.slice(cur, cursor),
+    token.next = {type:tokenType=SYMBOL, kind:SYMBOL, value: text.slice(cur, cursor),
     cursor:cur, stopCursor:cursor, line: lineno, column:cursor-lineStart}
 
   tokenFnMap['@'] = tokenFnMap['.'] = tokenOnAtChar = ->
     cur = cursor; column = cursor-lineStart; first = char; char = text[++cursor]
     while char==first then char = text[++cursor]
-    token.next = {type:tokenType=SYMBOL, value: text.slice(cur, cursor),
+    token.next = {type:tokenType=SYMBOL, kind:SYMBOL, value: text.slice(cur, cursor),
     cursor:cur, stopCursor:cursor,
     line: lineno, column:column, atom:cursor-cur==1}
 
@@ -174,7 +172,7 @@ exports.Parser = ->
     cur = cursor; column = cursor-lineStart; first = char; char = text[++cursor]
     while char==first then char = text[++cursor]
     if cursor==cur+1 then tokenType = PUNCTUATION else tokenType = SYMBOL
-    token.next = {type:tokenType, value: text.slice(cur, cursor), atom:cursor-cur==2
+    token.next = {type:tokenType, kind:SYMBOL, value: text.slice(cur, cursor), atom:cursor-cur==2
     cursor:cur, stopCursor:cursor,
     line: lineno, column:column}
 
@@ -214,7 +212,7 @@ exports.Parser = ->
         return tkn
       else
         cursor--
-        return  token.next = {type:tokenType=SPACE, value:text[cur...cursor], cursor:cur, stopCursor: cursor,
+        return  token.next = {type:tokenType=SPACE, kind:VALUE, value:text[cur...cursor], cursor:cur, stopCursor: cursor,
         line:line, stopLine:lineno, column:column, indent:lexIndent}
     else if char
       if char!='\n' and char!='\r'
@@ -427,7 +425,7 @@ exports.Parser = ->
     # else if char=='"' # don't permit escape interpolated string
     else
       while char=text[++cursor]=='\\' then true
-      return token.next = {type:tokenType=SYMBOL, value:text[cur...cursor], cursor:cur, stopCursor:cursor
+      return token.next = {type:tokenType=SYMBOL, kind:SYMBOL, value:text[cur...cursor], cursor:cur, stopCursor:cursor
       line:lineno, column:cur-lineStart}
 
   tokenFnMap['/'] = tokenOnForwardSlashChar = ->
@@ -536,7 +534,7 @@ exports.Parser = ->
     if keywordHasOwnProperty(txt) then tokenType = KEYWORD; isAtom = false
     else if conjunctionHasOwnProperty(txt) then tokenType = CONJUNCTION; isAtom = false
     else tokenType = IDENTIFIER; isAtom = true
-    token.next = {type:tokenType, value:txt, atom:isAtom
+    token.next = {type:tokenType, kind:SYMBOL, value:txt, atom:isAtom
     cursor:cur, stopCursor: cursor,
     line: lineno, column: column}
 
@@ -567,11 +565,11 @@ exports.Parser = ->
       if cursor==baseStart
         # e.g 0x+3, 0x(1+2)
         cursor--; char = text[cursor]
-        return token.next = { type:tokenType=NUMBER, value:parseInt(text[baseStart...cursor], base), atom:true
+        return token.next = { type:tokenType=NUMBER, kind:VALUE, value:parseInt(text[baseStart...cursor], base), atom:true
         cursor:cur, stopCursor:cursor
         line:lineno, column:column}
       else
-        return token.next = { type:tokenType=NUMBER, value:parseInt(text[baseStart...cursor], base), atom:true
+        return token.next = { type:tokenType=NUMBER, kind:VALUE, value:parseInt(text[baseStart...cursor], base), atom:true
         cursor:cur, line:lineno, column: column}
     # base==10
     while char
@@ -588,7 +586,7 @@ exports.Parser = ->
     dotCursor = cursor-1
     if not meetDigit and char!='e' and char!='E'
       cursor = dotCursor; char = text[cursor]
-      return token.next = { type: tokenType=NUMBER, value:parseInt(text[baseStart...cursor], base), atom:true
+      return token.next = { type: tokenType=NUMBER, kind:VALUE, value:parseInt(text[baseStart...cursor], base), atom:true
       cursor:cur, stopCursor:cursor
       line:lineno, column: column}
     if char=='e' or char=='E'
@@ -597,7 +595,7 @@ exports.Parser = ->
         char = text[++cursor]
         if not char or char<'0' or '9'<char
           cursor = dotCursor; char = text[cursor]
-          return token.next = { type: tokenType=NUMBER, value:parseInt(text[cur...dotCursor], base), atom:true
+          return token.next = { type: tokenType=NUMBER, kind:VALUE, value:parseInt(text[cur...dotCursor], base), atom:true
           cursor:cur, stopCursor:cursor
           line:lineno, column: column}
         else
@@ -606,13 +604,13 @@ exports.Parser = ->
             if  char<'0' or '9'<char then break
       else if not char or char<'0' or '9'<char
         cursor = dotCursor; char = text[cursor]
-        return token.next = { type: tokenType=NUMBER, value:parseInt(text[cur...dotCursor], base), atom:true
+        return token.next = { type: tokenType=NUMBER, kind:VALUE, value:parseInt(text[cur...dotCursor], base), atom:true
         cursor:cur, stopCursor:cursor
         line:lineno, column: column}
       else while char
           if  char<'0' or '9'<char then break
           char = text[++cursor]
-    token.next = { type: tokenType=NUMBER, value:parseFloat(text[cur...cursor], base), atom:true
+    token.next = { type: tokenType=NUMBER, kind:VALUE, value:parseFloat(text[cur...cursor], base), atom:true
     cursor:cur, stopCursor:cursor
     line:lineno, column: column}
 
@@ -620,11 +618,11 @@ exports.Parser = ->
 
   tokenFnMap[','] =tokenOnCommaChar = ->
     cur = cursor; char = text[++cursor]
-    token.next = {type:tokenType=PUNCTUATION, value:',', line:lineno, cursor:cursor, stopCursor:cursor, column: cur-lineStart}
+    token.next = {type:tokenType=PUNCTUATION, kind:SYMBOL, value:',', line:lineno, cursor:cursor, stopCursor:cursor, column: cur-lineStart}
 
   tokenFnMap[';'] = tokenOnSemiColonChar = ->
     cur = cursor; char = text[++cursor]
-    token.next = {value:';', type:tokenType=PUNCTUATION
+    token.next = {value:';', kind:SYMBOL, type:tokenType=PUNCTUATION
     cursor:cursor, stopCursor:cursor, line:lineno, column: cur-lineStart}
 
   # whether new line character is immediately following a concatenating character '\'
@@ -639,7 +637,7 @@ exports.Parser = ->
         return token.next = leftRawNonInterpolatedString()
       else
         char = text[++cursor]
-        return token.next = {value:'""', type:tokenType=NON_INTERPOLATE_STRING, atom:true, cursor:cursor-2, line:lineno, column:column}
+        return token.next = {value:'""', type:tokenType=NON_INTERPOLATE_STRING, kind:VALUE, atom:true, cursor:cursor-2, line:lineno, column:column, atom:true}
     else return token.next = leftNonInterpolatedString()
 
   leftRawNonInterpolatedString = ->
@@ -653,7 +651,7 @@ exports.Parser = ->
         if text[cursor+1]=="'"
           if text[cursor+2]=="'"
             cursor += 3; char = text[cursor]
-            return {type:tokenType=NON_INTERPOLATE_STRING, value:'"'+str+'"', atom:true, start:cur, stop:cursor, line:line, stopLine: lineno}
+            return {type:tokenType=NON_INTERPOLATE_STRING, kind:VALUE, value:'"'+str+'"', atom:true, start:cur, stop:cursor, line:line, stopLine: lineno}
           else str += "''"; cursor += 2; char = text[cursor]
         else str += "'"; char = text[++cursor]
       else if char=='\\'
@@ -668,7 +666,7 @@ exports.Parser = ->
         if text[cursor+1]=="'"
           if text[cursor+2]=="'"
             cursor += 3; char = text[cursor]
-            return {type:tokenType=NON_INTERPOLATE_STRING, value: '"'+str+'"', atom:true, start:cur, stop:cursor, line:line, stopLine: lineno}
+            return {type:tokenType=NON_INTERPOLATE_STRING, kind:VALUE, value: '"'+str+'"', atom:true, start:cur, stop:cursor, line:line, stopLine: lineno}
           else str += "''"; cursor += 2; char = text[cursor]
         else str += "'"; char = text[++cursor]
       else str += rawNonInterpolatedStringLine(indentInfo)
@@ -784,7 +782,7 @@ exports.Parser = ->
         return tkn2
       else
         char = text[++cursor]
-        return token.next = {value:'""', type:tokenType=NON_INTERPOLATE_STRING, atom:true, line:lineno, cursor:cursor-2, column:cursor-2-lineStart}
+        return token.next = {value:'""', type:tokenType=NON_INTERPOLATE_STRING, kind:VALUE, atom:true, line:lineno, cursor:cursor-2, column:cursor-2-lineStart}
     else
       tkn = token
       tkn2 = leftInterpolateString()
@@ -801,7 +799,7 @@ exports.Parser = ->
           if text[cursor+2]=='"'
             cursor += 3
             if str!='"' then pieces.push str += '"'
-            return {type:tokenType=INTERPOLATE_STRING, value: ['string!'].concat(pieces), atom:true
+            return {type:tokenType=INTERPOLATE_STRING, kind:LIST, value: ['string!'].concat(pieces), atom:true
             cursor:cur, stopCursor: cursor,
             line:line, stopLine: line}
           else cursor += 2; char = text[cursor]
@@ -891,7 +889,7 @@ exports.Parser = ->
     while char
       if char=='"'
         if str!='"' then pieces.push str+'"'; char = text[++cursor]
-        return {type:tokenType=INTERPOLATE_STRING, value: ['string!'].concat(pieces), atom:true
+        return {type:tokenType=INTERPOLATE_STRING, kind:LIST, value: ['string!'].concat(pieces), atom:true
         cursor:cur, stopCursor:cursor,
         line:line, stopLine: lineno}
       else if char=='\n'
@@ -982,7 +980,7 @@ exports.Parser = ->
       ind = indent = lexIndent
       if tokenType==SPACE or tokenType==NEWLINE or tokenType==INDENT then nextToken()
       if token.value==')'
-        prev.next = token = ['()']; token.type = tokenType = PAREN;
+        prev.next = token = [{value:'()', kind:SYMBOL}]; token.type = tokenType = PAREN;
         token.atom = true; token.cursor = cur; token.stopCursor =  cursor;
         token.line = lineno; token.column = column; token.indent = lexIndent; token.empty = true; token.parameters = true
         return token
@@ -995,7 +993,7 @@ exports.Parser = ->
         if token.value!=')' then lexError 'expect )'
       # To make interpolated string happy, we can not call nextToken() here
       #else nextToken() # do not match token here, so token.next==undefined, and nextToken() will matchToken instead.
-      prev.next = token = ['()', exp]
+      prev.next = token = [{value:'()', kind:SYMBOL}, exp]
       token.type = tokenType = PAREN; token.cursor = cur; token.stopCursor = cursor
       token.line = line; token.column = column; token.indent = lexIndent; token.atom = true; token.parameters = true
       token
@@ -1018,7 +1016,7 @@ exports.Parser = ->
       # To make interpolated string happy, we can not call nextToken() here
       # so that token.next==undefined, and nextToken() will matchToken instead.
       # tkn = nextToken()
-      token = ['[]', exp]
+      token = [{value:'[]', kind:SYMBOL}, exp]
       token.type = tokenType = BRACKET; token.cursor = cur; token.stopCursor = cursor
       token.line = line; token.column = column; token.indent = lexIndent
       prev.next = token; token.atom = true
@@ -1037,7 +1035,7 @@ exports.Parser = ->
     else
       if tokenType==SPACE then nextToken()
       if token.value=='}' and tkn=nextToken()
-        prev.next = token = ['{}'];  token.atom = true; token.cursor = cur; token.stopCursor = cursor
+        prev.next = token = [{value:'{}', kind:SYMBOL}];  token.atom = true; token.cursor = cur; token.stopCursor = cursor
         token.line = line; token.column = column; token.indent = lexIndent; token.next = tkn
         return token
       body = parser.block() or parser.lineBlock()
@@ -1046,7 +1044,7 @@ exports.Parser = ->
       tkn = nextToken()
       # To make interpolated string happy, we can not call nextToken() here
       if indent<ind then lexError 'unexpected undent while parsing parenethis "{...}"'
-    prev.next = token = ['{}', body]
+    prev.next = token = [{value:'{}', kind:SYMBOL}, body]
     token.type = tokenType=CURVE; token.atom = true; token.cursor = cur; token.stopCursor = cursor
     token.line = line; token.column = column; token.indent = lexIndent; token.next = tkn
     token
@@ -1069,7 +1067,7 @@ exports.Parser = ->
     if token.indent<ind then lexError "expect the same indent as or more indent as the start line of hash block"
     if token.value!='}' then lexError 'expect }'
     nextToken()
-    extendSyntaxInfo {value:['hash!'].concat(items), atom:true}, start, token
+    extendSyntaxInfo {value:[{value:'hash!', kind:SYMBOL}].concat(items), atom:true}, start, token
 
   hashLineBlock = (dent) ->
     items = hashLine(dent)
@@ -1121,11 +1119,11 @@ exports.Parser = ->
         nextToken()
         tkn = token
         blk = hashBlock()
-        value = {value:['hash!'].concat(blk), start:tkn, stop:token}
+        value = {value:[{value:'hash!', kind:SYMBOL}].concat(blk), start:tkn, stop:token}
       else value = parser.clause()
       if not value then lexError 'expect value of hash item'
-      if js then result = ['jshashitem!', key, value]
-      else result = ['pyhashitem!', key, value]
+      if js then result = [{value:'jshashitem!', kind:SYMBOL}, key, value]
+      else result = [{value:'pyhashitem!', kind:SYMBOL}, key, value]
       result.start = start; result.stop = token; result
 
   tokenOnRightDelimiterChar = ->
@@ -1232,10 +1230,7 @@ exports.Parser = ->
         return  {value:'concat()', priority: 800, start:token}
       when BRACKET then return {value:'concat[]', priority: 800, start:token}
       when IDENTIFIER
-        cur = token.cursor
-        if (x.value=='@' and x.stopCursor==cur) or (text[cur-2...cur]=='::' and text[cur-3]!=':')
-          return {value:'@x', priority: 800, start:token}
-        else start[binaryOperatorMemoIndex+mode] = {}; return
+        start[binaryOperatorMemoIndex+mode] = {}; return
       when SYMBOL
         tkn = token
         if token.value=="." and (tkn=token) and nextToken()
@@ -1328,7 +1323,7 @@ exports.Parser = ->
       pri = if priority>op.priority then priority else op.priority
       x = parser.expression(mode, pri, true)
       if x
-        result = ['prefix!', op, x]
+        result = [{value:'prefix!', kind:SYMBOL}, op, x]
         result.expressionType = PREFIX; result.priority = op.priority; result.rightAssoc = op.rightAssoc; result.start = op.start; result.stop = (op.stop or op.start)
         return result
       else token = start; tokenType = token.type;  return
@@ -1347,8 +1342,9 @@ exports.Parser = ->
       tkn1 = token
       if (op = parser.suffixOperator(mode, x))
         if op.priority>=priority
-          result = ['suffix!', op, x]
-          result.expressionType = SUFFIX; result.priority = op.priority; result.rightAssoc = op.rightAssoc; result.start = op.start; result.stop = (op.stop or op.start)
+          result = [{value:'suffix!', kind:SYMBOL}, op, x]
+          result.expressionType = SUFFIX; result.priority = op.priority; result.rightAssoc = op.rightAssoc
+          result.start = op.start; result.stop = (op.stop or op.start); result.kind = LIST
           return result
         else token = tkn1; tokenType = token.type;  break
       else break
@@ -1360,8 +1356,9 @@ exports.Parser = ->
           # should assure that a right operand is here while parsing binary operator
           y = expression(mode, opPri, not op.rightAssoc)
           if y
-            x = ['binary!', op, x, y]
-            x.expressionType = BINARY; x.priority = op.priority; x.rightAssoc = op.rightAssoc; x.start = op.start; x.stop = (op.stop or op.start)
+            x = [{value:'binary!', kind:SYMBOL}, op, x, y]
+            x.expressionType = BINARY; x.priority = op.priority; x.rightAssoc = op.rightAssoc
+            x.start = op.start; x.stop = (op.stop or op.start); x.kind = LIST
           else token = tkn2; tokenType = token.type;  break
         else token = tkn2; tokenType = token.type;  break
       else break
@@ -1370,8 +1367,9 @@ exports.Parser = ->
         tkn = token
         if (op = parser.suffixOperator(mode, x))
           if op.priority>=priority
-            x = ['suffix!', op, x]
-            x.expressionType = SUFFIX; result.priority = op.priority; result.rightAssoc = op.rightAssoc; result.start = op.start; result.stop = (op.stop or op.start)
+            x = [{value:'suffix!', kind:SYMBOL}, op, x]
+            x.expressionType = SUFFIX; x.priority = op.priority; x.rightAssoc = op.rightAssoc
+            x.start = op.start; x.stop = (op.stop or op.start); x.kind = LIST
           else token = tkn; tokenType = token.type;  break
         else break
     start[memoTag] = {result:x, next:token}
@@ -1716,7 +1714,7 @@ exports.Parser = ->
       varList.unshift 'var'
       {value:varList, start:start, stop:token}
 
-    'extern!': (isHeadStatement) -> ['extern!'].concat parser.identifierList()
+    'extern!': (isHeadStatement) -> [{value:'extern!', kind:SYMBOL}].concat parser.identifierList()
 
     'include!': (isHeadStatement) ->
       if tokenType==SPACE then nextToken()
@@ -1725,7 +1723,7 @@ exports.Parser = ->
       if word('by')
         if tokenType==SPACE then nextToken()
         parseMethod = expect('taijiIdentifier', 'expect a parser method')
-      ['include!', filePath, parseMethod]
+      [{value:'include!', kind:SYMBOL}, filePath, parseMethod]
 
     # import [#/]name [as [#/]name] ... from path as [#/]name #name [by method]
     'import!': (isHeadStatement) ->
@@ -1772,7 +1770,7 @@ exports.Parser = ->
 
     'export!': (isHeadStatement) ->
       start = token; nextToken(); if tokenType==SPACE then nextToken()
-      {value: ['export!'].concat parser.exportItemList(), start:start, stop:token}
+      {value: [{value:'export!', kind:SYMBOL}].concat parser.exportItemList(), start:start, stop:token}
 
     'let': letLikeStatement('let')
     'letrec!': letLikeStatement('letrec!')
@@ -1947,20 +1945,20 @@ exports.Parser = ->
     '%/': (tkn, clause) ->
       # notice the difference between %% and %/
       # here ['%/', clause] is compiled
-      code=compileExp(['return', [tkn, clause]], environment)
+      code=compileExp([{value:'return', kind:SYMBOL}, [tkn, clause]], environment)
       new Function('__$taiji_$_$parser__', code)(parser)
 
     # identifier in clause will be convert to attribute of __$taiji_$_$parser__
     # see exports['%!'] and convertParserAttribute in core.coffee
     # {%! matcheA(x, y) } will be converted to {%% %matchA(%x, %y)}
     '%!': (tkn, clause) ->
-      code=compileExp(['return', [tkn, clause]], environment)
+      code=compileExp([{value:'return', kind:SYMBOL}, [tkn, clause]], environment)
       new Function('__$taiji_$_$parser__', code)(parser)
 
-    '~':  (tkn, clause) -> tkn.value = '~'; [tkn, clause]
-    '`':  (tkn, clause) -> tkn.value = '`'; [tkn, clause]
-    '^':  (tkn, clause) -> tkn.value = '^'; [tkn, clause]
-    '^&': (tkn, clause) -> tkn.value = '^&'; [tkn, clause]
+    '~':  (tkn, clause) -> [tkn, clause]
+    '`':  (tkn, clause) -> [tkn, clause]
+    '^':  (tkn, clause) -> [tkn, clause]
+    '^&': (tkn, clause) -> [tkn, clause]
 
     # preprocess opertator
     # see # see metaConvertFnMap['#'] and preprocessMetaConvertFnMap for more information
@@ -2034,7 +2032,7 @@ exports.Parser = ->
         if token.value=='#' and nextToken() and token.value==':' and nextToken()
           # label statement
           if tokenType==SPACE then nextToken()
-          result = ['label!', start, parser.lineBlock()]
+          result = [{value:'label!', kind:SYMBOL}, start, parser.lineBlock()]
           result.start = start; result.stop = token; return result
         else token = start; tokenType = token.type
       when SYMBOL
@@ -2049,7 +2047,7 @@ exports.Parser = ->
           result = [op, exp]
           result.start = start; result.stop = token; return result
         else return op
-      else if token.value==',' then nextToken(); return {value:'undefined', start:start, stop:token}
+      else if token.value==',' then nextToken(); return {value:'undefined', kind:SYMBOL, start:start, stop:token}
       else return
 
     # here head is parsed successfully
@@ -2077,7 +2075,8 @@ exports.Parser = ->
           result.start = start; result.stop = token; return result
         else if value!=';' and tokenType!=NEWLINE and tokenType!=UNDENT and tokenType!=EOI
           syntaxError 'after caller leading clause, expect stop symbol of clause like colon, semicolon, new line, undent or end of input etc.'
-        else return {value:[head, exp], start:start, stop:token}
+        else
+          result = [head, exp];  result.start = start;  result.stop = token; result.kind = LIST; return result
       else token = tkn; tokenType = token.type;
 
     if tokenType==SPACE then nextToken()
@@ -2093,11 +2092,11 @@ exports.Parser = ->
     else if token.value=='#' and nextToken()
       if tokenType==SPACE
         clauses = parser.clauses()
-        clause = ['#', head, clauses]
+        clause = [{value:'#', kind:SYMBOL}, head, clauses]
         clause.start = start; clause.stop = token; return clause
       else if tokenType==INDENT
         clauses = parser.block()
-        clause = ['#', head, clauses]
+        clause = [{value:'#', kind:SYMBOL}, head, clauses]
         clause.start = start; clause.stop = token; return clause
 
     else if token.value==':' and nextToken()
@@ -2152,11 +2151,11 @@ exports.Parser = ->
     else if token.value=='#' and nextToken()
       if tokenType==SPACE
         clauses = parser.clauses()
-        clause = ['#', clause, clauses]
+        clause = [{value:'#', kind:SYMBOL}, clause, clauses]
         clause.start = start; clause.stop = token; return clause
       else if tokenType==INDENT
         clauses = parser.block()
-        clause = ['#', clause, clauses]
+        clause = [{value:'#', kind:SYMBOL}, clause, clauses]
         clause.start = start; clause.stop = token; return clause
 
     else if tokenType==INDENT
@@ -2204,7 +2203,7 @@ exports.Parser = ->
       start = token; nextToken()
       if tokenType==SPACE then nextToken()
       x = parser.line()
-      result = ['codeBlockComment!', x]; result.start = start; result.stop = token
+      result = [{value:'codeBlockComment!', kind:SYMBOL}, x]; result.start = start; result.stop = token
       return [result]
     result = []
     tkn = token
@@ -2258,7 +2257,7 @@ exports.Parser = ->
       if tokenType==NEWLINE then nextToken()
       body.push.apply body, x
     if tokenType!=EOI then syntaxError 'expect end of input, but meet "'+text.slice(cursor)+'"'
-    result = ['moduleBody!', body]; result.start = start; result.stop = token
+    result = [{value:'moduleBody!', kind:SYMBOL}, body]; result.start = start; result.stop = token
     result
 
   # #!use/bin/node taiji
@@ -2279,7 +2278,7 @@ exports.Parser = ->
 
     lineStart = cursor
 
-    ['binShellDirective!', text[cur...cursor]]
+    [{value:'binShellDirective!', kind:SYMBOL}, text[cur...cursor]]
 
   @moduleHeader = ->
     cur = cursor
@@ -2303,12 +2302,12 @@ exports.Parser = ->
     {type: MODULE_HEADER, version: {main:x, minor:y}, value: text[...cursor], cursor:cur, stopCursor:cursor}
 
   @module = ->
-    scriptDirective = ['scriptDirective!', parser.binShellDirective()]
+    scriptDirective = [{value:'scriptDirective!', kind:SYMBOL}, parser.binShellDirective()]
     header = parser.moduleHeader()
     body = parser.moduleBody()
-    result = {value:['module!', scriptDirective, header, body],
-    cursor:0, stopCursor:text.length, line:1, column:0}
-    result.start = result
+    result = [{value:'module!', kind:SYMBOL}, scriptDirective, header, body]
+    result.cursor = 0; result.stopCursor = text.length; result.line = 1; result.column = 0
+    result.start = result; result.kind = LIST
     result
 
   @init = (data, cur, env) ->

@@ -1,7 +1,7 @@
 
-11-2 todo: refactor parser for performance: more lexical analysis before parsing, record parent pointer, consistent tree expression, debug and test support
-11-8 todo: Grammatical element expression(语法成分表达式) 
-11-8 todo: indent stack should be back
+
+11-2 todo: record parent pointer, consistent tree expression, debug and test support
+11-8 todo: indent stack should may be back? benifit?
 
 todo: document
   todo: tutorial：interactive samples
@@ -37,7 +37,8 @@ todo: source map
   # a complicateful, hard and task with too much work to do
   # coffee-script is my friend.
 ----------------------------------------------------------
-
+done: refactor parser for performance: more lexical analysis before parsing
+done: Grammatical element expression(语法成分表达式) 
 done: replace matchToken() as nextToken() 
 ---------------------2014-11-1---------------------------------------
 

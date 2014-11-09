@@ -1,24 +1,12 @@
-var Parser, chai, constant, expect, idescribe, iit, isArray, lib, matchRule, ndescribe, nit, str, _ref;
+var Parser, constant, expect, idescribe, iit, isArray, lib, matchRule, ndescribe, nit, str, _ref, _ref1;
 
-chai = require("chai");
-
-expect = chai.expect;
-
-iit = it.only;
-
-idescribe = describe.only;
-
-ndescribe = function() {};
-
-nit = function() {};
+_ref = require('../utils'), expect = _ref.expect, ndescribe = _ref.ndescribe, idescribe = _ref.idescribe, iit = _ref.iit, nit = _ref.nit, matchRule = _ref.matchRule;
 
 lib = '../../lib/';
 
+_ref1 = require(lib + 'utils'), constant = _ref1.constant, isArray = _ref1.isArray, str = _ref1.str;
+
 Parser = require(lib + 'parser').Parser;
-
-_ref = require(lib + 'parser/base'), constant = _ref.constant, isArray = _ref.isArray, str = _ref.str;
-
-matchRule = require('../utils').matchRule;
 
 describe("parse: ", function() {
   describe("clause: ", function() {
@@ -868,7 +856,7 @@ describe("parse: ", function() {
       var parser, x;
       parser = new Parser();
       x = parser.parse(head + text, parser.module, 0);
-      return str(x.value[3]);
+      return str(x[3]);
     };
     describe("misc: ", function() {
       it('should parse 1', function() {

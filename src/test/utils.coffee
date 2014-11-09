@@ -7,11 +7,12 @@ exports.nit = ->
 
 lib = '../lib/'
 
+{constant, isArray, str} = require lib+'utils'
 {Parser} = require lib+'parser'
-{constant, isArray, str} = require lib+'parser/base'
-{convert} = require lib+'compiler'
 taiji = require lib+'taiji'
 {realCode} = require lib+'utils'
+
+exports.str = str
 
 {NEWLINE, INDENT, SPACE} = constant
 
@@ -27,12 +28,6 @@ exports.parse = (text) ->
   parser = new Parser()
   x = parser.parse(head+text, parser.module, 0)
   str x.body
-
-exports.strConvert = (text) ->
-  parser = new Parser()
-  parsed = parser.parse(head+text, parser.module, 0)
-  exp = convert parsed.body
-  str exp
 
 exports.compile = (code) ->
   head = 'taiji language 0.1\n'
