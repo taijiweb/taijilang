@@ -1,5 +1,9 @@
 2014
 2014-11
+11-9 
+ gramatical element expression pass all 494 tests (testoperator, testbasic, testparser)
+   # add gramatical element expression: [], {}, (), binary!, prefix!, suffix!
+   # experiment in trying to add indentBlock!(block!), line!, indentExpression, colonLeadClause!, clauseWithIndentBlock!, but found that does not seem to a good idea.
 11-8 
   gramatical element expressoin pass many tests (all of testoperator.coffee)
   pass all tests in testbasic.coffee

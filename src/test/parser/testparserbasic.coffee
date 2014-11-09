@@ -15,7 +15,7 @@ lib = '../../lib/'
 {IDENTIFIER, NUMBER, NEWLINE, INDENT, UNDENT, HALF_DENT, PAREN, BLOCK_COMMENT, EOI, SPACE
 PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION} = constant
 
-ndescribe "parser basic: ",  ->
+describe "parser basic: ",  ->
   describe "matchToken: ",  ->
     parser = new Parser()
     parse = (text) ->
@@ -145,9 +145,9 @@ ndescribe "parser basic: ",  ->
       it """parse "a(1)" """, ->
         expect(str parse('"a(1)"')).to.equal "[string! \"a\" [() 1]]"
       it """parse "a[1]" """, ->
-        expect(str parse('"a[1]"')).to.equal "[string! \"a\" [[] [line! [1]]]]"
+        expect(str parse('"a[1]"')).to.equal "[string! \"a\" [[] [1]]]"
       it """str parse "a[1] = $a[1]" """, ->
-        expect(str parse('"a[1] = $a[1]"')).to.equal "[string! \"a\" [[] [line! [1]]] \" = \" [index! a [[] [line! [1]]]]]"
+        expect(str parse('"a[1] = $a[1]"')).to.equal "[string! \"a\" [[] [1]] \" = \" [index! a [[] [1]]]]"
 
     describe "parse raw string without interpolation: ",  ->
       it "parse '''a\\b'''", ->
@@ -428,7 +428,7 @@ ndescribe "parser basic: ",  ->
       parser = new Parser()
       x = parser.parse(text,  matchRule(parser, parser.spaceClauseExpression), 0)
     it 'should parse require.extensions[".tj"] = ->', ->
-      expect(str parse('require.extensions[".tj"] = ->')).to.equal "[binary! concat[] [binary! . require extensions] [[] [line! [[string! \".tj\"]]]]]"
+      expect(str parse('require.extensions[".tj"] = ->')).to.equal "[binary! concat[] [binary! . require extensions] [[] [[string! \".tj\"]]]]"
 
   describe "@ as this", ->
     parse = (text) ->
@@ -459,7 +459,7 @@ ndescribe "parser basic: ",  ->
       x = parser.parse(text,  matchRule(parser, parser.definitionSymbolBody), 0)
       x
     it 'should parse -> 1', ->
-      expect(str parse('-> 1')).to.equal "[-> [] [line! [1]]]"
+      expect(str parse('-> 1')).to.equal "[-> [] [1]]"
 
   describe "clause: ", ->
     parse = (text) ->
@@ -492,7 +492,7 @@ ndescribe "parser basic: ",  ->
 
     describe "colon clause: ", ->
       it 'should parse print: 1 + 2, 3', ->
-        expect(str parse('print: 1 + 2, 3')).to.equal "[colonLeadClause! print [[binary! + 1 2] 3]]"
+        expect(str parse('print: 1 + 2, 3')).to.equal "[print [binary! + 1 2] 3]"
 
     describe ":: as prototype", ->
       it 'should parse @:: ', ->
@@ -512,7 +512,7 @@ ndescribe "parser basic: ",  ->
       it 'should parse ` print a b', ->
         expect(str parse('` print a b')).to.equal "[` [print a b]]"
       it 'should parse ~ print : min a \n abs b', ->
-        expect(str parse('~ print : min a \n abs b')).to.equal "[~ [colonLeadClause! print [[clauseIndent! [min a] [block! [line! [[abs b]]]]]]]]"
+        expect(str parse('~ print : min a \n abs b')).to.equal "[~ [print [min a [abs b]]]]"
       it 'should parse ` a.b', ->
         expect(str parse('` a.b')).to.equal "[` [binary! . a b]]"
 
@@ -557,7 +557,7 @@ ndescribe "parser basic: ",  ->
       it 'should parse {.1:2; 3:4}', ->
         expect(str parse('{.1:2; 3:4}')).to.equal '[hash! [jshashitem! 1 2] [jshashitem! 3 4]]'
       it 'should parse {.1:2; 3:abs\n    5}', ->
-        expect(str parse('{. 1:2; 3:abs\n    5}')).to.equal "[hash! [jshashitem! 1 2] [jshashitem! 3 [clauseIndent! abs [block! [line! [5]]]]]]"
+        expect(str parse('{. 1:2; 3:abs\n    5}')).to.equal "[hash! [jshashitem! 1 2] [jshashitem! 3 [abs 5]]]"
       it 'should parse {. 1:2; 3:4;\n 5:6}', ->
         expect(str parse('{. 1:2; 3:4;\n 5:6}')).to.equal '[hash! [jshashitem! 1 2] [jshashitem! 3 4] [jshashitem! 5 6]]'
       it 'should parse {. 1:2; 3:\n 5:6\n}', ->
@@ -570,19 +570,19 @@ ndescribe "parser basic: ",  ->
       parser = new Parser()
       x = parser.parse(text, parser.moduleBody, 0)
     it 'should parse // line comment\n 1', ->
-      expect(str parse('// line comment\n 1')).to.equal "[moduleBody! [[block! [line! [1]]]]]"
+      expect(str parse('// line comment\n 1')).to.equal "[moduleBody! [1]]"
     nit 'should parse /// line comment\n 1', ->
       expect(str parse('/// line comment\n 1')).to.equal "[begin! [directLineComment! /// line comment] 1]"
     it 'should parse // line comment block\n 1 2', ->
-      expect(str parse('// line comment block\n 1 2')).to.equal "[moduleBody! [[block! [line! [[1 2]]]]]]"
+      expect(str parse('// line comment block\n 1 2')).to.equal "[moduleBody! [[1 2]]]"
     it 'should parse // line comment block\n 1 2, 3 4', ->
-      expect(str parse('// line comment block\n 1 2, 3 4')).to.equal "[moduleBody! [[block! [line! [[1 2] [3 4]]]]]]"
+      expect(str parse('// line comment block\n 1 2, 3 4')).to.equal "[moduleBody! [[1 2] [3 4]]]"
     it 'should parse // line comment block\n 1 2, 3 4\n 5 6, 7 8', ->
-      expect(str parse('// line comment block\n 1 2; 3 4\n 5 6; 7 8')).to.equal "[moduleBody! [[block! [line! [[1 2] [3 4]]] [line! [[5 6] [7 8]]]]]]"
+      expect(str parse('// line comment block\n 1 2; 3 4\n 5 6; 7 8')).to.equal "[moduleBody! [[1 2] [3 4] [5 6] [7 8]]]"
     it 'should parse // \n 1 2, 3 4\n // \n  5 6, 7 8', ->
-      expect(str parse('// \n 1 2, 3 4\n // \n  5 6, 7 8')).to.equal "[moduleBody! [[block! [line! [[1 2] [3 4]]] [block! [line! [[5 6] [7 8]]]]]]]"
+      expect(str parse('// \n 1 2, 3 4\n // \n  5 6, 7 8')).to.equal "[moduleBody! [[1 2] [3 4] [5 6] [7 8]]]"
     it 'should parse // \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12', ->
-      expect(str parse('// \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12')).to.equal "[moduleBody! [[block! [line! [[1 2] [3 4]]] [block! [line! [[5 6] [7 8]]]] [block! [line! [[9 10] [11 12]]]]]]]"
+      expect(str parse('// \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12')).to.equal "[moduleBody! [[1 2] [3 4] [5 6] [7 8] [9 10] [11 12]]]"
 
   describe  "block comment ",  ->
     parse = (text) ->

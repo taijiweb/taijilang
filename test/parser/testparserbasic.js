@@ -24,7 +24,7 @@ matchRule = require('../utils').matchRule;
 
 IDENTIFIER = constant.IDENTIFIER, NUMBER = constant.NUMBER, NEWLINE = constant.NEWLINE, INDENT = constant.INDENT, UNDENT = constant.UNDENT, HALF_DENT = constant.HALF_DENT, PAREN = constant.PAREN, BLOCK_COMMENT = constant.BLOCK_COMMENT, EOI = constant.EOI, SPACE = constant.SPACE, PAREN_OPERATOR_EXPRESSION = constant.PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION = constant.COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION = constant.SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION = constant.OPERATOR_EXPRESSION;
 
-ndescribe("parser basic: ", function() {
+describe("parser basic: ", function() {
   describe("matchToken: ", function() {
     var parse, parser;
     parser = new Parser();
@@ -209,10 +209,10 @@ ndescribe("parser basic: ", function() {
         return expect(str(parse('"a(1)"'))).to.equal("[string! \"a\" [() 1]]");
       });
       it("parse \"a[1]\" ", function() {
-        return expect(str(parse('"a[1]"'))).to.equal("[string! \"a\" [[] [line! [1]]]]");
+        return expect(str(parse('"a[1]"'))).to.equal("[string! \"a\" [[] [1]]]");
       });
       return it("str parse \"a[1] = $a[1]\" ", function() {
-        return expect(str(parse('"a[1] = $a[1]"'))).to.equal("[string! \"a\" [[] [line! [1]]] \" = \" [index! a [[] [line! [1]]]]]");
+        return expect(str(parse('"a[1] = $a[1]"'))).to.equal("[string! \"a\" [[] [1]] \" = \" [index! a [[] [1]]]]");
       });
     });
     describe("parse raw string without interpolation: ", function() {
@@ -636,7 +636,7 @@ ndescribe("parser basic: ", function() {
       return x = parser.parse(text, matchRule(parser, parser.spaceClauseExpression), 0);
     };
     return it('should parse require.extensions[".tj"] = ->', function() {
-      return expect(str(parse('require.extensions[".tj"] = ->'))).to.equal("[binary! concat[] [binary! . require extensions] [[] [line! [[string! \".tj\"]]]]]");
+      return expect(str(parse('require.extensions[".tj"] = ->'))).to.equal("[binary! concat[] [binary! . require extensions] [[] [[string! \".tj\"]]]]");
     });
   });
   describe("@ as this", function() {
@@ -683,7 +683,7 @@ ndescribe("parser basic: ", function() {
       return x;
     };
     return it('should parse -> 1', function() {
-      return expect(str(parse('-> 1'))).to.equal("[-> [] [line! [1]]]");
+      return expect(str(parse('-> 1'))).to.equal("[-> [] [1]]");
     });
   });
   describe("clause: ", function() {
@@ -725,7 +725,7 @@ ndescribe("parser basic: ", function() {
     });
     describe("colon clause: ", function() {
       return it('should parse print: 1 + 2, 3', function() {
-        return expect(str(parse('print: 1 + 2, 3'))).to.equal("[colonLeadClause! print [[binary! + 1 2] 3]]");
+        return expect(str(parse('print: 1 + 2, 3'))).to.equal("[print [binary! + 1 2] 3]");
       });
     });
     describe(":: as prototype", function() {
@@ -753,7 +753,7 @@ ndescribe("parser basic: ", function() {
         return expect(str(parse('` print a b'))).to.equal("[` [print a b]]");
       });
       it('should parse ~ print : min a \n abs b', function() {
-        return expect(str(parse('~ print : min a \n abs b'))).to.equal("[~ [colonLeadClause! print [[clauseIndent! [min a] [block! [line! [[abs b]]]]]]]]");
+        return expect(str(parse('~ print : min a \n abs b'))).to.equal("[~ [print [min a [abs b]]]]");
       });
       return it('should parse ` a.b', function() {
         return expect(str(parse('` a.b'))).to.equal("[` [binary! . a b]]");
@@ -820,7 +820,7 @@ ndescribe("parser basic: ", function() {
         return expect(str(parse('{.1:2; 3:4}'))).to.equal('[hash! [jshashitem! 1 2] [jshashitem! 3 4]]');
       });
       it('should parse {.1:2; 3:abs\n    5}', function() {
-        return expect(str(parse('{. 1:2; 3:abs\n    5}'))).to.equal("[hash! [jshashitem! 1 2] [jshashitem! 3 [clauseIndent! abs [block! [line! [5]]]]]]");
+        return expect(str(parse('{. 1:2; 3:abs\n    5}'))).to.equal("[hash! [jshashitem! 1 2] [jshashitem! 3 [abs 5]]]");
       });
       it('should parse {. 1:2; 3:4;\n 5:6}', function() {
         return expect(str(parse('{. 1:2; 3:4;\n 5:6}'))).to.equal('[hash! [jshashitem! 1 2] [jshashitem! 3 4] [jshashitem! 5 6]]');
@@ -841,25 +841,25 @@ ndescribe("parser basic: ", function() {
       return x = parser.parse(text, parser.moduleBody, 0);
     };
     it('should parse // line comment\n 1', function() {
-      return expect(str(parse('// line comment\n 1'))).to.equal("[moduleBody! [[block! [line! [1]]]]]");
+      return expect(str(parse('// line comment\n 1'))).to.equal("[moduleBody! [1]]");
     });
     nit('should parse /// line comment\n 1', function() {
       return expect(str(parse('/// line comment\n 1'))).to.equal("[begin! [directLineComment! /// line comment] 1]");
     });
     it('should parse // line comment block\n 1 2', function() {
-      return expect(str(parse('// line comment block\n 1 2'))).to.equal("[moduleBody! [[block! [line! [[1 2]]]]]]");
+      return expect(str(parse('// line comment block\n 1 2'))).to.equal("[moduleBody! [[1 2]]]");
     });
     it('should parse // line comment block\n 1 2, 3 4', function() {
-      return expect(str(parse('// line comment block\n 1 2, 3 4'))).to.equal("[moduleBody! [[block! [line! [[1 2] [3 4]]]]]]");
+      return expect(str(parse('// line comment block\n 1 2, 3 4'))).to.equal("[moduleBody! [[1 2] [3 4]]]");
     });
     it('should parse // line comment block\n 1 2, 3 4\n 5 6, 7 8', function() {
-      return expect(str(parse('// line comment block\n 1 2; 3 4\n 5 6; 7 8'))).to.equal("[moduleBody! [[block! [line! [[1 2] [3 4]]] [line! [[5 6] [7 8]]]]]]");
+      return expect(str(parse('// line comment block\n 1 2; 3 4\n 5 6; 7 8'))).to.equal("[moduleBody! [[1 2] [3 4] [5 6] [7 8]]]");
     });
     it('should parse // \n 1 2, 3 4\n // \n  5 6, 7 8', function() {
-      return expect(str(parse('// \n 1 2, 3 4\n // \n  5 6, 7 8'))).to.equal("[moduleBody! [[block! [line! [[1 2] [3 4]]] [block! [line! [[5 6] [7 8]]]]]]]");
+      return expect(str(parse('// \n 1 2, 3 4\n // \n  5 6, 7 8'))).to.equal("[moduleBody! [[1 2] [3 4] [5 6] [7 8]]]");
     });
     return it('should parse // \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12', function() {
-      return expect(str(parse('// \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12'))).to.equal("[moduleBody! [[block! [line! [[1 2] [3 4]]] [block! [line! [[5 6] [7 8]]]] [block! [line! [[9 10] [11 12]]]]]]]");
+      return expect(str(parse('// \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12'))).to.equal("[moduleBody! [[1 2] [3 4] [5 6] [7 8] [9 10] [11 12]]]");
     });
   });
   describe("block comment ", function() {

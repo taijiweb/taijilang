@@ -7,7 +7,7 @@ lib = '../../lib/'
 {IDENTIFIER, NUMBER, NEWLINE, INDENT, UNDENT, HALF_DENT, PAREN, BLOCK_COMMENT, EOI, SPACE
 PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION} = constant
 
-ndescribe "parse operator expression: ", ->
+describe "parse operator expression: ", ->
   parse = (text) ->
     parser = new Parser()
     x = parser.parse(text, matchRule(parser, parser.operatorExpression), 0)
@@ -136,25 +136,25 @@ ndescribe "parse operator expression: ", ->
 
   describe "indent expression: ", ->
     it "parse 1\n *3", ->
-      expect(str parse('1\n *3')).to.deep.equal "[binary! * 1 [indentExpression! 3]]"
+      expect(str parse('1\n *3')).to.deep.equal "[binary! * 1 3]"
 
     it "parse (1\n *3\n)", ->
-      expect(str parse('(1\n *3\n)')).to.deep.equal "[() [binary! * 1 [indentExpression! 3]]]"
+      expect(str parse('(1\n *3\n)')).to.deep.equal "[() [binary! * 1 3]]"
 
     it "parse 1\n *3\n/ 5", ->
-      expect(str parse('1\n *3\n/ 5')).to.deep.equal "[binary! / [binary! * 1 [indentExpression! 3]] 5]"
+      expect(str parse('1\n *3\n/ 5')).to.deep.equal "[binary! / [binary! * 1 3] 5]"
 
     it "parse 1+2\n* 3+6", ->
       expect(str parse('1+2\n* 3+6')).to.deep.equal '[binary! * [binary! + 1 2] [binary! + 3 6]]'
 
     it "parse 1+2\n * 3", ->
-      expect(str parse('1+2\n * 3')).to.deep.equal "[binary! * [binary! + 1 2] [indentExpression! 3]]"
+      expect(str parse('1+2\n * 3')).to.deep.equal "[binary! * [binary! + 1 2] 3]"
 
     it "parse 1+2\n * 3+6", ->
-      expect(str parse('1+2\n * 3+6')).to.deep.equal "[binary! * [binary! + 1 2] [indentExpression! [binary! + 3 6]]]"
+      expect(str parse('1+2\n * 3+6')).to.deep.equal "[binary! * [binary! + 1 2] [binary! + 3 6]]"
 
     it "parse 1+2\n * 3+6\n + 5+8", ->
-      expect(str parse('1+2\n * 3+6\n + 5+8')).to.deep.equal "[binary! * [binary! + 1 2] [indentExpression! [binary! + [binary! + 3 6] [binary! + 5 8]]]]"
+      expect(str parse('1+2\n * 3+6\n + 5+8')).to.deep.equal "[binary! * [binary! + 1 2] [binary! + [binary! + 3 6] [binary! + 5 8]]]"
 
   describe "attribute!, index!: ", ->
     it "parse a.b", ->
@@ -175,13 +175,13 @@ ndescribe "parse operator expression: ", ->
       expect(str parse('a . b')).to.deep.equal "[binary! . a b]"
 
     it "parse a[1]", ->
-      expect(str parse('a[1]')).to.deep.equal "[binary! concat[] a [[] [line! [1]]]]"
+      expect(str parse('a[1]')).to.deep.equal "[binary! concat[] a [[] [1]]]"
     it "parse a (1)", ->
       expect(str parse('a (1)')).to.equal 'a'
     it "parse a [1]", ->
       expect(str parse('a [1]')).to.equal 'a'
     it "parse a[1][2]", ->
-      expect(str parse('a[1][2]')).to.deep.equal "[binary! concat[] [binary! concat[] a [[] [line! [1]]]] [[] [line! [2]]]]"
+      expect(str parse('a[1][2]')).to.deep.equal "[binary! concat[] [binary! concat[] a [[] [1]]] [[] [2]]]"
 
     # &/ as index operator is deprecated, because a[b] is more generally.
     nit "parse a&/b", ->

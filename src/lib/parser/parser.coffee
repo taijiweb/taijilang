@@ -1314,12 +1314,10 @@ exports.Parser = ->
     result
 
   indentExpression = ->
-    start = token
     indentExp = parser.expression(INDENT_EXPRESSION, 0, true)
     if tokenType!=UNDENT and tokenType!=EOI and token.value!=')'
       syntaxError 'expect an undent after a indented block expression'
-    indentExp = ['indentExpression!', indentExp]
-    indentExp.priority = 1000; indentExp.start = start; indentExp.atom = true; tokenType = INDENT_EXPRESSION; indentExp.next = token
+    indentExp.priority = 1000; indentExp.atom = true; tokenType = INDENT_EXPRESSION; indentExp.next = token
     indentExp['m'+(expressionMemoIndex+OPERATOR_EXPRESSION)] = {result:indentExp, next:token}
     token = indentExp
 
@@ -1488,15 +1486,9 @@ exports.Parser = ->
     if not (test=parser.clause()) then syntaxError 'expect a clause after "'+keyword+'"'
     expectThen(isHeadStatement, ind)
     then_ = parser.block() or parser.line()
-    if then_.length==1 then then_ = then_[0]
-    else if then_.length==0 then then_ = undefined
-    else then_.unshift 'begin!'
     if tokenType==NEWLINE then tkn = token; nextToken()
     if maybeConjunction('else', isHeadStatement, ind)
       else_ = parser.block() or parser.line()
-      if else_.length==1 then else_ = else_[0]
-      else if else_.length==0 then else_ = undefined
-      else else_.unshift 'begin!'
     else if tkn then token = tkn; tokenType = token.type
     if else_ then result = [keyword, test, then_, else_]
     else result = [keyword, test, then_]
@@ -1510,9 +1502,6 @@ exports.Parser = ->
       syntaxError "expect compact clause expression to be used as condition"
     body = parser.block() or parser.line()
     if not body then syntaxError 'expect the body for while! statement'
-    if body.length==1 then body = body[0]
-    else if body.length==0 then body = undefined
-    else body.unshift 'begin!'
     result = [keyword, test, body]
     result.start = start; result.stop = token; result
 
@@ -1542,9 +1531,6 @@ exports.Parser = ->
     varDesc = parser.varInitList() or parser.clause()
     expectThen(isHeadStatement, ind)
     body = parser.block() or parser.line()
-    if body.length==1 then body = body[0]
-    else if body.length==0 then body = 'undefined'
-    else body.unshift 'begin!'
     result = [keyword, varDesc, body]
     result.start = start; result.stop = token; result
 
@@ -1581,10 +1567,13 @@ exports.Parser = ->
     if token.value=='='
       nextToken()
       if tokenType==SPACE then nextToken()
-      if value=parser.block() then value = begin(value)
-      else if not(value=parser.clause()) then syntaxError 'expect a value after "=" in variable initilization'
-    if token.value==',' then nextToken()
-    if tokenType==SPACE then nextToken()
+      if  (value=parser.block())
+        if value.length>1 then value.unshift 'begin!'
+        else if value.length==1 then value = value[0]
+        else value = 'undefined'
+      else if not (value=parser.clause()) then syntaxError 'expect a value after "=" in variable initilization'
+    else if token.value==',' and nextToken()
+      if tokenType==SPACE then nextToken()
     if not value then return id
     else return {value:[id, '=', value], start:id, stop:token}
 
@@ -1593,6 +1582,7 @@ exports.Parser = ->
     while 1
       if x=parser.varInit() then result.push x
       else break
+      if tokenType==SPACE then nextToken()
     result
 
   @varInitList = ->
@@ -1722,7 +1712,7 @@ exports.Parser = ->
       varList = parser.varInitList()
       if varList.length==0 then syntaxError 'expect variable name'
       if tokenType!=NEWLINE and tokenType!=UNDENT and tokenType!=EOI and tokenType!=CONJUNCTION and tokenType!=RIGHT_DELIMITER and tokenType!=PUNCTUATION
-        syntaxError 'unexpected token after var initialization list "' + token.value+'"'
+        syntaxError 'unexpected token after var initialization list: "' + token.value+'"'
       varList.unshift 'var'
       {value:varList, start:start, stop:token}
 
@@ -1814,9 +1804,6 @@ exports.Parser = ->
         if tokenType==SPACE then nextToken()
         expectThen(isHeadStatement, ind)
         body = parser.block() or parser.line()
-        if body.length==1 then body = body[0]
-        else if body.length==0 then body = 'undefined'
-        else body.unshift 'begin!'
         return {value:['cFor!', init, test, step, body], start:start, stop:token}
       matchToken()  # here should not use nextToken, because we just skipToken and skipSpace, and switch to determined cursor and char
       if tokenType==SPACE then nextToken()
@@ -1839,9 +1826,6 @@ exports.Parser = ->
       expectThen(isHeadStatement, ind)
       body = parser.block() or parser.line()
       if inOf=='in' then kw = 'forIn!' else kw = 'forOf!'
-      if body.length==1 then body = body[0]
-      else if body.length==0 then body = 'undefined'
-      else body.unshift 'begin!'
       clause = [kw, name1, name2, obj, body]
       clause.start = start; clause.stop = token
       clause
@@ -1850,9 +1834,6 @@ exports.Parser = ->
       start = token; ind = indent; nextToken(); # skip "do"
       if tokenType==SPACE then nextToken()
       body = parser.block() or parser.line()
-      if body.length==1 then body = body[0]
-      else if body.length==0 then body = 'undefined'
-      else body.unshift 'begin!'
       if indent==ind
         if tokenType==UNDENT then nextToken()
         if atStatementHead and not isHeadStatement then return {value:body, start:start, stop:token}
@@ -1864,7 +1845,7 @@ exports.Parser = ->
       else tailClause = parser.clause()
       if conjValue=='where' then {value:['let', tailClause, body], start:start, stop:token}
       else if conjValue=='when' then {value:['doWhile!', body, tailClause], start:start, stop:token}
-      else {value:['doWhile!', body, ['!x', tailClause]], start:start, stop:token}
+      else {value:['doWhile!', body, ['prefix', '!', tailClause]], start:start, stop:token}
 
     # switch value case 1: body1 case 2 3: body2 else: body
     # switch value
@@ -1892,24 +1873,17 @@ exports.Parser = ->
         nextToken()
         if tokenType==SPACE then nextToken()
         body = parser.block() or parser.line()
-        if body.length==1 then body = body[0]
-        else if body.length==0 then body = undefined
-        else body.unshift 'begin!'
         cases.push [caseValues, body]
       if maybeIndentConjunction('else', isHeadStatement, ind, indentInfo)
         else_ = parser.block() or parser.line()
-        if else_.length==1 then else_ = else_[0]
-        else if else_.length==0 then else_ = undefined
-        else else_.unshift 'begin!'
-      {value:['switch', test, cases, else_], start:start, stop:token}
+      result =  ['switch', test, cases, else_]
+      result.start = start; result.stop = token
+      result
 
     'try': (isHeadStatement) ->
       start = token; ind = indent; nextToken(); # skip "try"
       if tokenType==SPACE then nextToken()
       if not (test = parser.block() or parser.line()) then syntaxError 'expect a line or block after "try"'
-      if test.length==1 then test = test[0]
-      else if test.length==0 then test = undefined
-      else test.unshift 'begin!'
       if atStatementHead and not isHeadStatement
         syntaxError 'meet unexpected new line when parsing inline try statement'
       if maybeConjunction("catch", isHeadStatement, ind)
@@ -1923,20 +1897,14 @@ exports.Parser = ->
         nextToken()
         if tokenType==SPACE then nextToken()
         catch_ = parser.block() or parser.line()
-        if catch_.length==1 then catch_ = catch_[0]
-        else if catch_.length==0 then catch_ = undefined
-        else catch_.unshift 'begin!'
       if maybeConjunction("finally", isHeadStatement, ind)
         if tokenType==SPACE then nextToken()
         final = parser.block() or parser.line()
-        if final.length==1 then final = final[0]
-        else if final.length==0 then final = undefined
-        else final.unshift 'begin!'
       result = ['try', test, catchVar, catch_, final]
       result.start = start;  result.stop = token; result
 
     'class': (isHeadStatement) ->
-      nextToken(); if tokenType==SPACE then nextToken()
+      start = token; nextToken(); if tokenType==SPACE then nextToken()
       # class name should be provided explicitly
       if tokenType!=IDENTIFIER then syntaxError 'expect class nam'
       name  = token; nextToken()
@@ -1955,7 +1923,10 @@ exports.Parser = ->
     start = token; clause = []
     while 1
       if tokenType==SPACE then nextToken()
-      if (item=parser.compactClauseExpression()) then clause.push item
+      tkn = token
+      if (item=parser.compactClauseExpression())
+        if item.value=='#' then token = tkn; tokenType = token.type; break
+        else clause.push item
       else break
     if not clause.length then return
     clause.start = start;  clause.stop = token; clause
@@ -2063,11 +2034,7 @@ exports.Parser = ->
         if token.value=='#' and nextToken() and token.value==':' and nextToken()
           # label statement
           if tokenType==SPACE then nextToken()
-          blk = parser.lineBlock()
-          if blk.length==1 then blk = blk[0]
-          else if blk.length==0 then blk = undefined
-          else blk.unshift 'begin!'
-          result = ['label!', start, blk]
+          result = ['label!', start, parser.lineBlock()]
           result.start = start; result.stop = token; return result
         else token = start; tokenType = token.type
       when SYMBOL
@@ -2124,16 +2091,19 @@ exports.Parser = ->
       result.start = start; result.stop = token; return result
 
     else if token.value=='#' and nextToken()
-      if tokenType==SPACE then clauses = parser.clauses()
-      else if tokenType==INDENT then clauses = parser.block()
-      clause = ['#', head, clauses]
-      clause.start = start; clause.stop = token; return clause
+      if tokenType==SPACE
+        clauses = parser.clauses()
+        clause = ['#', head, clauses]
+        clause.start = start; clause.stop = token; return clause
+      else if tokenType==INDENT
+        clauses = parser.block()
+        clause = ['#', head, clauses]
+        clause.start = start; clause.stop = token; return clause
 
-    else if token.value==':'
-      nextToken()
+    else if token.value==':' and nextToken()
       if tokenType==SPACE then nextToken()
       clause = parser.clauses()
-      clause = ['colonLeadClause!', head, clause]
+      clause.unshift head
       clause.start = head.start; clause.stop = token; return clause
 
     if clause = parser.sequenceClause()
@@ -2173,13 +2143,21 @@ exports.Parser = ->
       nextToken()
       if tokenType==INDENT then clauses = parser.block()
       else clauses = parser.clauses()
-      if clauses.length==1
-        clause0 = clauses[0]
-        if clause0 instanceof Array and clause0.type!=BRACKET then clauses = clause0
-      else if clauses.length==0 then syntaxError 'expected arguments list after ":"'
+      if clauses.length==0 then syntaxError 'expected arguments list after ":"'
+      # notice the different between only indent
       clauses.unshift clause
       clauses.start = start; clauses.stop = token
-      clauses
+      return clauses
+
+    else if token.value=='#' and nextToken()
+      if tokenType==SPACE
+        clauses = parser.clauses()
+        clause = ['#', clause, clauses]
+        clause.start = start; clause.stop = token; return clause
+      else if tokenType==INDENT
+        clauses = parser.block()
+        clause = ['#', clause, clauses]
+        clause.start = start; clause.stop = token; return clause
 
     else if tokenType==INDENT
       tkn = token
@@ -2189,13 +2167,13 @@ exports.Parser = ->
         tokenType = token.type
         atStatementHead = true
         clause.stop = token
-        clause
+        return clause
       else
         token = tkn; tokenType = token.type;  atStatementHead = true
         # head clause with indented block
-        # please pay attention to the difference between clause+':'+INDENT+block and clause+INDENT+block
-        clause = ['clauseIndent!', clause, parser.block()]
-        clause.start = start; clause.stop = token; return clause
+        blk = parser.block()
+        if clause instanceof Array then clause.push.apply clause, blk; clause.stop = token; return clause
+        else blk.unshift clause; clause = blk; blk.start = start; blk.stop = token; return blk
 
     else clause
 
@@ -2210,14 +2188,13 @@ exports.Parser = ->
     return result
 
   @sentence = ->
-    start = token
     if tokenType==EOI or tokenType==INDENT or tokenType==UNDENT or tokenType==NEWLINE or tokenType==RIGHT_DELIMITER or tokenType==CONJUNCTION
       return
     result = parser.clauses()
     if token.value==';'
       nextToken()
       if tokenType==SPACE then nextToken()
-    extendSyntaxInfo result, start, token
+    result
 
   @line = ->
     if tokenType==UNDENT or tokenType==RIGHT_DELIMITER or tokenType==CONJUNCTION or tokenType==EOI
@@ -2227,14 +2204,15 @@ exports.Parser = ->
       start = token; nextToken()
       if tokenType==SPACE then nextToken()
       x = parser.line()
-      return [{value:['codeBlockComment!', x], start:start, stop:token}]
+      result = ['codeBlockComment!', x]; result.start = start; result.stop = token
+      return [result]
     result = []
     tkn = token
     while x=parser.sentence()
       result.push.apply result, x
       if tkn==token then syntaxError 'oops! inifinte loops!!!'
-      tkn = token;
-    ['line!', result]
+      tkn = token
+    result
 
   @block = (dent) ->
     if tokenType==INDENT then nextToken(); return parser.blockWithoutIndentHead(indent)
@@ -2242,15 +2220,18 @@ exports.Parser = ->
   # a block with out indent( the indent has been ate before).
   # stop until meet a undent (less indent than the intent of the start line)
   @blockWithoutIndentHead = (dent) ->
-    result = ['block!']
+    result = []
+    ind = indent
     while (x=parser.line())
-      result.push x
-      if tokenType==NEWLINE then nextToken(); continue
+      result.push.apply result, x
+      if tokenType==NEWLINE
+        nextToken(); continue
       if tokenType==EOI then break
       else if tokenType==UNDENT
-        if indent==dent then nextToken(); break
-        else if indent>dent then syntaxError 'wrong indent'
-        else continue
+        if indent<dent then break
+        else if indent==dent then nextToken(); break
+        else if indent==ind then nextToken(); continue
+        else syntaxError 'wrong indent'
       else if tokenType==CONJUNCTION then syntaxError 'unexpected conjunction "'+token.value+'" following a indent block'
     return result
 
@@ -2275,7 +2256,7 @@ exports.Parser = ->
     while 1
       if not x=parser.line() then break
       if tokenType==NEWLINE then nextToken()
-      body.push x
+      body.push.apply body, x
     if tokenType!=EOI then syntaxError 'expect end of input, but meet "'+text.slice(cursor)+'"'
     result = ['moduleBody!', body]; result.start = start; result.stop = token
     result
