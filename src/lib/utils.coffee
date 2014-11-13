@@ -65,7 +65,6 @@ exports.constant = {
   VALUE, LIST
 }
 
-
 exports.charset = charset = (string) ->
   result = {}
   for c in string then result[c] = true
@@ -89,6 +88,27 @@ exports.taijiIdentifierCharSet = taijiIdentifierCharSet = charset(taijiIdentifie
 exports.firstSymbolChars = firstSymbolChars = '!#%^&*-+=?<>|~`'
 exports.firstSymbolCharset = charset(firstSymbolChars)
 
+# is head a operator for meta expression?
+isMetaOperation = isMetaOperation = (head) -> (head[0]=='#' and head[1]!='-') or head=='include!' or head=='import!' or head=='export!'
+
+# set exp.kind attribute, recursively if exp is array
+# normalize expression for compilation, used in multiple phases
+# todo: this should be compile time function in taijilang bootstrap compilation program, so it can be optimized greatly.
+# to make "analyzed", "transformed", "optimized" being true here, we can avoid switch branch in the following phases.
+exports.norm = norm = (exp) ->
+  if exp.kind then return exp
+  if exp instanceof Array
+    exp = for e in exp then norm(e)
+    exp.kind = LIST
+    exp
+  else if typeof exp == 'string'
+    if exp[0]=='"' then {value:exp, kind:VALUE, analyzed:true, transformed: true, optimized:true}
+    else
+      if isMetaOperation(exp) then {value:exp, kind:SYMBOL, meta:true, analyzed:true, transformed:true}
+      else {value:exp, kind:SYMBOL, analyzed:true, transformed:true}
+  else if typeof exp =='object' then exp.kind = value; exp
+  else {value:exp, kind:VALUE, analyzed:true, transformed:true, optimized:true}
+
 # todo: because this the core feature of taiji language, a safer method should be used to avoid redefinition by mistake
 exports.QUOTE = {value:'~', kind:SYMBOL}
 exports.QUASIQUOTE = {value:'`', kind:SYMBOL}
@@ -108,6 +128,9 @@ exports.str = str = (item) ->
   else if item==undefined then 'undefined'
   else if item==null then 'null'
   else item.toString()
+
+exports.assert = assert = (value) ->
+    if not value then throw 'assert failed'
 
 exports.isArray = isArray = (exp) -> Object::toString.call(exp) == '[object Array]'
 
@@ -180,9 +203,9 @@ exports.begin = begin = (exp) ->
       result.splice(i, 1)
     else if (e0=e[0]) and (e0=='return' or e0=='throw' or e0=='break' or e0=='continue')
       result.splice(i+1, result.length)
-  if result.length==0 then undefined
+  if result.length==0 then norm 'undefined'
   else if result.length==1 then result[0]
-  else result.unshift 'begin!'; result
+  else result.unshift 'begin!'; result; result.kind = LIST; result
 
 returnFnMap =
   'break': (exp) -> exp
@@ -208,13 +231,27 @@ returnFnMap =
 
 exports.return_ = return_ = (exp) ->
   if not exp then return exp
-  if not exp.push then return ['return', exp]
+  if not exp.push then return [norm('return'), exp]
   if fn=returnFnMap[exp[0]] then return fn(exp)
-  ['return', exp]
+  [norm('return'), exp]
 
-exports.pushExp = (lst, v) -> ['call!', ['attribute!', lst, 'push'], [v]]
-exports.notExp = (exp) -> ['prefix!', '!', exp]
-exports.undefinedExp = undefinedExp = ['prefix!', 'void', 0]
+exports.pushExp = (lst, v) -> norm ['call!', ['attribute!', lst, 'push'], [v]]
+exports.notExp = (exp) -> norm ['prefix!', '!', exp]
+exports.undefinedExp = undefinedExp = norm ['prefix!', 'void', 0]
+
+# get the truth value of exp under env
+# 0: truth value is unknown
+# 1: truth value is true
+# 2: truth value is false
+# todo: use kind(VALUE, SYMBOL, LIST) to optimize the code below
+truth = (exp, env) ->
+  exp = entity(exp)
+  if not exp? then return 2-!!exp
+  if typeof exp == 'string'
+    if exp[0]=='"' then return 2-!!exp[1...exp.length-1]
+    else return
+  else if exp.push then return
+  return 2-!!exp
 
 exports.addPrelude = (parser, body) ->
   # return body

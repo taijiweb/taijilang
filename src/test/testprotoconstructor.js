@@ -7,6 +7,12 @@ var lib = '../lib/';
 var _ref = require(lib + 'utils'), str = _ref.str, extend = _ref.extend;
 var taiji = require(lib + 'taiji');
 
+if (1); else 2; // is legal js
+//console.log('"if (1); else 2;" is legal js.')
+
+// below is not legal js
+// if (1) {}; else 2;
+
 ndescribe("prototype constructor: ", function() {
     it('should constructor and instanceof', function () {
         var A = function(){}

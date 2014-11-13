@@ -1,32 +1,44 @@
-{str, isArray, extend, entity, charset, begin, undefinedExp, isValue, digitCharSet, letterCharSet, identifierCharSet} = require '../utils'
+{str, isArray, extend, entity, charset, begin, undefinedExp, isValue, digitCharSet, letterCharSet, identifierCharSet, constant, assert} = require '../utils'
 
-PAREN=1; BRACKET = 2; CURVE=3; LIST=4; STATEMENT_LIST=5; WRAP_BLOCK=6; BLOCK=7; MAYBE=8; STATEMENT=9;
-CLAUSE=10; COMPOUND=11; FUNCTION=12; SEQUENCE = 13; LINE = 14; INDENT = 15; UNDENT = 16; BINARY = 17
-tokenNameMap = {PAREN, BRACKET, CURVE, LIST, STATEMENT_LIST, WRAP_BLOCK, BLOCK, MAYBE, STATEMENT,
-CLAUSE, COMPOUND, FUNCTION, SEQUENCE, LINE, INDENT, UNDENT, BINARY}
+{SYMBOL, VALUE, LIST} = constant
 
-paren = (exp) -> {kind: PAREN, value: exp}
-bracket = (exp) -> {kind: BRACKET, value: exp}
-curve = (exp) -> {kind: CURVE, value: exp}
-line = {kind: LINE}
-indentToken = (width) -> {kind: INDENT, value: width}
-undentToken = (width) -> {kind: UNDENT, value: width}
-ind = {kind: INDENT}
-und = {kind: UNDENT}
-binary = (exp) -> {kind: BINARY, value: exp}
-sequence = (exp) -> {kind: SEQUENCE, value: token(e) for e in exp}
-list = (exp) -> {kind: LIST, value: token(e) for e in exp}
+# sort of tokenize, where "sort" means kind or type
+TKN_PAREN=1; TKN_BRACKET = 2; TKN_CURVE=3; TKN_LIST=4; TKN_STATEMENT_LIST=5; TKN_WRAP_BLOCK=6; TKN_BLOCK=7; TKN_MAYBE=8; TKN_STATEMENT=9;
+TKN_CLAUSE=10; TKN_COMPOUND=11; TKN_FUNCTION=12; TKN_SEQUENCE = 13; TKN_LINE = 14; TKN_INDENT = 15; TKN_UNDENT = 16; TKN_BINARY = 17; TKN_VALUE = 18
+
+tokenNameMap = {TKN_PAREN, TKN_BRACKET, TKN_CURVE, TKN_LIST, TKN_STATEMENT_LIST, TKN_WRAP_BLOCK, TKN_BLOCK, TKN_MAYBE, TKN_STATEMENT,
+TKN_CLAUSE, TKN_COMPOUND, TKN_FUNCTION, TKN_SEQUENCE, TKN_LINE, TKN_INDENT, TKN_UNDENT, TKN_BINARY, TKN_VALUE
+}
+
+class TokenizeError extends Error
+  constructor: (@exp, @message) ->
+
+tokenizeError = (exp, message) ->
+  # throw new TokenizeError(exp, message)
+  throw message+':  '+str(exp)
+
+paren = (exp) -> {sort: TKN_PAREN, value: exp}
+bracket = (exp) -> {sort: TKN_BRACKET, value: exp}
+curve = (exp) -> {sort: TKN_CURVE, value: exp}
+line = {sort: TKN_LINE}
+indentToken = (width) -> {sort: TKN_INDENT, value: width}
+undentToken = (width) -> {sort: TKN_UNDENT, value: width}
+ind = {sort: TKN_INDENT}
+und = {sort: TKN_UNDENT}
+binary = (exp) -> {sort: TKN_BINARY, value: exp}
+sequence = (exp) -> {sort: TKN_SEQUENCE, value: tokenize(e) for e in exp}
+list = (exp) -> {sort: TKN_LIST, value: tokenize(e) for e in exp}
 maybe = (test, exp) -> if test then exp else ''
-clause = (exps...) -> {kind: CLAUSE, value: exps}
+clause = (exps...) -> {sort: TKN_CLAUSE, value: exps}
 statement = (exp) ->
-  t = token(exp)
-  if t.kind==STATEMENT or t.kind==STATEMENT_LIST then t
-  else {kind: STATEMENT, value: t}
-compound = (exps...) -> {kind: STATEMENT, value: exps, compound: true}
-statementList = (exp) -> {kind: STATEMENT_LIST, value: token(e) for e in exp}
-block = (exp) -> {kind: BLOCK, value: exp}
-wrapBlock = (exp) -> {kind: WRAP_BLOCK, value: exp}
-func = (exps...) -> {kind: FUNCTION, value: exps, function:true}
+  t = tokenize(exp)
+  if t.sort==TKN_STATEMENT or t.sort==TKN_STATEMENT_LIST then t
+  else {sort: TKN_STATEMENT, value: t}
+compound = (exps...) -> {sort: TKN_STATEMENT, value: exps, compound: true}
+statementList = (exp) -> {sort: TKN_STATEMENT_LIST, value: tokenize(e) for e in exp}
+block = (exp) -> {sort: TKN_BLOCK, value: exp}
+wrapBlock = (exp) -> {sort: TKN_WRAP_BLOCK, value: exp}
+func = (exps...) -> {sort: TKN_FUNCTION, value: exps, function:true}
 setFunction = (depend, exp) ->
   if depend.function then exp.function = true
   exp
@@ -41,15 +53,16 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Oper
 binaryPriority = {'*':5, '/':5, '%':5, '+':6, '-':6, '<<':7, '>>':7, '>>>':7
 '<':8, '>':8, '>=':8, '<=':8, 'in':8, 'instanceof':8, '==':9, '===':9, '!=':9, '!==':9
 '&':10, '^':11, '|':12, '&&': 13, '||':13, ',':18}
+
 unaryPriority = {'new':2, '++':3, '--':3, '!':4, '+':4, '-':4, 'typeof':4, 'void':4, 'delete':4, 'yield':16}
 
 tokenFnMap =
   '=': (exp) ->
-    x = token(exp[2])
-    setFunction x, priority([token(exp[1]), ' = ', (if x.pri>17 then paren(x) else x)], 17)
+    x = tokenize(exp[2])
+    setFunction x, priority([tokenize(exp[1]), ' = ', (if x.pri>17 then paren(x) else x)], 17)
   'augmentAssign!': (exp) ->
-    x = token(exp[3])
-    setFunction x, priority([token(exp[2]), ' ', exp[1], ' ', (if x.pri>17 then paren(x) else x)], 17)
+    x = tokenize(exp[3])
+    setFunction x, priority([tokenize(exp[2]), ' ', exp[1], ' ', (if x.pri>17 then paren(x) else x)], 17)
   'quote!': (exp) -> priority([JSON.stringify(exp[1])], 0)
   'jsvar!': (exp) -> priority(exp[1], 0)
   'regexp!': (exp) -> priority(exp[1], 0)
@@ -57,23 +70,23 @@ tokenFnMap =
   'list!':(exp) ->  priority(['[', list(exp[1...]), ']'], 0)  # array[i...]
   'comma!':(exp) ->  priority(list(exp[1...]), 18)
   'call!': (exp) ->
-    caller = token(exp[1])
+    caller = tokenize(exp[1])
     setFunction caller, priority([caller, paren(list(exp[2]))], 2)
-  'index!': (exp) -> priority([token(exp[1]), bracket(token(exp[2]))], 1)
-  'attribute!': (exp) -> priority([token(exp[1]), '.', exp[2]], 1) # a.b
+  'index!': (exp) -> priority([tokenize(exp[1]), bracket(tokenize(exp[2]))], 1)
+  'attribute!': (exp) -> priority([tokenize(exp[1]), '.', exp[2]], 1) # a.b
   'hash!': (exp) -> priority([('{ '), list(exp[1]), '}'], 0) # { a: 1, b:2 ...}
-  'hashitem!': (exp) -> priority([token(exp[1]), ': ', token(exp[2])], 0) # a.b
+  'hashitem!': (exp) -> priority([tokenize(exp[1]), ': ', tokenize(exp[2])], 0) # a.b
   'binary!': (exp) ->
-    pri = binaryPriority[op=exp[1]]; x = token(exp[2]); y = token(exp[3])
+    pri = binaryPriority[op=exp[1]]; x = tokenize(exp[2]); y = tokenize(exp[3])
     priority(binary([(if x.pri>pri then paren(x) else x), op, (if y.pri>pri then paren(y) else y)]), pri)
   'prefix!': (exp) ->
-    pri = unaryPriority[exp[1]]; x = token(exp[2]);
+    pri = unaryPriority[exp[1]]; x = tokenize(exp[2]);
     priority([exp[1], (if letterCharSet[entity(exp[1])[0]] then ' ' else ''), (if x.pri>pri then paren(x) else x)], pri)
   'suffix!': (exp) ->
-    pri = unaryPriority[exp[1]]; x = token(exp[2]);
+    pri = unaryPriority[exp[1]]; x = tokenize(exp[2]);
     priority([(if x.pri>pri then paren(x) else x), exp[1]], pri)
   '?:': (exp) ->
-    x = token(exp[1]); y = token(exp[2]); z = token(exp[3])
+    x = tokenize(exp[1]); y = tokenize(exp[2]); z = tokenize(exp[3])
     priority([(if x.pri>15 then paren(x) else x), '? ',
               (if y.pri>15 then paren(y) else y), ': ',  (if z.pri>15 then paren(z) else z)],15) # test? then: else
   'noop!': (exp) ->  ''
@@ -87,12 +100,12 @@ tokenFnMap =
     if exps.length and assigns.length
       result.push ', '
     if assigns.length>1 then result.push indentToken(4)
-    t = token(assigns[0])
+    t = tokenize(assigns[0])
     if t.function then result.function = true
     if assigns.length then result.push t
     for e in assigns[1...]
       result.push ', '; result.push line
-      t = token(e)
+      t = tokenize(e)
       if t.function then result.push line
       result.push t
     if assigns.length>1 then result.push undentToken(4)
@@ -112,12 +125,12 @@ tokenFnMap =
     if exps.length==1 then return statement exps[0]
     else statementList(for e in exps then statement(e))
   'debugger!': (exp) -> 'debugger'
-  'label!': (exp) -> [token(exp[1]), ': ', token(exp[2])]
-  'break': (exp) -> ['break ', token(exp[1])]
-  'continue': (exp) -> ['continue ', token(exp[1])]
-  'return': (exp) ->  ['return ', token(exp[1])]
-  'throw': (exp) ->  ['throw ', token(exp[1])]
-  'new': (exp) ->  priority(['new ', token(exp[1])], 1)
+  'label!': (exp) -> [tokenize(exp[1]), ': ', tokenize(exp[2])]
+  'break': (exp) -> ['break ', tokenize(exp[1])]
+  'continue': (exp) -> ['continue ', tokenize(exp[1])]
+  'return': (exp) ->  ['return ', tokenize(exp[1])]
+  'throw': (exp) ->  ['throw ', tokenize(exp[1])]
+  'new': (exp) ->  priority(['new ', tokenize(exp[1])], 1)
   'function': (exp) ->
     exp2 = entity(exp[2])
     if exp2[0]=='return'
@@ -129,50 +142,56 @@ tokenFnMap =
     func('function ', paren(list(exp[1])), ' ',body)
   'if': (exp) ->
     if exp[3]
-      elseClause = token(exp[3])
-      if elseClause.kind==COMPOUND or elseClause.kind==STATEMENT_LIST and elseClause.value.length>1
+      elseClause = tokenize(exp[3])
+      if elseClause.sort==TKN_COMPOUND or elseClause.sort==TKN_STATEMENT_LIST and elseClause.value.length>1
         elseClause = block(elseClause)
-      compound('if ', paren(token(exp[1])), block(token(exp[2])), clause('else ', elseClause))
-    else compound('if ', paren(token(exp[1])), block(token(exp[2])))
-  'while': (exp) -> compound('while ', paren(token(exp[1])), block(token(exp[2])))
-  'doWhile!': (exp) -> compound('do ', wrapBlock(token(exp[1])), ' while ', paren(token(exp[2])))
+      compound('if ', paren(tokenize(exp[1])), block(tokenize(exp[2])), clause('else ', elseClause))
+    else compound('if ', paren(tokenize(exp[1])), block(tokenize(exp[2])))
+  'while': (exp) -> compound('while ', paren(tokenize(exp[1])), block(tokenize(exp[2])))
+  'doWhile!': (exp) -> compound('do ', wrapBlock(tokenize(exp[1])), ' while ', paren(tokenize(exp[2])))
   'try': (exp) ->
-    result = ['try ', wrapBlock(token(exp[1])), clause('catch ', paren(token(exp[2]))),  wrapBlock(token(exp[3]))]
-    if exp[4] then result.push  clause('finally ', wrapBlock token(exp[4]))
+    result = ['try ', wrapBlock(tokenize(exp[1])), clause('catch ', paren(tokenize(exp[2]))),  wrapBlock(tokenize(exp[3]))]
+    if exp[4] then result.push  clause('finally ', wrapBlock tokenize(exp[4]))
     compound result
   # javascript has no "for key of hash {...}", has "for key in hash {...}" instead.
-  'jsForIn!': (exp) -> compound('for ', paren([token(exp[1]), ' in ', token(exp[2])]), block(token(exp[3])))
-  #'forOf!': (exp) -> compound('for ', paren([token(exp[1]), 'of ', token(exp[2])]), block(token(exp[3])))
-  'cfor!': (exp) ->  compound('for ', paren([token(exp[1]), ';', token(exp[2]), ';', token(exp[3])]), block(token(exp[4])))
+  'jsForIn!': (exp) -> compound('for ', paren([tokenize(exp[1]), ' in ', tokenize(exp[2])]), block(tokenize(exp[3])))
+  #'forOf!': (exp) -> compound('for ', paren([tokenize(exp[1]), 'of ', tokenize(exp[2])]), block(tokenize(exp[3])))
+  'cfor!': (exp) ->  compound('for ', paren([tokenize(exp[1]), ';', tokenize(exp[2]), ';', tokenize(exp[3])]), block(tokenize(exp[4])))
   'switch': (exp) ->
     body = []
     for e in exp[2]
       cases = []
-      for x in e[0] then body.push 'case '; body.push token(x); body.push ': '
-      body.push token(e[1]); body.push ';'
-    if exp[3] then body.push clause('default: ', token(exp[3]))
-    compound('switch ', paren(token(exp[1])), wrapBlock(body))
+      for x in e[0] then body.push 'case '; body.push tokenize(x); body.push ': '
+      body.push tokenize(e[1]); body.push ';'
+    if exp[3] then body.push clause('default: ', tokenize(exp[3]))
+    compound('switch ', paren(tokenize(exp[1])), wrapBlock(body))
 
-  'with!': (exp) -> compound('with ', paren(token(exp[1])), block(token(exp[2])))
+  'with!': (exp) -> compound('with ', paren(tokenize(exp[1])), block(tokenize(exp[2])))
 
   'letloop!': (exp) ->
     exps = []
     params = exp[1]; bindings = exp[2]; body = exp[3]
     for b in bindings then exps.push ['var', b[0]]; exps.push ['=', b[0], ['function ', params, b[1]]]
     exps.push body
-    token begin(exps)
+    tokenize begin(exps)
 
-token = (exp) ->
-  if isArray(exp)
-    if not exp.length then '[]'
-    else if typeof exp[0]!='string' then bracket(list(exp))
-    else if (fn=tokenFnMap[exp[0]]) then fn(exp)
-    else bracket(list(exp))
-  else if typeof exp == 'object' or typeof exp=='string' then exp
-  else if exp? then exp.toString()
-  else ''
+tokenize = (exp) ->
+  switch exp.kind
+    when SYMBOL, VALUE then exp.value
+    when LIST
+      assert tokenFnMap[exp[0].value], 'found no tokenize function: '+exp[0].value
+      tokenFnMap[exp[0].value](exp)
+    else throw 'wrong kind of exp while tokenizing'
 
-textize = (options) ->
+#  switch exp.kind
+#    when VALUE then exp.value
+#    when SYMBOL then exp.value
+#    when LIST
+#      if (exp0=exp[0]) and exp0.kind==SYMBOL and (fn=tokenFnMap[exp[0]]) then fn(exp)
+#      else tokenizeError exp, 'unexpected expression while tokenizing'
+#    else tokenizeError exp, 'wrong kind of expression for tokenization'
+
+makeTextizer = (options) ->
   code = ''; prev = ''; indentRow = 0; lineno = 0; row = 0
   indentWidth = options.indentWidth or 2; lineLength = options.lineLength  or 80
 
@@ -204,13 +223,14 @@ textize = (options) ->
   undent = (width) -> indentRow -= width or indentWidth; ''
 
   textFnMap =
-    LINE: (tkn) -> newline(indentRow)
-    INDENT: (tkn) -> indentRow += tkn.value or indentWidth; ''
-    UNDENT: (tkn) -> indentRow -= tkn.value or indentWidth; ''
-    PAREN: (tkn) -> char('(')+text(tkn.value)+char(')')
-    BRACKET: (tkn) -> char('[')+text(tkn.value)+char(']')
-    CURVE: (tkn) -> char('{')+text(tkn.value)+char('}')
-    BINARY: (tkn) ->
+    TKN_INDENT: (tkn) -> indentRow += tkn.value or indentWidth; ''
+    TKN_LINE: (tkn) -> newline(indentRow)
+    TKN_INDENT: (tkn) -> indentRow += tkn.value or indentWidth; ''
+    TKN_UNDENT: (tkn) -> indentRow -= tkn.value or indentWidth; ''
+    TKN_PAREN: (tkn) -> char('(')+text(tkn.value)+char(')')
+    TKN_BRACKET: (tkn) -> char('[')+text(tkn.value)+char(']')
+    TKN_CURVE: (tkn) -> char('{')+text(tkn.value)+char('}')
+    TKN_BINARY: (tkn) ->
       exp = tkn.value
       result = text(exp[0])
       op = exp[1]
@@ -221,7 +241,7 @@ textize = (options) ->
         if row>lineLength then result += indent() + text(exp[1]) + nl() + text(exp[2]) + undent()
         else result +=  text(exp[1]) + char(' ') + text(exp[2])
       result
-    LIST: (tkn) ->
+    TKN_LIST: (tkn) ->
       exp = tkn.value
       if exp.length
         result = ''
@@ -236,20 +256,20 @@ textize = (options) ->
         if indented then undent()
         return result
       else ''
-    SEQUENCE: (tkn) -> (for t in tkn.value then text(t)).join ''
-    WRAP_BLOCK: (tkn) ->
+    TKN_SEQUENCE: (tkn) -> (for t in tkn.value then text(t)).join ''
+    TKN_WRAP_BLOCK: (tkn) ->
       exp = tkn.value
-      if typeof exp=='object' and exp.kind==STATEMENT_LIST and (value=exp.value) and value.length==0
+      if typeof exp=='object' and exp.sort==TKN_STATEMENT_LIST and (value=exp.value) and value.length==0
         return str('{}') + nl()
       str('{') + indent() + nl() + text(exp) + semicolon() + undent() + nl() + str('}')
-    BLOCK: (tkn) ->
+    TKN_BLOCK: (tkn) ->
       exp = tkn.value
-      if typeof exp=='object' and exp.kind==STATEMENT_LIST and (value=exp.value)
+      if typeof exp=='object' and exp.sort==TKN_STATEMENT_LIST and (value=exp.value)
         if value.length==0  then '{}'+nl()
         else if value.length>1 then str('{ ') + indent() + nl() + text(exp) + semicolon() + undent() + nl() + str('}')
         else indent() + text(value[0]) + undent()
       else indent() + nl() + text(exp) + undent()
-    STATEMENT_LIST: (tkn) ->
+    TKN_STATEMENT_LIST: (tkn) ->
       exp = tkn.value
       if exp.length==0 then return ''
       result = text exp[0]
@@ -258,11 +278,11 @@ textize = (options) ->
         if t.value and t.value.function or t.compound then result += nl()
         result += nl() + text(t)
       result
-    STATEMENT: (tkn) -> text(tkn.value) + clauseSemicolon()
-    FUNCTION: (tkn) ->
+    TKN_STATEMENT: (tkn) -> text(tkn.value) + clauseSemicolon()
+    TKN_FUNCTION: (tkn) ->
       if AfterNeedParnFunctionCharset[prev] or not prev then char('(') + text(tkn.value) + char(')')
       else text(tkn.value)
-    CLAUSE: (tkn) -> clauseSemicolon() + nl() + text(tkn.value)
+    TKN_CLAUSE: (tkn) -> clauseSemicolon() + nl() + text(tkn.value)
 
   textFnList = [0...100]
   for name,value of tokenNameMap then textFnList[value] = textFnMap[name]
@@ -270,16 +290,14 @@ textize = (options) ->
   AfterNeedParnFunctionCharset = charset(';}\n\r')
 
   text = (exp) ->
-    if not exp? then return ''
-    else if Object.prototype.toString.call(exp) == '[object Array]'
-      exp.textizedString = (for tkn in exp then text(tkn)).join('')
+    if exp instanceof Array
+      (for tkn in exp then text(tkn)).join('')
     else if typeof exp == 'object'
-      if exp.kind? then return exp.textizedString = textFnList[exp.kind](exp)
-      else return text(exp.identifier or exp.symbol or exp.value)
+      if not exp.sort then return text(exp.value)
+      else textFnList[exp.sort](exp)
     else
       s = exp.toString()
-      if not s then return ''
-      s0 = s[0]
+      s0 = exp[0]
       prevChar = code[code.length-1]
       if identifierCharSet[prevChar] and identifierCharSet[s0] then c = char(' ')
       else if (prevChar==')' or prevChar==']')
@@ -289,11 +307,7 @@ textize = (options) ->
       else c = ''
       c+str(s)
 
-  text.getCode = -> code
-
-  text
-
 exports.tocode = (exp, options) ->
-  textFn = textize(extend({}, options))
-  textFn(token(exp))
-  textFn.getCode()
+  exp = tokenize(exp)
+  textize = makeTextizer(extend({}, options))
+  textize(exp)

@@ -1,9 +1,9 @@
-{expect, idescribe, ndescribe, iit, nit} = require '../utils'
+{expect, idescribe, ndescribe, iit, nit, compile} = require '../utils'
 
 ndescribe "compiler basic: ",  ->
   describe "compile number: ",  ->
     it "compile 1", ->
-      expect(compile('1')).to.have.string '1'
+      expect(compile('1')).to.have.string "1"
     it "compile 01", ->
       expect(compile('01')).to.have.string '1'
     it "compile 0x01", ->

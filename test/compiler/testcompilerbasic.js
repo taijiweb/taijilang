@@ -1,11 +1,11 @@
-var expect, idescribe, iit, ndescribe, nit, _ref;
+var compile, expect, idescribe, iit, ndescribe, nit, _ref;
 
-_ref = require('../utils'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit;
+_ref = require('../utils'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, compile = _ref.compile;
 
 ndescribe("compiler basic: ", function() {
   describe("compile number: ", function() {
     it("compile 1", function() {
-      return expect(compile('1')).to.have.string('1');
+      return expect(compile('1')).to.have.string("1");
     });
     it("compile 01", function() {
       return expect(compile('01')).to.have.string('1');

@@ -1,4 +1,8 @@
-{str, entity, isValue, isArray, extend, error, wrapInfo1} = require '../utils'
+# before analysis and transformation phase, the symbol, number and string should be unboxed  ???
+
+{str, entity, isValue, isArray, extend, error, wrapInfo1, constant} = require '../utils'
+
+{SYMBOL, VALUE, LIST} = constant
 
 truth = (exp, env) ->
   exp = entity(exp)
@@ -6,7 +10,7 @@ truth = (exp, env) ->
   if typeof exp == 'string'
     if exp[0]=='"' then return 2-!!exp[1...exp.length-1]
     else return
-  else if exp.push then return
+  else if exp instanceof Array then return
   return 2-!!exp
 
 setValue = (x) ->
@@ -97,21 +101,17 @@ analyzeFnMap =
     analyze(exp[3], env)
 
 exports.analyze = analyze = (exp, env) ->
-  e = entity exp
-  if not e then return
-  if typeof e == 'string'
-    if e[0]=='"' then return
-    info = env.info(e)
-    if info and info.assign then info.assign.refCount++
-    if info and info.decl then info.decl.refCount++
-  if not exp.push then  return
   if exp.analyzed then return
-  if fn=analyzeFnMap[exp[0]]
-    result = fn(exp, env)
-    if result==exp then return result
-    if result and result.push then result.analyzed  = true
-    result = wrapInfo1 result, exp
-    result.env = env
-  else
-    for e in exp then analyze(e, env)
-    exp.analyzed  = true
+  switch exp
+    when VALUE then exp.analyzed  = true; return
+    when SYMBOL
+      info = env.info(exp)
+      if info and info.assign then info.assign.refCount++
+      if info and info.decl then info.decl.refCount++
+      exp.analyzed  = true
+      return
+    when LIST
+      if (exp0=exp[0]) and exp0.kind==SYMBOL and (fn=analyzeFnMap[exp0.value]) then fn(exp, env)
+      else for e in exp then analyze(e, env)
+      exp.analyzed  = true
+      return

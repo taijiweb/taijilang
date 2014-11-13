@@ -1,4 +1,4 @@
-{str, entity, wrapInfo1, isValue, isArray, extend, error, begin, undefinedExp, constant} = require '../utils'
+{str, entity, wrapInfo1, isValue, isArray, extend, error, begin, undefinedExp, constant, norm} = require '../utils'
 
 {NUMBER, STRING, IDENTIFIER, SYMBOL, REGEXP, HEAD_SPACES, CONCAT_LINE, PUNCT, FUNCTION,
 BRACKET, PAREN, DATA_BRACKET, CURVE, INDENT_EXPRESSION
@@ -13,15 +13,6 @@ INDENT, UNDENT, HALF_DENT
 
 # todo:
 # variable add a tag field, which is a different index number in the whole program
-
-truth = (exp, env) ->
-  exp = entity(exp)
-  if not exp? then return 2-!!exp
-  if typeof exp == 'string'
-    if exp[0]=='"' then return 2-!!exp[1...exp.length-1]
-    else return
-  else if exp.push then return
-  return 2-!!exp
 
 setValue = (x) ->
   if x==undefined then undefinedExp
@@ -225,27 +216,26 @@ optimizeFnMap =
     result.push body
     begin(result)
 
-exports.optimize = optimize = (exp, env) ->
-  e = entity exp
-  if not e then return exp
-  if typeof e=='string'
-    if e[0]=='"' then return exp
-    if exp.refCount==1 and not exp.valueChanged
-      return exp.assignExp[2]
-    else if exp.firstRef
-      return exp.assignExp
-  if not exp.push then  return exp
-  if exp.optimized then return exp
-  if fn=optimizeFnMap[exp[0]]
-    result = fn(exp, env)
-    if result==exp then return result
-    if result and result.push then result.optimized  = true
-    result = wrapInfo1 result, exp
-    result.env = env
-    result
-  else
-    for e, i in exp then exp[i] = optimize(e, env)
-    exp.optimized  = true
-    exp
-
 optimizeList = (exp, env) -> for e in exp then optimize(e, env)
+
+exports.optimize = optimize = (exp, env) ->
+  switch exp
+    when VALUE then exp
+    when SYMBOL
+      if exp.refCount==1 and not exp.valueChanged
+        exp.assignExp[2]
+      else if exp.firstRef
+        exp.assignExp
+      else exp
+    when LIST
+      if (exp0.kind==SYMBOL) and (fn=optimizeFnMap[exp[0].value])
+        result = fn(exp, env)
+        if result==exp then return result
+        if result and result.push then result.optimized  = true
+        result = wrapInfo1 result, exp
+        result.env = env
+        result
+      else
+        for e, i in exp then exp[i] = optimize(e, env)
+        exp.optimized  = true
+        exp

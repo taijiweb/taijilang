@@ -1,3 +1,4 @@
+{norm} = require '../utils'
 # meta language command, mainly some lisp style command.
 
 `__slice = [].slice`
@@ -20,7 +21,7 @@ exports['extern!'] = (exp, env) ->
 
 # todo: while transform(exp, env), [metaConvertVar name] should be transformed a proper variable name
 # avoid to conflict with other names
-exports['metaConvertVar!'] = (exp, env) -> ['metaConvertVar!', exp[0]]
+exports['metaConvertVar!'] = (exp, env) -> [norm 'metaConvertVar!', exp[0]]
 
 # always generate a new var a const
 # so continuous "var a; var a;" will generate two different variable.
@@ -36,7 +37,7 @@ declareVar = (fn) -> (exp, env) ->
       if v.const then error 'const need to be initialized to a value'
       result.push(['var', v]); result.push v
     else if Object.prototype.toString.call(e)=='[object Array]' and e[0]=='metaConvertVar!'
-      result.push ['var', e]
+      result.push [norm 'var', e]
     else
       e0 = entity(e[0])
       if typeof e0!='string' or e0[0]=='"'
@@ -58,8 +59,8 @@ exports['newvar!'] = (exp, env) -> '"'+env.newVar((x=entity(exp[0])).slice(1, x.
 
 # obj.slice(start, stop)
 makeSlice = (obj, start, stop) ->
-  if stop==undefined then ['call!', ['attribute!', '__slice', 'call'], [obj, start]]
-  else ['call!', ['attribute!', '__slice', 'call'], [obj, start, stop]]
+  if stop==undefined then norm ['call!', ['attribute!', '__slice', 'call'], [obj, start]]
+  else norm ['call!', ['attribute!', '__slice', 'call'], [obj, start, stop]]
 
 convertAssignRight = (right, env) ->
   if right==undefined then undefinedExp
@@ -75,12 +76,12 @@ convertAssign = (left, right, env) ->
       if left.outer
         env.set(eLeft, left=env.newVar(eLeft))
         left.const = true # create const by default
-        ['begin!', ['var', left], ['=', left, convertAssignRight(right, env)], left]
-      else ['=', left, convertAssignRight(right, env)]
+        norm ['begin!', ['var', left], ['=', left, convertAssignRight(right, env)], left]
+      else norm ['=', left, convertAssignRight(right, env)]
     else
       env.set(eLeft, left=env.newVar(eLeft))
       left.const = true # create const by default
-      ['begin!', ['var', left], ['=', left, convertAssignRight(right, env)], left]
+      norm ['begin!', ['var', left], ['=', left, convertAssignRight(right, env)], left]
   # left is assignable expression list
   else if left[0]=='list!'
     # right is already list in the compilation time
@@ -101,11 +102,11 @@ convertAssign = (left, right, env) ->
       else
         if left.length>1
           result = []
-          result.push ['var', v=env.ssaVar('lst')]
-          result.push ['=', v, convert(right, env)]
-          for e, i in left[1...] then result.push convertAssign(e,  ['direct!', ['index!', v, i]], env)
+          result.push norm ['var', v=env.ssaVar('lst')]
+          result.push norm ['=', v, convert(right, env)]
+          for e, i in left[1...] then result.push convertAssign(e,  norm(['direct!', ['index!', v, i]]), env)
           return begin(result)
-        else return convertAssign(left[1], ['index!', right, 0], env)
+        else return convertAssign(left[1], norm(['index!', right, 0]), env)
     else
       result = []; leftLength = left.length
       if right[0]=='list!'
@@ -128,21 +129,21 @@ convertAssign = (left, right, env) ->
             else result.push convertAssign(e, right[n++], env)
       else # left have ellipsis and right is not list
         # see the implementation of ellipsis parameter list
-        result.push ['var', v=env.ssaVar('lst')]
-        result.push ['=', v, convert(right, env)]
+        result.push norm ['var', v=env.ssaVar('lst')]
+        result.push norm ['=', v, convert(right, env)]
         if ellipsis==leftLength-1
           for e, i in left
             if i==0 then continue #[list! ...]
-            else if i<ellipsis then result.push convertAssign(e,  ['direct!', ['index!', v, i-1]], env)
-            else result.push ['=', e, ['?:', ['binary!', '>=', ['attribute!', v, 'length'], leftLength-1], makeSlice(v, i-1), []]]
+            else if i<ellipsis then result.push convertAssign(e,  norm(['direct!', ['index!', v, i-1]]), env)
+            else result.push norm  ['=', e, ['?:', ['binary!', '>=', ['attribute!', v, 'length'], leftLength-1], makeSlice(v, i-1), []]]
         else
-          result.push ['var', _i=env.newVar('i')]
+          result.push norm ['var', _i=env.newVar('i')]
           for e, i in left
             if i==0 then continue #[list! ...]
-            else if i<ellipsis then result.push convertAssign(e,  ['direct!', ['index!', v, i-1]], env)
+            else if i<ellipsis then result.push convertAssign(e,  norm(['direct!', ['index!', v, i-1]]), env)
             else if i==ellipsis
-              result.push ['=', e, ['?:', ['binary!', '>=', ['attribute!', v, 'length'], leftLength-1], makeSlice(v, i, ['=', _i,  ['binary!', '-', ['attribute!', v, 'length'], leftLength-i-1]]), ['comma!', [['=', _i,ellipsis-1], []]]]]
-            else result.push ['=', e, ['index!', v, ['suffix!', '++', _i]]]
+              result.push norm  ['=', e, ['?:', ['binary!', '>=', ['attribute!', v, 'length'], leftLength-1], makeSlice(v, i, ['=', _i,  ['binary!', '-', ['attribute!', v, 'length'], leftLength-i-1]]), ['comma!', [['=', _i,ellipsis-1], []]]]]
+            else result.push norm  ['=', e, ['index!', v, ['suffix!', '++', _i]]]
       begin(result)
   # left is not variable, is a assignable expression instead
   # ['@@' varName] is included by this case, see below: exports['@@'] = (exp, env) ->
@@ -160,17 +161,17 @@ exports['hashAssign!'] = (exp, env) ->
     result = []
     if typeof entity(exp1)!='string'
       vObj = env.newVar('obj')
-      result.push ['direct!', ['var', vObj]]
+      result.push norm  ['direct!', ['var', vObj]]
       env.set(vObj.symbol, vObj)
       result.push ['=', vObj, exp1]
     else vObj = exp1
-    for x in exp0 then result.push ['=', x, ['attribute!', vObj, x]]
+    for x in exp0 then result.push norm  ['=', x, ['attribute!', vObj, x]]
     convert(begin(result), env)
-  else convert(['=', exp0[0], ['attribute!', exp1, exp0[0]]], env)
+  else convert(norm(['=', exp0[0], ['attribute!', exp1, exp0[0]]]), env)
 
 # meta assign, macro assign
-exports['#='] = (exp, env) -> ['##', convert(['=', exp[0], exp[1]], env)]
-exports['#/'] = (exp, env) -> ['#/', convert(['=', exp[0], exp[1]], env)]
+exports['#='] = (exp, env) -> ['##', convert([norm('='), exp[0], exp[1]], env)]
+exports['#/'] = (exp, env) -> ['#/', convert([norm('='), exp[0], exp[1]], env)]
 
 exports['@@'] = (exp, env) ->
   name = entity(exp[0])
@@ -213,8 +214,8 @@ exports['letm!'] = (exp, env) ->
   for x in exp[0]
     x0 = entity(x[0])
     scope[x0] = var1 = env.newVar(x0)
-    result.push ['var', var1]
-    result.push ['=', var1, x[1]]
+    result.push [norm('var'), var1]
+    result.push [norm('='), var1, x[1]]
   result.push convert(exp[1], newEnv)
   result = begin(result)
   result
@@ -222,8 +223,8 @@ exports['letm!'] = (exp, env) ->
 exports['letrec!'] = (exp, env) ->
   newEnv = env.extend(scope={})
   result = []
-  for x in exp[0] then scope[x0=entity(x[0])] = var1 = newEnv.newVar(x0); result.push ['var', var1]
-  for x in exp[0] then result.push ['=', var1, convert(x[2], newEnv)]
+  for x in exp[0] then scope[x0=entity(x[0])] = var1 = newEnv.newVar(x0); result.push [norm('var'), var1]
+  for x in exp[0] then result.push [norm('='), var1, convert(x[2], newEnv)]
   result.push convert(exp[1], newEnv)
   result = begin(result)
   result.env = newEnv
@@ -245,7 +246,7 @@ exports['letloop!'] = (exp, env) ->
     if not fnBodyEnv then fnBodyEnv = newEnv.extend(fnScope={})
     for p in params then fnScope[p] = {symbol: p}
     [scope[entity(x[0])], return_(convert(value[2], fnBodyEnv))]
-  exp = ['letloop!', params, bindings, convert(exp[1], newEnv)]
+  exp = [norm('letloop!'), params, bindings, convert(exp[1], newEnv)]
   exp.env = newEnv
   result.push exp
   result = begin(result)
@@ -270,8 +271,8 @@ exports['list!'] = convertArgumentList
 
 exports['if'] = (exp, env) ->
   if exp[2]!=undefined
-    ['if', convert(exp[0], env), convertList(exp[1], env), convertList(exp[2], env)]
-  else ['if', convert(exp[0], env), convertList(exp[1], env)]
+    [norm('if'), convert(exp[0], env), convertList(exp[1], env), convertList(exp[2], env)]
+  else [norm('if'), convert(exp[0], env), convertList(exp[1], env)]
 
 exports['switch!'] = (exp, env) ->
   result = ['switch', convert(exp[0], env)]
@@ -285,17 +286,17 @@ idConvert = (keyword) -> (exp, env) -> [keyword, exp[0]]
 
 do -> for word in splitSpace 'break continue' then exports[word] = idConvert(word)
 
-exports['lineComment!'] = (exp, env) -> ''
-exports['directLineComment!'] = (exp, env) -> ['directLineComment!', exp[0]]
+exports['lineComment!'] = (exp, env) ->  ''
+exports['directLineComment!'] = (exp, env) -> [norm('directLineComment!'), exp[0]]
 exports['codeBlockComment!'] = (exp, env) -> ''
-exports['directCBlockComment!'] = (exp, env) -> ['directCBlockComment!', exp[0]]
+exports['directCBlockComment!'] = (exp, env) -> [norm('directCBlockComment!'), exp[0]]
 
 exports['direct!'] = (exp, env) -> exp[0]
-exports['quote!'] = (exp, env) -> ['quote!', entity(exp[0])]
+exports['quote!'] = (exp, env) -> [norm('quote!'), entity(exp[0])]
 
 exports['call!'] = (exp, env) -> convert([exp[0]].concat(exp[1]), env)
 
-exports['label!'] = (exp, env) -> ['label!', convertIdentifier(exp[0]), convert(exp[1], env)]
+exports['label!'] = (exp, env) -> [norm('label!'), convertIdentifier(exp[0]), convert(exp[1], env)]
 
 argumentsLength = ['attribute!', 'arguments', 'length']
 
@@ -304,16 +305,16 @@ convertParametersWithEllipsis = (exp, ellipsis, env) ->
   if ellipsis==paramsLength-1
     for param, i in exp
       result.push ['var', param]
-      if i!=ellipsis then  result.push ['=', param, ['index!', 'arguments', i]]
-      else result.push ['=', param, ['?:', ['>=', argumentsLength, paramsLength], makeSlice('arguments', i), []]]
+      if i!=ellipsis then  result.push norm ['=', param, ['index!', 'arguments', i]]
+      else result.push norm ['=', param, ['?:', ['>=', argumentsLength, paramsLength], makeSlice('arguments', i), []]]
   else
-    result.push ['var', _i=env.newVar('i')]
+    result.push [norm('var'), _i=env.newVar('i')]
     for param, i in exp
       result.push ['var', param]
-      if i<ellipsis then result.push ['=', param, ['index!', 'arguments', i]]
+      if i<ellipsis then result.push norm ['=', param, ['index!', 'arguments', i]]
       else if i==ellipsis
-        result.push ['=', param, ['?:', ['>=', argumentsLength, paramsLength], makeSlice('arguments', i, ['=', _i,  ['-', argumentsLength, paramsLength-i-1]]), ['binary,', ['=', _i,ellipsis], []]]]
-      else result.push ['=', param, ['index!', 'arguments', ['x++', _i]]]
+        result.push norm ['=', param, ['?:', ['>=', argumentsLength, paramsLength], makeSlice('arguments', i, ['=', _i,  ['-', argumentsLength, paramsLength-i-1]]), ['binary,', ['=', _i,ellipsis], []]]]
+      else result.push norm ['=', param, ['index!', 'arguments', ['x++', _i]]]
   result
 
 convertDefinition =  (exp, env, mode) ->
@@ -357,9 +358,9 @@ convertDefinition =  (exp, env, mode) ->
   body.push exp1
   if mode[0]=='|' then body =  convert(begin(body), newEnv)
   else body =  return_(convert(begin(body), newEnv))
-  functionExp = ['function', params, body]
+  functionExp = norm ['function', params, body]
   functionExp.env = newEnv
-  if mode=='=>' or mode=='|=>' then ['begin!', ['var', _this], ['=', _this, 'this'], functionExp]
+  if mode=='=>' or mode=='|=>' then norm  ['begin!', ['var', _this], ['=', _this, 'this'], functionExp]
   else functionExp
 
 for sym in '-> |-> => |=>'.split(' ') then do (sym=sym) ->
@@ -374,14 +375,14 @@ quasiquote = (exp, env, level) ->
   if not isArray(exp0) then return JSON.stringify entity(exp0)
   else if not exp0.length then return []
   if (head=entity exp0[0])=='unquote!' or head=='unquote-splice' then return convert(exp0[1], env, level-1)
-  else if head=='quasiquote!' then return ['list!', '"quasiquote!"', quasiquote(exp0[1], env, level+1)]
+  else if head=='quasiquote!' then return norm ['list!', '"quasiquote!"', quasiquote(exp0[1], env, level+1)]
   result = ['list!']
   meetSplice = false
   for e in exp[0]
     if isArray(e) and e.length
       head = entity(e[0])
       if head=='unquote-splice' and level==0
-        result = ['call!', ['attribute!', result, 'concat'], [convert(e[1], env)]]
+        result = norm ['call!', ['attribute!', result, 'concat'], [convert(e[1], env)]]
         meetSplice = true
       else if not meetSplice
         if head=='unquote-splice'
@@ -389,21 +390,21 @@ quasiquote = (exp, env, level) ->
         else if head=='unquote!'
           if level==0 then result.push convert(e[1], env)
           else result.push ['unquote!', quasiquote(e[1], env, level-1)]
-        else if head=='quasiquote!' then result.push ['list!',  '"quasiquote!"', quasiquote(e[1], env, level+1)]
+        else if head=='quasiquote!' then result.push norm ['list!',  '"quasiquote!"', quasiquote(e[1], env, level+1)]
         else result.push quasiquote([e], env, level)
       else
         if head=='unquote-splice'
           item = [['list!', quasiquote(e[1], env, level-1)]]
         else
           if head=='unquote!'
-            if level==0 then item = [['list!', convert(e[1], env)]]
-            else item = [['list!', ['"unquote!"', quasiquote(e[1], env, level-1)]]]
-          else if head=='quasiquote!' then item = [['list!', ['quasiquote!', quasiquote(e[1], env, level+1)]]]
-          else item = [['list!', [quasiquote(e, env, level)]]]
-        result = ['call!', ['attribute', result, 'concat'], item]
+            if level==0 then item = norm [['list!', convert(e[1], env)]]
+            else item = norm [['list!', ['"unquote!"', quasiquote(e[1], env, level-1)]]]
+          else if head=='quasiquote!' then item = norm [['list!', ['quasiquote!', quasiquote(e[1], env, level+1)]]]
+          else item = norm [['list!', [quasiquote(e, env, level)]]]
+        result = norm ['call!', ['attribute', result, 'concat'], item]
     else
       if not meetSplice then result.push JSON.stringify entity e
-      else result = ['call!', ['attribute!', result, 'concat'], [['list!', JSON.stringify entity e]]]
+      else result = norm ['call!', ['attribute!', result, 'concat'], [['list!', JSON.stringify entity e]]]
   result
 
 exports['eval!'] = (exp, env) ->
@@ -416,9 +417,9 @@ exports['eval!'] = (exp, env) ->
     if exp0[0]=='"'
       exp = (parser=new Parser).parse(exp0[1...exp0.length-1], parser.moduleBody, 0, env)
       objCode = compileExp(exp.body, env.extend({}))
-      ['call!',  'eval', [objCode]]
-    else ['call!', 'eval', exp0]
-  else ['call!', 'eval', [nonMetaCompileExp(exp0, env)]]
+      norm ['call!',  'eval', [objCode]]
+    else norm ['call!', 'eval', exp0]
+  else norm ['call!', 'eval', [nonMetaCompileExp(exp0, env)]]
 
 exports['metaEval!'] = (exp, env) -> eval nonMetaCompileExp(exp[0], env)
 
@@ -433,7 +434,7 @@ exports['#call!'] = (exp, env) -> ['#call', convert(exp[0], env), convert(exp[1]
 #  convert(['attribute!', '__$taiji_$_$parser__', exp[0]], env)
 
 exports['%x'] = (exp, env) ->
-  convert(['attribute!', '__$taiji_$_$parser__', exp[0]], env)
+  convert(norm(['attribute!', '__$taiji_$_$parser__', exp[0]]), env)
 
 # dynamic syntax, extend the parser on the fly
 # the head of exp[0] will be convert to attribute of __$taiji_$_$parser__
@@ -448,7 +449,7 @@ convertParserAttribute = (exp) ->
     exp
   else if typeof exp == 'object'
     if typeof exp.value=='string' and exp[0]!='"'
-      result = ['attribute!', '__$taiji_$_$parser__', exp.value]
+      result = norm ['attribute!', '__$taiji_$_$parser__', exp.value]
       extend result, exp
     else exp
   else exp
@@ -464,7 +465,7 @@ convertParserExpression = (exp) ->
     exp
   else if typeof exp == 'object'
     if typeof exp.value=='string' and exp[0]!='"'
-      result = ['attribute!', '__$taiji_$_$parser__', exp.value]
+      result = norm ['attribute!', '__$taiji_$_$parser__', exp.value]
       extend result, exp
     else exp
   else exp
