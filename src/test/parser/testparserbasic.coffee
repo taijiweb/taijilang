@@ -7,7 +7,7 @@ lib = '../../lib/'
 {IDENTIFIER, NUMBER, NEWLINE, INDENT, UNDENT, HALF_DENT, PAREN, BLOCK_COMMENT, EOI, SPACE
 PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION} = constant
 
-ndescribe "parser basic: ",  ->
+describe "parser basic: ",  ->
   describe "matchToken: ",  ->
     parser = new Parser()
     parse = (text) ->
@@ -451,7 +451,7 @@ ndescribe "parser basic: ",  ->
       x = parser.parse(text,  matchRule(parser, parser.definitionSymbolBody), 0)
       x
     it 'should parse -> 1', ->
-      expect(str parse('-> 1')).to.equal "[-> [] [1]]"
+      expect(str parse('-> 1')).to.equal "[-> [] 1]"
 
   describe "clause: ", ->
     parse = (text) ->
@@ -562,19 +562,19 @@ ndescribe "parser basic: ",  ->
       parser = new Parser()
       x = parser.parse(text, parser.moduleBody, 0)
     it 'should parse // line comment\n 1', ->
-      expect(str parse('// line comment\n 1')).to.equal "[moduleBody! [1]]"
+      expect(str parse('// line comment\n 1')).to.equal "[moduleBody! 1]"
     nit 'should parse /// line comment\n 1', ->
       expect(str parse('/// line comment\n 1')).to.equal "[begin! [directLineComment! /// line comment] 1]"
     it 'should parse // line comment block\n 1 2', ->
-      expect(str parse('// line comment block\n 1 2')).to.equal "[moduleBody! [[1 2]]]"
+      expect(str parse('// line comment block\n 1 2')).to.equal "[moduleBody! [1 2]]"
     it 'should parse // line comment block\n 1 2, 3 4', ->
-      expect(str parse('// line comment block\n 1 2, 3 4')).to.equal "[moduleBody! [[1 2] [3 4]]]"
+      expect(str parse('// line comment block\n 1 2, 3 4')).to.equal "[moduleBody! [begin! [1 2] [3 4]]]"
     it 'should parse // line comment block\n 1 2, 3 4\n 5 6, 7 8', ->
-      expect(str parse('// line comment block\n 1 2; 3 4\n 5 6; 7 8')).to.equal "[moduleBody! [[1 2] [3 4] [5 6] [7 8]]]"
+      expect(str parse('// line comment block\n 1 2; 3 4\n 5 6; 7 8')).to.equal "[moduleBody! [begin! [1 2] [3 4] [5 6] [7 8]]]"
     it 'should parse // \n 1 2, 3 4\n // \n  5 6, 7 8', ->
-      expect(str parse('// \n 1 2, 3 4\n // \n  5 6, 7 8')).to.equal "[moduleBody! [[1 2] [3 4] [5 6] [7 8]]]"
+      expect(str parse('// \n 1 2, 3 4\n // \n  5 6, 7 8')).to.equal "[moduleBody! [begin! [1 2] [3 4] [5 6] [7 8]]]"
     it 'should parse // \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12', ->
-      expect(str parse('// \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12')).to.equal "[moduleBody! [[1 2] [3 4] [5 6] [7 8] [9 10] [11 12]]]"
+      expect(str parse('// \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12')).to.equal "[moduleBody! [begin! [1 2] [3 4] [5 6] [7 8] [9 10] [11 12]]]"
 
   describe  "block comment ",  ->
     parse = (text) ->

@@ -40,7 +40,7 @@ strNonOptCompile = function(exp) {
   return str(exp);
 };
 
-describe("test phases: ", function() {
+ndescribe("test phases: ", function() {
   describe("convert: ", function() {
     describe("convert simple: ", function() {
       it("convert 1", function() {

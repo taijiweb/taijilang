@@ -29,7 +29,7 @@ strNonOptCompile = (exp) ->
   exp = nonMetaCompileExpNoOptimize exp, env
   str exp
 
-describe "test phases: ",  ->
+ndescribe "test phases: ",  ->
   describe "convert: ",  ->
     describe "convert simple: ",  ->
       it "convert 1", ->

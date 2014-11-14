@@ -540,16 +540,7 @@ transformFnMap =
                 begin([testStmt, ['if', notExp(testValue), ['break']], body, stepStmt])]
     norm begin([initStmt, cForStmt])
 
-  'try': (exp, env) ->
-    norm ['try', transformStatementList(exp[1], env),
-          exp[2], transformStatementList(exp[3], env),
-          transformStatementList(exp[4], env)]
-
-transformStatementList = (exps, env) ->
-  stmts = []
-  for e in exps
-    stmts.push transform(e, env)
-  stmts
+  'try': (exp, env) -> norm ['try', transform(exp[1], env), exp[2], transform(exp[3], env), transform(exp[4], env)]
 
 # todo: we can assure "transformed" of value and symbol always be true in the previous phases.
 # so we can simplify this function by removing the first two cases of switch

@@ -188,6 +188,8 @@ exports.isValue = isValue = (exp, env) ->
     else return false
   return true
 
+exports.kindSymbol = (e) -> {value:e, kind:SYMBOL}
+
 addBeginItem = (result, e) ->
   if e and e.push and e[0]=='begin!'
     for x in e[1...] then addBeginItem(result, x)
