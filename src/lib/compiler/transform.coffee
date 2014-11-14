@@ -12,11 +12,39 @@ addStatementEffectList = (info, exp) ->
   for e in exp[1...]
     if info.polluted then return else info.addEffectOf(e)
 
+# todo: rethink about assign, augmented assign, increment and  decrement
+assignEffectFn = (info, exp) ->
+  # [binary! = x  y] should has been converted to [= x y] in convert phase.
+  if exp0Value=='=' or exp0Value=='augmentAssign!'
+    left = exp[2]
+    if left.kind==SYMBOL then return
+    else info.addEffectOf(right); info.addEffectOf(left)
+  else if (exp0Value=='prefix!' or exp0Value=='suffix!') and ((exp1Value=exp[1].value)=='++' or exp1Value=='--')
+    if exp[1].kind==SYMBOL then info.affectVars[exp1Value] = true; return
+    else @polluted  = true; return
+
 addStatementEffectFnMap =
+  '=': assignEffectFn
+  'augmengAssign!': assignEffectFn
+
+  # todo rethink about attribute! and index!
   'attribute!': (info, exp) -> info.addEffectOf(exp[1])
-  'prefix!': (info, exp) -> info.addEffectOf(exp[2])
-  'suffix!': (info, exp) -> info.addEffectOf(exp[2])
+  'index!': (info, exp) -> info.addEffectOf(exp[2]); info.addEffectOf(exp[1])
+
+  'prefix!': (info, exp) ->
+    if (exp1Value=exp[1].value)=='++' or exp1Value=='--'
+      if exp[2].kind==SYMBOL then @affectVars[exp1Value] = true; return
+      else info.addEffectOf(exp[2])
+    else info.addEffectOf(exp[2])
+  'suffix!': (info, exp) ->
+    if (exp1Value=exp[1].value)=='++' or exp1Value=='--'
+      if exp[2].kind==SYMBOL then @affectVars[exp1Value] = true; return
+      else info.addEffectOf(exp[2])
+    else info.addEffectOf(exp[2])
+
+  # '=', 'augmentAssign!' is converted to leaving 'binary!' in converting phase
   'binary!': (info, exp) -> addStatementEffectList(info, exp[2..3])
+
   'metaConvertVar!': (info, exp) -> return
   'break': (info, exp) -> return
   'quote!': (info, exp) -> return
@@ -26,32 +54,29 @@ addStatementEffectFnMap =
   'label!': (info, exp) -> info.addEffectOf(exp[1])
   'noop!': (info, exp) -> return
   'jsvar!': (info, exp) -> return
+
+  # constructor is always caller
   'new': (info, exp) -> info.polluted = true
+
   'hashitem!': (info, exp) -> info.addEffectOf(exp[2])
+
   'call!': (info, exp) -> info.polluted = true
+
+  # To define function is not to call it
   'function': (info, exp) -> return
+
   'letloop!':(info, exp) ->
     for binding in exp[2] then info.affectVars[entity(binding[0])] = true
     info.addEffectOf(exp[3])
 
 class ShiftAheadStatementInfo
   # @polluted: if polluted, it means important side effects has happened and be moved to previous statement
-  # then all exp and variable will be affected, variable will be referenced by temporary variable.
+  # then all exp and variable will be affected, variable must be referenced by temporary variable.
   constructor: (@affectVars, @polluted) ->
   addEffectOf: (exp) ->
-    if @polluted then return
     if exp not instanceof Array then return
-    if (stmt0=exp[0].value)=='call!' then @polluted = true; return
-    # [binary! = x  y] should has been converted to [= x y] in convert phase.
-    if stmt0=='=' then left = exp[1]; right = exp[2]
-    else if stmt0=='augmentAssign!'  then left = exp[2]; right = exp[3]
-    else if (stmt0=='prefix!' or stmt0=='suffix!') and ((exp1Value=exp[1].value)=='++' or exp1Value=='--') then left = exp[2]
-    if left
-      if left.kind==SYMBOL then @affectVars[left.value] = true
-      else @polluted  = true; return
-      if right then @addEffectOf(right)
-      return
-    if fn=addStatementEffectFnMap[stmt0] then fn(@, exp)
+    if @polluted then return
+    if fn=addStatementEffectFnMap[exp0Value] then fn(@, exp)
     else addStatementEffectList(@, exp)
 
   maybeAffect: (name) -> @polluted or hasOwnProperty.call(@affectVars, name)
@@ -515,13 +540,23 @@ transformFnMap =
                 begin([testStmt, ['if', notExp(testValue), ['break']], body, stepStmt])]
     norm begin([initStmt, cForStmt])
 
-  'try': (exp, env) -> norm ['try', transform(exp[1], env), exp[2], transform(exp[3], env), transform(exp[4], env)]
+  'try': (exp, env) ->
+    norm ['try', transformStatementList(exp[1], env),
+          exp[2], transformStatementList(exp[3], env),
+          transformStatementList(exp[4], env)]
+
+transformStatementList = (exps, env) ->
+  stmts = []
+  for e in exps
+    stmts.push transform(e, env)
+  stmts
 
 # todo: we can assure "transformed" of value and symbol always be true in the previous phases.
 # so we can simplify this function by removing the first two cases of switch
 exports.transform = transform = (exp, env) ->
+  # value and symbol should be preset exp.transform = true
   if exp.transformed then return exp
-  assert exp.kind==LIST
+  assert exp.kind==LIST, 'wrong kind of exp: '+str(exp)
   if (fn=transformFnMap[exp[0].value]) then result = fn(exp, env)
   else result = useTransformExpression(exp, env)
   result.transformed  = true

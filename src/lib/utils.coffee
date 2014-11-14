@@ -129,8 +129,8 @@ exports.str = str = (item) ->
   else if item==null then 'null'
   else item.toString()
 
-exports.assert = assert = (value) ->
-    if not value then throw 'assert failed'
+exports.assert = assert = (value, message) ->
+    if not value then throw message or 'assert failed'
 
 exports.isArray = isArray = (exp) -> Object::toString.call(exp) == '[object Array]'
 

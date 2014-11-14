@@ -183,14 +183,6 @@ tokenize = (exp) ->
       tokenFnMap[exp[0].value](exp)
     else throw 'wrong kind of exp while tokenizing'
 
-#  switch exp.kind
-#    when VALUE then exp.value
-#    when SYMBOL then exp.value
-#    when LIST
-#      if (exp0=exp[0]) and exp0.kind==SYMBOL and (fn=tokenFnMap[exp[0]]) then fn(exp)
-#      else tokenizeError exp, 'unexpected expression while tokenizing'
-#    else tokenizeError exp, 'wrong kind of expression for tokenization'
-
 makeTextizer = (options) ->
   code = ''; prev = ''; indentRow = 0; lineno = 0; row = 0
   indentWidth = options.indentWidth or 2; lineLength = options.lineLength  or 80
