@@ -241,6 +241,8 @@ exports.pushExp = (lst, v) -> norm ['call!', ['attribute!', lst, 'push'], [v]]
 exports.notExp = (exp) -> norm ['prefix!', '!', exp]
 exports.undefinedExp = undefinedExp = norm ['prefix!', 'void', 0]
 
+exports.isUndefinedExp = -> (exp) -> exp==undefinedExp
+
 # get the truth value of exp under env
 # 0: truth value is unknown
 # 1: truth value is true

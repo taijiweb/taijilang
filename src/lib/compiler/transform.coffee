@@ -8,39 +8,65 @@ exports.idFn = idFn = (exp, env) -> exp
 
 hasOwnProperty = Object::hasOwnProperty
 
-addStatementEffectList = (info, exp) ->
-  for e in exp[1...]
-    if info.polluted then return else info.addEffectOf(e)
+exports.ShiftStatementInfo = class ShiftStatementInfo
+  # @polluted: if polluted, it means important side effects has happened and be moved to previous statement
+  # then all exp and variable will be affected, variable must be referenced by temporary variable.
+  constructor: (@affectVars, @shiftVars, @polluted) ->
 
-# todo: rethink about assign, augmented assign, increment and  decrement
-assignEffectFn = (info, exp) ->
-  # [binary! = x  y] should has been converted to [= x y] in convert phase.
-  if exp0Value=='=' or exp0Value=='augmentAssign!'
-    left = exp[2]
-    if left.kind==SYMBOL then return
-    else info.addEffectOf(right); info.addEffectOf(left)
-  else if (exp0Value=='prefix!' or exp0Value=='suffix!') and ((exp1Value=exp[1].value)=='++' or exp1Value=='--')
-    if exp[1].kind==SYMBOL then info.affectVars[exp1Value] = true; return
-    else @polluted  = true; return
+  addEffectOf: (exp) ->
+    if @polluted then return
+    switch exp.kind
+      when VALUE then return
+      when SYMBOL then @shiftVars[exp.value] = true
+      when LIST
+        if exp.affectAdded then return
+        if fn=addStatementEffectFnMap[exp[0].value] then fn(@, exp)
+        else addStatementEffectList(@, exp)
+        exp.affectAdded = true
+
+  maybeAffect: (name) -> @polluted or hasOwnProperty.call(@affectVars, name)
+
+  copy: -> new ShiftStatementInfo(extend({}, @affectVars), extend({}, @shiftVars), @polluted)
+
+  merge: (shiftStmtInfoList...) ->
+    if @polluted then return @
+    for shiftStmtInfo in shiftStmtInfoList
+      if shiftStmtInfo.polluted then @polluted = true; return @
+    for shiftStmtInfo in shiftStmtInfoList
+      for name of shiftStmtInfo.affectVars
+        if hasOwnProperty.call(shiftStmtInfo.affectVars, name)
+          @affectVars[name] = true
+      for name of shiftStmtInfo.shiftVars
+        if hasOwnProperty.call(shiftStmtInfo.shiftVars, name)
+          @shiftVars[name] = true
+    @
+
+addStatementEffectList = (info, exp) ->
+  if info.polluted then return
+  for e in exp[1...]
+    if info.polluted then return
+    else info.addEffectOf(e)
 
 addStatementEffectFnMap =
-  '=': assignEffectFn
-  'augmengAssign!': assignEffectFn
+  # augmentAssign, ++, -- should be converted to the form: ['=', x, y]
+  # in python, ++, --, augmentAssign can be redefined, so they need to be rethinked about, and can not be treated as assign by certainly.
+  '=': (info, exp) ->
+    # [binary! = x  y] should has been converted to [= x y] in convert phase.
+    if info.polluted
+      exp.shift = true
+    addStatementEffect(info, exp[2])
+    if exp[1].kind==SYMBOL
+      if info.affectVars[exp[1].value]
+        exp.shift = true
+      else info.affextVars[exp[1].value] = true
+    else
+      addStatementEffect(info, exp[1])
+
+    return
 
   # todo rethink about attribute! and index!
   'attribute!': (info, exp) -> info.addEffectOf(exp[1])
   'index!': (info, exp) -> info.addEffectOf(exp[2]); info.addEffectOf(exp[1])
-
-  'prefix!': (info, exp) ->
-    if (exp1Value=exp[1].value)=='++' or exp1Value=='--'
-      if exp[2].kind==SYMBOL then @affectVars[exp1Value] = true; return
-      else info.addEffectOf(exp[2])
-    else info.addEffectOf(exp[2])
-  'suffix!': (info, exp) ->
-    if (exp1Value=exp[1].value)=='++' or exp1Value=='--'
-      if exp[2].kind==SYMBOL then @affectVars[exp1Value] = true; return
-      else info.addEffectOf(exp[2])
-    else info.addEffectOf(exp[2])
 
   # '=', 'augmentAssign!' is converted to leaving 'binary!' in converting phase
   'binary!': (info, exp) -> addStatementEffectList(info, exp[2..3])
@@ -50,16 +76,25 @@ addStatementEffectFnMap =
   'quote!': (info, exp) -> return
   'regexp!': (info, exp) -> return
   'continue': (info, exp) -> return
+
+  # var initialization should be divided into another expression
   'var': (info, exp) -> return
+
   'label!': (info, exp) -> info.addEffectOf(exp[1])
+
   'noop!': (info, exp) -> return
+
+  # can we treat jsvar! as const?
   'jsvar!': (info, exp) -> return
 
   # constructor is always caller
   'new': (info, exp) -> info.polluted = true
 
+  # exp[1] is the key, which is a constant value.
   'hashitem!': (info, exp) -> info.addEffectOf(exp[2])
 
+  # provided more annotation on caller and function, we can optimized this
+  # pure? assign? closure var?
   'call!': (info, exp) -> info.polluted = true
 
   # To define function is not to call it
@@ -68,26 +103,6 @@ addStatementEffectFnMap =
   'letloop!':(info, exp) ->
     for binding in exp[2] then info.affectVars[entity(binding[0])] = true
     info.addEffectOf(exp[3])
-
-class ShiftAheadStatementInfo
-  # @polluted: if polluted, it means important side effects has happened and be moved to previous statement
-  # then all exp and variable will be affected, variable must be referenced by temporary variable.
-  constructor: (@affectVars, @polluted) ->
-  addEffectOf: (exp) ->
-    if exp not instanceof Array then return
-    if @polluted then return
-    if fn=addStatementEffectFnMap[exp0Value] then fn(@, exp)
-    else addStatementEffectList(@, exp)
-
-  maybeAffect: (name) -> @polluted or hasOwnProperty.call(@affectVars, name)
-  copy: -> new ShiftAheadStatementInfo(extend({}, @affectVars), @polluted)
-  merge: (shiftStmtInfoList...) ->
-    for shiftStmtInfo in shiftStmtInfoList
-      if shiftStmtInfo.polluted then @polluted = shiftStmtInfo.polluted; return @
-      for name of shiftStmtInfo.affectVars
-        if hasOwnProperty.call(shiftStmtInfo.affectVars, name)
-          @affectVars[name] = true
-    @
 
 statementHeadMap = {'break':1, 'continue':1, 'switch':1, 'try':1, 'throw':1,
 'jsForIn!':1, 'forOf!': 1, 'cFor!':1, 'while':1, 'doWhile!':1,  'letloop':1,
@@ -124,6 +139,7 @@ transformInterpolatedString = (exp) ->
   else return exp
 
 transformAndOrExpression = (exp, env, shiftStmtInfo) ->
+  # short circuit evaluation
   testFn = if exp[1]=='&&' then notExp else (x) -> x
   isAndOr = if exp[1]=='&&' then 'isAnd' else 'isOr'
   [[leftStmt, leftValue], [rightStmt, rightValue]] = transformExpressionSequence(exp[2..3], env, shiftStmtInfo)
@@ -142,7 +158,8 @@ transformAndOrExpression = (exp, env, shiftStmtInfo) ->
 
 transformReturnExpression = (exp, env, shiftStmtInfo) ->
   [expStmt, value] = transformExpression(exp[1], env, shiftStmtInfo)
-  [begin([expStmt, [exp[0], value]]), undefinedExp]
+  # the exprssion after return or throw has no effects.
+  [begin([expStmt, norm([norm(exp[0]), value])]), undefinedExp]
 
 transformDirectExpression = (exp, env, shiftStmtInfo) ->
   [stmt, es] = transformExpressionList(exp[1...], env, shiftStmtInfo)
@@ -175,8 +192,8 @@ transformUnaryExpression = (exp, env, shiftStmtInfo) ->
       [begin([stmt, ['var', (t=env.ssaVar('t'))], ['=', t,  ['prefix!', exp[1], e]]]), t]
 
 transformExpressionFnMap =
-  'directLineComment!': (exp, env, shiftStmtInfo) -> [exp, exp] # error 'direct line comment should not been here'
-  'directCBlockComment!': (exp, env, shiftStmtInfo) -> [exp, exp]  #error 'direct line comment should not been here'
+  'directLineComment!': (exp, env, shiftStmtInfo) -> [exp, undefinedExp] # error 'direct line comment should not been here'
+  'directCBlockComment!': (exp, env, shiftStmtInfo) -> [exp, undefinedExp]  #error 'direct line comment should not been here'
   'string!': (exp, env, shiftStmtInfo) ->
      [stmt, es] = transformExpressionList(exp[1...], env, shiftStmtInfo)
      str = transformInterpolatedString(es[0])
@@ -201,37 +218,29 @@ transformExpressionFnMap =
       [begin([testStmt, ['var', t], ifStmt]), t]
     else [testStmt, ['?:', testExp, thenExp, elseExp]]
 
+  # '++' '--' should be excluded in converting phase
   'prefix!': transformUnaryExpression
 
   'suffix!': transformUnaryExpression
 
   'binary!': (exp, env, shiftStmtInfo) ->
+    # short circuit evaluation
     if exp[1]=='||'  or exp[1]=='&&' then return transformAndOrExpression(exp, env, shiftStmtInfo)
     [[leftStmt, left], [rightStmt, right]] = transformExpressionSequence(exp[2..3], env, shiftStmtInfo)
     norm [begin([leftStmt, rightStmt]), norm ['binary!', exp[1], left, right]]
 
   '=': (exp, env, shiftStmtInfo) ->
-    exp1 = entity(exp[1])
-    if typeof exp1 == 'string' and exp1 and exp1[0]!='"'
-      affected = shiftStmtInfo.maybeAffect(exp1)
-      [rightStmt, rightExp] = transformExpression(exp[2], env, shiftStmtInfo)
-      if affected then [begin([rightStmt, ['var', (t=env.ssaVar('t'))], ['=', t, rightExp], ['=', exp1, t]]), t]
+    exp1 = exp[1]
+    if left.kind==SYMBOL
+      if shiftStmtInfo.maybeAffect(exp1)
+        [rightStmt, rightExp] = transformExpression(exp[2], env, shiftStmtInfo)
+        [begin([rightStmt, ['var', (t=env.ssaVar('t'))], ['=', t, rightExp], ['=', exp1, t]]), t]
+      else if shiftStmtInfo.maybeAffectBy(exp1)
+        [begin([rightStmt, ['=', exp1, rightExp]]), exp1]
       else [rightStmt, ['=', exp1, rightExp]]
     else
       [[leftStmt, leftExp], [rightStmt, rightExp]] = transformExpressionSequence(exp[1..2], env, shiftStmtInfo)
       [begin([leftStmt, rightStmt]), ['=', leftExp, rightExp]]
-
-  'augmentAssign!': (exp, env, shiftStmtInfo) ->
-    exp2 = entity(exp[2])
-    if typeof exp2 == 'string' and exp2 and exp[0]!='"'
-      affected = shiftStmtInfo.maybeAffect(exp2)
-      [rightStmt, rightExp] = transformExpression(exp[3], env, shiftStmtInfo)
-      if affected
-        [begin([rightStmt, ['var', (t=env.ssaVar('t'))], [ 'augmentAssign!', exp[1], exp2, rightExp], ['=', t, exp[2]], exp]), t]
-      else [rightStmt, ['augmentAssign!', exp[1], exp2, rightExp]]
-    else
-      [[leftStmt, leftExp], [rightStmt, rightExp]] = transformExpressionSequence(exp[2..3], env, shiftStmtInfo)
-      [begin([leftStmt, rightStmt]), ['augmentAssign!', exp[1], leftExp, rightExp]]
 
   'list!':(exp, env, shiftStmtInfo) ->
     [argsStmts, argsValues] = transformExpressionList(exp[1...], env, shiftStmtInfo)
@@ -240,16 +249,31 @@ transformExpressionFnMap =
       if e and e[0]=='directLineComment!' or e[0]=='directCBlockComment!' then continue
       else args.push e
     [argsStmts, ['list!'].concat(args)]
-  'return': transformReturnExpression
-  'throw': transformReturnExpression
 
   'debugger': (exp, env, shiftStmtInfo) -> [exp, undefinedExp]
 
-  # break label identifier
+  # {break label} and {continue label}
   'break': (exp, env, shiftStmtInfo) -> [exp, undefinedExp]
+
   'continue': (exp, env, shiftStmtInfo) -> [exp, undefinedExp]
+
   'quote!': (exp, env, shiftStmtInfo) -> [undefinedExp, exp]
+
   'regexp!': (exp, env, shiftStmtInfo) -> [undefinedExp, exp]
+
+  'new': (exp, env, shiftStmtInfo) ->
+    if exp[1] and exp[1][0]=='call!'
+      [argsStmts, argsValues] = transformExpressionList(exp[2], env, shiftStmtInfo)
+      [callerStmt, callerValue] = transformExpression(exp[1], env, shiftStmtInfo)
+      [begin([['var', t=env.ssaVar('t')], callserStmt, argsStmt, ['=', t, ['new', ['call!', callerValues, argsValues]]]]), t]
+    else
+      [stmt, e] = transformExpression(exp[1], env, shiftStmtInfo)
+      [begin([['var', t=env.ssaVar('t')], stmt, ['=', t, ['new', e]]]), t]
+
+
+  'return': transformReturnExpression
+
+  'throw': transformReturnExpression
 
   'var': (exp, env, shiftStmtInfo) ->
     if Object.prototype.toString.call(exp[1]) == '[object Array]'
@@ -258,10 +282,13 @@ transformExpressionFnMap =
       variable = metaVar+(env.getSymbolIndex(metaVar) or '')
       [['var', variable], variable]
     else [exp, undefinedExp]
+
   'label!': (exp, env, shiftStmtInfo) ->
     [stmt, e] = transformExpression(exp[1], env, shiftStmtInfo)
     [['label!', stmt], e]
+
   'noop!': (exp, env, shiftStmtInfo) -> [exp, undefinedExp]
+
   'jsvar!': (exp, env, shiftStmtInfo) ->
     if shiftStmtInfo.maybeAffect(entity(exp[1]))
       [begin([['var', t=env.ssaVar('t')], ['=', t, exp[1]]]), t]
@@ -274,15 +301,6 @@ transformExpressionFnMap =
   'metaConvertVar!':(exp, env, shiftStmtInfo) ->
     variable = exp[1]+(env.getSymbolIndex(exp[1]) or '')
     [undefinedExp, variable]
-
-  'new': (exp, env, shiftStmtInfo) ->
-    if exp[1] and exp[1][0]=='call!'
-      [argsStmts, argsValues] = transformExpressionList(exp[2], env, shiftStmtInfo)
-      [callerStmt, callerValue] = transformExpression(exp[1], env, shiftStmtInfo)
-      [begin([['var', t=env.ssaVar('t')], callserStmt, argsStmt, ['=', t, ['new', ['call!', callerValues, argsValues]]]]), t]
-    else
-      [stmt, e] = transformExpression(exp[1], env, shiftStmtInfo)
-      [begin([['var', t=env.ssaVar('t')], stmt, ['=', t, ['new', e]]]), t]
 
   'hash!': (exp, env, shiftStmtInfo) ->
     [stmt, e] = transformExpressionList(exp[1], env, shiftStmtInfo)
@@ -455,39 +473,42 @@ transformExpressionFnMap =
     letloopStmt.env = exp.env
     [letloopStmt, t]
 
-transformExpression = (exp, env, shiftStmtInfo) ->
+exports.transformExpression = transformExpression = (exp, env, shiftStmtInfo) ->
   switch exp.kind
     when VALUE then  [undefinedExp, exp]
     when SYMBOL
       if exp.ssa then return [undefinedExp, exp]
-      else if shiftStmtInfo.affectVars[exp.value]
-        return [begin([norm ['var', t=env.ssaVar('t')], norm ['=', t, exp]]), t]
+      else if shiftStmtInfo.maybeAffect(exp.value)
+        stmt = begin([norm ['var', t=env.ssaVar('t')], norm ['=', t, exp]])
+        stmt.shiftVars = [expValue]
+        return [stmt, t]
       else return [undefinedExp, exp]
     when LIST
       assert transformExpressionFnMap[exp[0].value]
       result = transformExpressionFnMap[exp[0].value](exp, env, shiftStmtInfo)
-      # result is [stmt, exp], so below add the side effects of stmt
-      shiftStmtInfo.addEffectOf(result[0])
+      # result is in form [stmt, exp], now add the effects of stmt, which will be shifted ahead.
       return result
 
+# used by binary!, =, augmentAssign, result in sequence need to be processed independently
 transformExpressionSequence = (exps, env, shiftStmtInfo) ->
   result = []
   i = exps.length
-  while --i>=0
+  while --i
     exp = exps[i]
     result.unshift transformExpression exp, env, shiftStmtInfo
   result
 
-transformExpressionList = (exps, env, shiftStmtInfo) ->
+# different from above, stmts is merged by begin and es is merged to a list.
+transformExpressionList = (exps, env, shiftStmtInfo, shifted) ->
   stmts = []; es = []
   i = exps.length
-  while --i>=0
+  while --i
     exp = exps[i]
-    [stmt, e] = transformExpression exp, env, shiftStmtInfo
+    [stmt, e] = transformExpression exp, env, shiftStmtInfo, shifted
     stmts.unshift stmt; es.unshift e
   [begin(stmts), es]
 
-useTransformExpression = (exp, env) -> begin transformExpression(exp, env, new ShiftAheadStatementInfo({}))
+useTransformExpression = (exp, env) -> begin transformExpression(exp, env, new ShiftStatementInfo({}))
 
 transformFnMap =
   'debugger': idFn
@@ -507,23 +528,23 @@ transformFnMap =
     begin(stmts)
 
   'if': (exp, env) ->
-    [stmtTest, testExp] = transformExpression(exp[1], env, new ShiftAheadStatementInfo({}))
+    [stmtTest, testExp] = transformExpression(exp[1], env, new ShiftStatementInfo({}))
     begin([stmtTest, ['if', testExp, transform(exp[2], env), transform(exp[3], env)]])
 
   'while': (exp, env) ->
-    [stmt, testExp] = transformExpression(exp[1], env, new ShiftAheadStatementInfo({}))
+    [stmt, testExp] = transformExpression(exp[1], env, new ShiftStatementInfo({}))
     bodyStmt = transform(exp[2], env)
     if stmt  then ['while', 1, begin([stmt,['if', notExp(testExp), 'break'],bodyStmt])]
     else ['while', testExp, bodyStmt]
 
   'doWhile!': (exp, env) ->
-    [stmt, testExp] = transformExpression(exp[2], env, new ShiftAheadStatementInfo({}))
+    [stmt, testExp] = transformExpression(exp[2], env, new ShiftStatementInfo({}))
     ['doWhile!', begin([ transform(exp[1], env), stmt]), testExp]
 
   # for key in hash {...}
   # [forIn! key hash body]
   'jsForIn!': (exp, env) ->
-    [stmt, hashExp] = transformExpression(exp[2], env, new ShiftAheadStatementInfo({}))
+    [stmt, hashExp] = transformExpression(exp[2], env, new ShiftStatementInfo({}))
     # do not transform exp[1], because it must be [var name] or name
     if stmt then ['begin!', stmt, ['jsForIn!', exp[1], hashExp, transform(exp[3], env)]]
     else ['jsForIn!', exp[1], hashExp, transform(exp[3], env)]
@@ -532,12 +553,16 @@ transformFnMap =
   #'forOf!': transformForInExpression
 
   'cFor!': (exp, env) ->
-    [initStmt, initValue] = transformExpression(exp[1], env, new ShiftAheadStatementInfo({}))
-    [testStmt, testValue] = transformExpression(exp[2], env, new ShiftAheadStatementInfo({}))
-    [stepStmt, stepValue] = transformExpression(exp[3], env, new ShiftAheadStatementInfo({}))
-    body = transformExpression(exp[4], env)
-    cForStmt = ['cFor!', initValue, true, stepValue,
-                begin([testStmt, ['if', notExp(testValue), ['break']], body, stepStmt])]
+    [initStmt, initValue] = transformExpression(exp[1], env, new ShiftStatementInfo({}))
+    [testStmt, testValue] = transformExpression(exp[2], env, new ShiftStatementInfo({}))
+    [stepStmt, stepValue] = transformExpression(exp[3], env, new ShiftStatementInfo({}))
+    body = transform(exp[4], env)
+    if isUndefinedExp(testStmt)
+      cForStmt = ['cFor!', initValue, testValue, stepValue,
+                  begin([testStmt, body, stepStmt])]
+    else
+      cForStmt = ['cFor!', initValue, true, stepValue,
+                  begin([testStmt, ['if', notExp(testValue), ['break']], body, stepStmt])]
     norm begin([initStmt, cForStmt])
 
   'try': (exp, env) -> norm ['try', transform(exp[1], env), exp[2], transform(exp[3], env), transform(exp[4], env)]

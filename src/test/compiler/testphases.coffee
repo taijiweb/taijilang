@@ -2,6 +2,8 @@
 
 lib = '../../lib/'
 
+{transformExpression, ShiftStatementInfo} =  require lib+'compiler/transform'
+
 {constant, norm} = require lib+'utils'
 {VALUE, SYMBOL, LIST} = constant
 
@@ -29,7 +31,7 @@ strNonOptCompile = (exp) ->
   exp = nonMetaCompileExpNoOptimize exp, env
   str exp
 
-ndescribe "test phases: ",  ->
+describe "test phases: ",  ->
   describe "convert: ",  ->
     describe "convert simple: ",  ->
       it "convert 1", ->
@@ -60,5 +62,14 @@ ndescribe "test phases: ",  ->
         expect(strNonOptCompile(1)).to.equal "1"
       it """copmile '"1"' """, ->
         expect(strNonOptCompile('"1"')).to.equal "\"1\""
-      iit """copmile ['binary!', '+', 1, 2] """, ->
+      it """copmile ['binary!', '+', 1, 2] """, ->
         expect(strNonOptCompile(['binary!', '+', 1, 2])).to.equal "1 + 2"
+
+  describe "transformExpression: ",  ->
+    iit "return 'a'", ->
+      env = taiji.initEnv(taiji.builtins, taiji.rootModule, {})
+      info = new ShiftStatementInfo({}, {})
+      result = transformExpression(norm(['return', 'a']), env, info)
+      expect(str result[0]).to.equal "[return a]"
+      expect(info.affectVars['a']).to.equal(undefined)
+      expect(info.shiftVars['a']).to.equal(true)
