@@ -13,26 +13,26 @@ ellipsisIndex = (kind, list, start, stop, env) ->
     else norm ['call!', ['attribute!', list, 'slice'], [start, ['+', stop, 1]]]
 
 exports['index!'] = (exp, env) ->
-  exp1 = exp[1]; exp10 = entity(exp1[0])
-  if Object::toString.call(exp1) == '[object Array]'
-    if exp10=='...' or exp10=='..'
-      return convert ellipsisIndex(exp10, exp[0], exp1[1], exp1[2]), env
-    else if exp10=='x...'
-      return convert ellipsisIndex('...', exp[0], exp1[1], undefined), env
-    else if exp10=='...x'
-      return convert ellipsisIndex('...', exp[0], undefined, exp1[1]), env
-    else if exp10=='..x'
-      return convert ellipsisIndex('..', exp[0], undefined, exp1[1]), env
-    else return ['index!', convert(exp[0], env), convert exp[1], env]
-  else if (eExp1=entity(exp1))=='..'or eExp1=='...'
-    return  convert norm(['call!', ['attribute!', exp[0], 'slice'], []]), env
-  norm ['index!', convert(exp[0], env), convert exp[1], env]
+  exp2 = exp[2]; exp20 = entity(exp2[0])
+  if Object::toString.call(exp2) == '[object Array]'
+    if exp20=='...' or exp20=='..'
+      return convert ellipsisIndex(exp20, exp[1], exp2[1], exp2[2]), env
+    else if exp20=='x...'
+      return convert ellipsisIndex('...', exp[1], exp2[1], undefined), env
+    else if exp20=='...x'
+      return convert ellipsisIndex('...', exp[1], undefined, exp2[1]), env
+    else if exp20=='..x'
+      return convert ellipsisIndex('..', exp[1], undefined, exp2[1]), env
+    else return ['index!', convert(exp[1], env), convert exp[2], env]
+  else if (eExp1=entity(exp2))=='..'or eExp1=='...'
+    return  convert norm(['call!', ['attribute!', exp[1], 'slice'], []]), env
+  norm ['index!', convert(exp[1], env), convert exp[2], env]
 
 exports['::'] = norm ['attribute!', 'this', 'prototype']
 
 exports['attribute!'] = (exp, env) ->
-  obj = convert(exp[0], env)
-  if (attr=entity(exp[1]))=='::' then return norm ['attribute!', obj, 'prototype']
+  obj = convert(exp[1], env)
+  if (attr=entity(exp[2]))=='::' then return norm ['attribute!', obj, 'prototype']
   nonJs = false
   for c in attr
     if not identifierCharSet[c] then nonJs = true; break
@@ -48,7 +48,7 @@ binary = (symbol) -> (exp, env) -> norm(['binary!', symbol]).concat convertList 
 for symbol in '+ - * / && || << >> >>> != !== > < >= <='.split(' ')
   exports[symbol] = binary symbol
   binaryConverters[symbol] = idBinaryConvert
-  binaryConverters['='] = (op, exp1, exp2, env) -> [norm('='), convert(exp1, env), convert(exp2, env)]
+  binaryConverters['='] = (op, left, right, env) -> [norm('='), convert(left, env), convert(right, env)]
 
 # learn coffee-script
 exports['=='] = binary '==='
@@ -64,36 +64,36 @@ for symbol in '+ -'.split ' '
   do (symbol=symbol) ->
     exports[symbol] = (exp, env) ->
       if exp.length==2 then norm(['binary!', symbol]).concat convertList exp, env
-      else norm(['prefix!', symbol]).concat convert exp[0], env
+      else norm(['prefix!', symbol]).concat convert exp[1], env
 
 #augmentAssign = (symbol) -> (exp, env) -> ['augmentAssign', symbol].concat convertList exp, env
 for symbol in '+ - * / && || << >> >>> ,'.split(' ')
   op = symbol+'='
   exports[op] = binary op
-  binaryConverters[op] = (op, exp1, exp2, env) -> [norm('binary!'), op, convert(exp1, env), convert(exp2, env)]
+  binaryConverters[op] = (op, left, right, env) -> [norm('binary!'), op, convert(left, env), convert(right, env)]
 
 exports['instanceof'] = binary 'instanceof'
 
-prefix = (symbol) -> (exp, env) -> [norm('prefix!'), norm(symbol), convert exp[0], env]
+prefix = (symbol) -> (exp, env) -> [norm('prefix!'), norm(symbol), convert exp[1], env]
 for symbol in '++x --x yield new typeof void !x ~x +x -x'.split(' ')
   if symbol[symbol.length-1]=='x' then exports[symbol] = prefix symbol[...symbol.length-1]
   else exports[symbol] = prefix symbol
 exports['not'] = prefix '!'
 
-suffix = (symbol) -> (exp, env) -> [norm('suffix!'), norm(symbol), convert exp[0], env]
+suffix = (symbol) -> (exp, env) -> [norm('suffix!'), norm(symbol), convert exp[1], env]
 for symbol in 'x++ x--'.split(' ')
   if symbol[0]=='x' then exports[symbol] = suffix symbol[1...]
   else exports[symbol] = suffix symbol
 
-exports['!!x'] = (exp, env) -> norm ['prefix!', '!', ['prefix!', '!', convert(exp[0], env)]]
+exports['!!x'] = (exp, env) -> norm ['prefix!', '!', ['prefix!', '!', convert(exp[1], env)]]
 
 exports['print'] = call norm ['attribute!', 'console', 'log']
 
 exports['jsvar!'] = (exp, env) ->
-  env.set(entity(exp[0]), entity(exp[0]))
-  norm ['jsvar!', exp[0]]
+  env.set(entity(exp[1]), entity(exp[1]))
+  norm ['jsvar!', exp[1]]
 
-exports['return'] = (exp, env) -> norm ['return', convert(exp[0], env)]
+exports['return'] = (exp, env) -> norm ['return', convert(exp[1], env)]
 
 # javascript
 do -> for sym in 'undefined null true false this console Math Object Array'.split ' ' then exports[sym] = norm ['jsvar!', sym]
@@ -109,7 +109,7 @@ exports['arguments'] =  norm ['jsvar!', 'arguments']
 #exports['__slice'] =  ['jsvar!', '__slice']
 #exports['__hasProp'] =  ['jsvar!', '__hasProp']
 
-exports['regexp!'] = (exp, env) -> [norm 'regexp!', exp[0]]
+exports['regexp!'] = (exp, env) -> [norm 'regexp!', exp[1]]
 exports['eval'] = norm ['jsvar!', 'eval']
 
 # node module variable

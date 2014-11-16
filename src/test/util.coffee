@@ -27,7 +27,6 @@ head = 'taiji language 0.1\n'
 exports.parse = (text) ->
   parser = new Parser()
   x = parser.parse(head+text, parser.module, 0)
-  str x.body
 
 exports.compile = (code) ->
   head = 'taiji language 0.1\n'

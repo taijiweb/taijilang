@@ -22,87 +22,6 @@ setValue = (x) ->
 #todo: maybe this utility can be deprecated, because we can eval(tocode(exp))
 getValue = (x) -> entity(x)
 
-replaceCallFn = (exp, fnName)->
-  if not isArray(exp) then return exp
-  if exp[0]!= 'call!' or entity(exp[1])!=fnName then for e in exp then replaceCallFn(e, fnName)
-  else fnName
-
-replaceMutualCallFn = (exp, fnName, fnNames)->
-  if not isArray(exp) then return exp
-  if exp[0]!= 'call!' or not fnNames[entity(exp[1])] then for e in exp then replaceMutualCallFn(e, fnName, fnNames)
-  else fnName
-
-replaceCallParam = (exp, fnName)->
-  if not isArray(exp) then return
-  if exp[0]!= 'call!' or entity(exp[1])!=fnName
-    for e in exp then  if x=replaceCallParam(e, fnName) then return x
-  else return exp[2]
-
-replaceMutualCallParam = (exp, fnName, fnNames)->
-  if not isArray(exp) then return
-  if exp[0]!= 'call!' or not fnNames[entity(exp[1])]
-    for e in exp then  if x=replaceMutualCallParam(e, fnName, fnNames) then return x
-  else return exp[2]
-
-containVar = (exp, variable) ->
-  exp = entity(exp)
-  if exp==variable then return true
-  if isArray(exp) then for e in exp  then if containVar(e, variable) then return true
-
-containVars = (exp, variables) ->
-  exp = entity(exp)
-  if variables[exp] then return exp
-  if isArray(exp) then for e in exp  then if x=containVars(e, variables) then return x
-
-# tempArgs
-optimizeLetLoopFnBody = (exp, fnName, replacedName, params, loopInit) ->
-  if not isArray(exp) then return exp
-  if exp[0]=='return'
-    if containVar(exp[1], fnName)
-      exps = []
-      for arg, i in replaceCallParam(exp[1], fnName)
-        if entity(arg)!=entity(params[i]) then exps.unshift ['=', params[i], arg]
-      if (right=replaceCallFn(exp[1], fnName))!=fnName then exps.unshift ['=', fnName, right]
-      begin(exps)
-    else
-      if containVar(params, entity(exp[1])) then ['return', exp[1]]
-      else loopInit.push(['=', fnName, exp[1]]); ['return', fnName]
-  else
-    for x in exp then optimizeLetLoopFnBody(x, fnName, fnName, params, loopInit)
-
-optimizeMutualLetLoopBody = (exp, fnName, replacedName, params, loopInit, fnNames) ->
-  if not isArray(exp) then return exp
-  if exp[0]=='return'
-    if x = containVars(exp[1], fnNames)
-      exps = []
-      for arg, i in replaceMutualCallParam(exp[1], fnName, fnNames)
-        exps.unshift ['=', params[i], arg]
-      if (right=replaceMutualCallFn(exp[1], replacedName, fnNames))!=replacedName
-        exps.unshift ['=', replacedName, right]
-      else loopInit.removed = true
-      exps.push ['=', fnName, x]
-      begin(exps)
-    else
-      if containVars(params, fnNames) then ['return', exp[1]]
-      else
-        loopInit.push(['=', replacedName, exp[1]])
-        ['letloop-return', replacedName, exp[1]]
-  else
-    for x in exp then optimizeMutualLetLoopBody(x, fnName, replacedName, params, loopInit, fnNames)
-
-rewriteLetloopBody = (exp, initRemoved) ->
-  if Object.prototype.toString.call(exp) == '[object Array]'
-    if exp[0]=='if'
-      rewriteLetloopBody(exp[2], initRemoved)
-      rewriteLetloopBody(exp[3], initRemoved)
-    else if exp[0]=='begin!'
-      i = 1
-      while i++<exp.length-1 then rewriteLetloopBody(exp[i], initRemoved)
-      return
-    else if exp[0]=='letloop-return'
-      exp[0] = 'return'
-      if initRemoved then exp[1] = exp[2]
-
 optimizeFnMap =
   '=': (exp, env) ->
     left = entity(exp[1])
@@ -119,12 +38,6 @@ optimizeFnMap =
   'prefix!': (exp, env) ->
     exp2 = optimize(exp[2])
     result = ['prefix!', exp[1], exp2]
-    if isValue(exp2) then code = tocode(result); setValue(eval(code))
-    else result
-
-  'suffix!': (exp, env) ->
-    exp2 = optimize(exp[2])
-    result = ['suffix!', exp[1], exp2]
     if isValue(exp2) then code = tocode(result); setValue(eval(code))
     else result
 
@@ -177,44 +90,6 @@ optimizeFnMap =
     exp = ['function', exp[1], optimize(exp[2], env)]
     exp.env = env
     exp
-
-  'letloop!':(exp, env) ->
-    params = exp[1]; bindings = exp[2]; body = exp[3]; expEnv = exp.env
-    result = []; fnBody = []
-    if bindings.length==1
-      [v, fn]  = bindings[0]
-      fnBody.push ['var', v]
-      v1 = entity(v)
-      whileBody = optimizeLetLoopFnBody(fn, v1, v1, params, fnBody) #, tempArgs
-      fnBody.push ['while', 1, whileBody]
-      result.push ['var', v]
-      result.push ['=', v, ['function', params, begin(fnBody)]]
-    else
-      loopFn = expEnv.newVar('loopFn'); fnName = expEnv.newVar('fn'); fnNames =  {}
-      for [v, fn] in bindings then fnNames[entity(v)] = 1
-      for [v, fn] in bindings
-        result.push ['var', v]
-        result.push ['=', v, ['function', params, ['return', ['call!', loopFn, params.concat(v)]]]]
-      fnBody.push ['var', loopFn]
-      ifExp = undefined
-      i = bindings.length
-      while --i>=0
-        [v, fn] = bindings[i]
-        init=[]
-        then_ = optimizeMutualLetLoopBody(fn, fnName, loopFn, params, init, fnNames)
-        if init.removed then initRemoved = true
-        ifExp = ['if', ['binary!', '===', fnName, v], then_, ifExp]
-        initExp = ['if', ['binary!', '===', fnName, v], begin(init), initExp]
-      whileExp = ['while', 1]
-      rewriteLetloopBody(ifExp, initRemoved)
-      whileExp.push ifExp
-      if initRemoved or containVars(params, fnNames)
-        fnBody.push whileExp
-      else fnBody.push begin([initExp,  whileExp])
-      result.push ['var', loopFn]
-      result.push ['=', loopFn, ['function', params.concat(fnName), begin(fnBody)]]
-    result.push body
-    begin(result)
 
 optimizeList = (exp, env) -> for e in exp then optimize(e, env)
 

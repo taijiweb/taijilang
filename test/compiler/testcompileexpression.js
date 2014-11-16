@@ -1,6 +1,6 @@
 var Environment, builtins, compile, compileExp, compileExpNoOptimize, compileNoOptimize, compiler, expect, extend, idescribe, iit, initEnv, lib, ndescribe, nit, rootModule, textizerOptions, transform, _ref, _ref1, _ref2;
 
-_ref = require('../utils'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit;
+_ref = require('../util'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit;
 
 lib = '../../lib/';
 

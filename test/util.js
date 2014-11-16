@@ -45,8 +45,7 @@ head = 'taiji language 0.1\n';
 exports.parse = function(text) {
   var parser, x;
   parser = new Parser();
-  x = parser.parse(head + text, parser.module, 0);
-  return str(x.body);
+  return x = parser.parse(head + text, parser.module, 0);
 };
 
 exports.compile = function(code) {

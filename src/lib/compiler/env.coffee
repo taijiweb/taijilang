@@ -10,12 +10,9 @@ toIdentifier = (symbol) ->
   if javascriptKeywordSet[symbol] then result += '1'
   result
 
-error = (msg, exp) ->
-  if exp then throw Error msg+': '+exp
-  else throw Error msg
-
-exports.SymbolLookupError = class SymbolLookupError extends Error
-  constructor: (@exp) ->
+exports.symbolLookupError = symbolLookupError = (exp, message) ->
+  if message then throw new Error(message+': '+JSON.stringify(exp))
+  else throw new Error('symbol lookup error: '+JSON.stringify(exp))
 
 # options: {module, functionInfo, parser, ...}
 exports.Environment = class Environment
@@ -114,7 +111,7 @@ exports.Environment = class Environment
       scope = env.scope
       if hasOwnProperty.call(scope, sym) then  return scope[sym]
       env =  env.parent
-    throw new SymbolLookupError(symbol)
+    symbolLookupError(symbol)
 
   info: (symbol) ->
     if @optimizeInfoMap and hasOwnProperty.call(@optimizeInfoMap, symbol) then  return @optimizeInfoMap[symbol]

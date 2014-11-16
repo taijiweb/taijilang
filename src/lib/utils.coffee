@@ -46,9 +46,9 @@ INDENT=27; UNDENT=28; HALF_DENT=29; EOI=30; C_BLOCK_COMMENT = 31; SPACE_COMMENT 
 SPACE = 34; HASH = 35; RIGHT_DELIMITER = 36; KEYWORD = 37; CONJUNCTION = 38
 CODE_BLOCK_COMMENT_LEAD_SYMBOL = 39
 PREFIX =40; SUFFIX= 41; BINARY = 42
-VALUE = 43; LIST = 44
+VALUE = 43; LIST = 44; COMMAND = 45
 
-# SYMBOL, VALUE, LIST: the kind of expression
+# SYMBOL, VALUE, LIST, COMMAND: the kind of expression
 
 exports.constant = {
   OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION, INDENT_EXPRESSION, HASH_KEY_EXPRESSION
@@ -62,7 +62,7 @@ exports.constant = {
   SPACE, HASH, RIGHT_DELIMITER, KEYWORD, CONJUNCTION
   CODE_BLOCK_COMMENT_LEAD_SYMBOL
   PREFIX, SUFFIX, BINARY
-  VALUE, LIST
+  VALUE, LIST, COMMAND
 }
 
 exports.charset = charset = (string) ->
@@ -96,6 +96,7 @@ isMetaOperation = isMetaOperation = (head) -> (head[0]=='#' and head[1]!='-') or
 # todo: this should be compile time function in taijilang bootstrap compilation program, so it can be optimized greatly.
 # to make "analyzed", "transformed", "optimized" being true here, we can avoid switch branch in the following phases.
 exports.norm = norm = (exp) ->
+  assert exp!=undefined, 'norm(exp) meet undefined'
   if exp.kind then return exp
   if exp instanceof Array
     exp = for e in exp then norm(e)
@@ -106,7 +107,7 @@ exports.norm = norm = (exp) ->
     else
       if isMetaOperation(exp) then {value:exp, kind:SYMBOL, meta:true, analyzed:true, transformed:true}
       else {value:exp, kind:SYMBOL, analyzed:true, transformed:true}
-  else if typeof exp =='object' then exp.kind = value; exp
+  else if typeof exp =='object' then exp
   else {value:exp, kind:VALUE, analyzed:true, transformed:true, optimized:true}
 
 # todo: because this the core feature of taiji language, a safer method should be used to avoid redefinition by mistake
@@ -130,7 +131,7 @@ exports.str = str = (item) ->
   else item.toString()
 
 exports.assert = assert = (value, message) ->
-    if not value then throw message or 'assert failed'
+    if not value then throw new Error message or 'assert failed'
 
 exports.isArray = isArray = (exp) -> Object::toString.call(exp) == '[object Array]'
 
@@ -170,6 +171,13 @@ exports.extend = (object, args...) ->
   object
 
 exports.isArray = isArray = (exp) -> Object::toString.call(exp) == '[object Array]'
+
+exports.mergeSet = (sets...) ->
+  result = {}
+  for x in sets
+    for k in x
+      if hasOwnProperty.call(x, k) then result[k] = true
+  result
 
 exports.entity = entity = (exp) ->
   if exp instanceof Array
@@ -239,7 +247,8 @@ exports.return_ = return_ = (exp) ->
 
 exports.pushExp = (lst, v) -> norm ['call!', ['attribute!', lst, 'push'], [v]]
 exports.notExp = (exp) -> norm ['prefix!', '!', exp]
-exports.undefinedExp = undefinedExp = norm ['prefix!', 'void', 0]
+exports.undefinedExp = undefinedExp = norm 'undefined'
+exports.commentPlaceholder = {} # used as the second part of transformExpression of comment
 
 exports.isUndefinedExp = -> (exp) -> exp==undefinedExp
 
@@ -457,7 +466,6 @@ exports.repeat = repeat = (str, n) ->
     n >>>= 1
     str += str
   res
-
 
 javascriptKeywordText = ("break export return case for switch comment function this continue if typeof default import" +
 " var delete in void do label while else new with catch enum throw class super extends try const finally debugger")

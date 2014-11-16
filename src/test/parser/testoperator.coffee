@@ -1,4 +1,4 @@
-{expect, ndescribe, iit, nit, matchRule} = require '../utils'
+{expect, ndescribe, iit, nit, matchRule} = require '../util'
 
 lib = '../../lib/'
 {constant, isArray, str} = require lib+'utils'

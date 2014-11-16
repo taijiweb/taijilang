@@ -1,8 +1,10 @@
-var LIST, SYMBOL, ShiftStatementInfo, SymbolLookupError, VALUE, constant, convert, expect, idescribe, iit, lib, metaConvert, ndescribe, nit, nonMetaCompileExpNoOptimize, norm, str, strConvert, strMetaConvert, strNonOptCompile, taiji, transformExpression, _ref, _ref1, _ref2, _ref3;
+var LIST, Parser, SYMBOL, ShiftStatementInfo, SymbolLookupError, VALUE, constant, convert, expect, idescribe, iit, lib, metaConvert, ndescribe, nit, nonMetaCompileExpNoOptimize, norm, parse, str, strConvert, strMetaConvert, strNonOptCompile, taiji, transformExpression, _ref, _ref1, _ref2, _ref3;
 
-_ref = require('../utils'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, strConvert = _ref.strConvert, str = _ref.str;
+_ref = require('../util'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, strConvert = _ref.strConvert, str = _ref.str, parse = _ref.parse;
 
 lib = '../../lib/';
+
+Parser = require(lib + 'parser').Parser;
 
 _ref1 = require(lib + 'compiler/transform'), transformExpression = _ref1.transformExpression, ShiftStatementInfo = _ref1.ShiftStatementInfo;
 
@@ -91,15 +93,59 @@ describe("test phases: ", function() {
       });
     });
   });
-  return describe("transformExpression: ", function() {
-    return iit("return 'a'", function() {
+  describe("transformExpression: ", function() {
+    it("return 'a'", function() {
       var env, info, result;
       env = taiji.initEnv(taiji.builtins, taiji.rootModule, {});
       info = new ShiftStatementInfo({}, {});
       result = transformExpression(norm(['return', 'a']), env, info);
+      return expect(str(result[0])).to.equal("[return a]");
+    });
+    it("['binary!', '+', 1, ['return', 'a']]", function() {
+      var env, info, result;
+      env = taiji.initEnv(taiji.builtins, taiji.rootModule, {});
+      info = new ShiftStatementInfo({}, {});
+      result = transformExpression(norm(['binary!', '+', 1, ['return', 'a']]), env, info);
       expect(str(result[0])).to.equal("[return a]");
-      expect(info.affectVars['a']).to.equal(void 0);
-      return expect(info.shiftVars['a']).to.equal(true);
+      return expect(str(result[1])).to.equal("[binary! + 1 undefined]");
+    });
+    it("['binary!', '+', 'a', ['return', ['=', 'a', 1]]]", function() {
+      var env, info, result;
+      env = taiji.initEnv(taiji.builtins, taiji.rootModule, {});
+      info = new ShiftStatementInfo({}, {});
+      result = transformExpression(norm(['binary!', '+', 'a', ['return', ['=', 'a', 1]]]), env, info);
+      expect(str(result[0])).to.equal("[begin! [var t] [= t a] [return [= a 1]]]");
+      return expect(str(result[1])).to.equal("[binary! + t undefined]");
+    });
+    it("['binary!', '+', 'a', ['return', ['=', 'b', 1]]]", function() {
+      var env, info, result;
+      env = taiji.initEnv(taiji.builtins, taiji.rootModule, {});
+      info = new ShiftStatementInfo({}, {});
+      result = transformExpression(norm(['binary!', '+', 'a', ['return', ['=', 'b', 1]]]), env, info);
+      expect(str(result[0])).to.equal("[return [= b 1]]");
+      return expect(str(result[1])).to.equal("[binary! + a undefined]");
+    });
+    return it("['binary!', '+', ['=', 'a', 1], ['return', 'a']]", function() {
+      var env, info, result;
+      env = taiji.initEnv(taiji.builtins, taiji.rootModule, {});
+      info = new ShiftStatementInfo({}, {});
+      result = transformExpression(norm(['binary!', '+', ['=', 'a', 1], ['return', 'a']]), env, info);
+      expect(str(result[0])).to.equal("[begin! [= a 1] [return a]]");
+      return expect(str(result[1])).to.equal("[binary! + a undefined]");
+    });
+  });
+  return describe("parse, convert and transform: ", function() {
+    var parseTransform;
+    parseTransform = function(text) {
+      var env, exp;
+      exp = parse(text);
+      exp = exp[3][1];
+      env = taiji.initEnv(taiji.builtins, taiji.rootModule, {});
+      exp = convert(exp, env);
+      return exp = transform(exp, env);
+    };
+    return iit("a+{return a}", function() {
+      return expect(str(parseTransform("a+{return a}"))).to.equal1;
     });
   });
 });

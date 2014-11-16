@@ -1,4 +1,4 @@
-{expect, idescribe, ndescribe, iit, nit} = require '../utils'
+{expect, idescribe, ndescribe, iit, nit} = require '../util'
 
 lib = '../../lib/'
 {Environment, textizerOptions, builtins, initEnv, rootModule} = require lib+'taiji'

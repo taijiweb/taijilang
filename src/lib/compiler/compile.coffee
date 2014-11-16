@@ -69,7 +69,7 @@ exports.convert = convert = (exp, env) ->
 #          console.log env, 'get is what:', env.get
           head = env.get(exp0)
           if typeof head == 'function'
-            result = head(exp[1...])
+            result = head(exp, env)
             result.start = exp.start; result.stop = exp.stop
             return result
           else

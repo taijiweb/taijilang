@@ -11,8 +11,8 @@ fs = require 'fs'
 metaIndex = 0
 
 exports['extern!'] = (exp, env) ->
-  if exp[0]=='const' then isConst = true; exp = exp[1...]
-  for e in exp
+  if exp[1]=='const' then isConst = true; exp = exp[2...]
+  for e in exp[1...]
     if env.hasLocal(v=entity(e))
       error v+' has been declared as local variable, so it can not be declared as extern variable any more.', e
     env.set(v, v)
@@ -21,14 +21,14 @@ exports['extern!'] = (exp, env) ->
 
 # todo: while transform(exp, env), [metaConvertVar name] should be transformed a proper variable name
 # avoid to conflict with other names
-exports['metaConvertVar!'] = (exp, env) -> [norm 'metaConvertVar!', exp[0]]
+exports['metaConvertVar!'] = (exp, env) -> exp
 
 # always generate a new var a const
 # so continuous "var a; var a;" will generate two different variable.
 # [var [a = 1] [a = a+1]] , second right a will be evaluated in old env
 declareVar = (fn) -> (exp, env) ->
   result = []
-  for e in exp
+  for e in exp[1...]
     e0 = entity(e)
     if typeof e0=='string'
       if e0[0]=='"' then error 'variable name should not be a string'
@@ -44,7 +44,7 @@ declareVar = (fn) -> (exp, env) ->
         error 'illegal variable name in variable initialization: '+JSON.stringify e0
       v = env.newVar(e0); fn(v); result.push(['var', v])
       if (e2=entity(e[2])) and e2[1]=='=' and typeof e2[0]=='string' and e2[0][0]!='"'
-        result.push(['=', v, convert([exp[0], e[2]], env)])
+        result.push(['=', v, convert([exp[1], e[2]], env)])
         result.push v
       else result.push ['=', v, convert(e[2], env)]; result.push v
       # [var [a = a+1]] ,right a will be evaluated in old env
@@ -55,7 +55,7 @@ declareVar = (fn) -> (exp, env) ->
 exports['var'] = declareVar((v) -> v)
 exports['const'] = declareVar( (v) -> v.const=true; v )
 
-exports['newvar!'] = (exp, env) -> '"'+env.newVar((x=entity(exp[0])).slice(1, x.length-1)).symbol+'"'
+exports['newvar!'] = (exp, env) -> '"'+env.newVar((x=entity(exp[1])).slice(1, x.length-1)).symbol+'"'
 
 # obj.slice(start, stop)
 makeSlice = (obj, start, stop) ->
@@ -153,28 +153,30 @@ convertAssign = (left, right, env) ->
     ['=', convert(left, env), right]
 
 # normal assign in object language
-exports['='] = (exp, env) -> convertAssign(exp[0], exp[1], env)
+exports['='] = (exp, env) -> convertAssign(exp[1], exp[2], env)
 
+# {a, b, c } = x
+# {a} = x
 exports['hashAssign!'] = (exp, env) ->
-  [exp0, exp1] = exp
-  if exp0.length>1
+  exp1 = exp[1]; exp2 = exp[2]
+  if exp1.length>1
     result = []
-    if typeof entity(exp1)!='string'
+    if typeof entity(exp2)!='string'
       vObj = env.newVar('obj')
       result.push norm  ['direct!', ['var', vObj]]
       env.set(vObj.symbol, vObj)
       result.push ['=', vObj, exp1]
-    else vObj = exp1
-    for x in exp0 then result.push norm  ['=', x, ['attribute!', vObj, x]]
+    else vObj = exp2
+    for x in exp1 then result.push norm  ['=', x, ['attribute!', vObj, x]]
     convert(begin(result), env)
-  else convert(norm(['=', exp0[0], ['attribute!', exp1, exp0[0]]]), env)
+  else convert(norm(['=', exp1[0], ['attribute!', exp2, exp1[0]]]), env)
 
 # meta assign, macro assign
-exports['#='] = (exp, env) -> ['##', convert([norm('='), exp[0], exp[1]], env)]
-exports['#/'] = (exp, env) -> ['#/', convert([norm('='), exp[0], exp[1]], env)]
+exports['#='] = (exp, env) -> ['##', convert([norm('='), exp[1], exp[2]], env)]
+exports['#/'] = (exp, env) -> ['#/', convert([norm('='), exp[1], exp[2]], env)]
 
 exports['@@'] = (exp, env) ->
-  name = entity(exp[0])
+  name = entity(exp[1])
   # the outer scope that can define new var in javascript, would be function or the top scope of a file, and the like.
   outerEnv = env.outerVarScopeEnv()
   # I've forgotten the effect of the line below ;)
@@ -197,7 +199,7 @@ exports['block!'] = (exp, env) -> convertExps exp, env.extend({})
 exports['let'] = (exp, env) ->
   newEnv = env.extend(scope={})
   result = []
-  for x in exp[0]
+  for x in exp[1]
     x0 = entity(x[0])
     scope[x0] = var1 = newEnv.newVar(x0)
     result.push (['var', var1])
@@ -211,7 +213,7 @@ exports['let'] = (exp, env) ->
 exports['letm!'] = (exp, env) ->
   newEnv = env.extend(scope={})
   result = []
-  for x in exp[0]
+  for x in exp[1]
     x0 = entity(x[0])
     scope[x0] = var1 = env.newVar(x0)
     result.push [norm('var'), var1]
@@ -223,80 +225,58 @@ exports['letm!'] = (exp, env) ->
 exports['letrec!'] = (exp, env) ->
   newEnv = env.extend(scope={})
   result = []
-  for x in exp[0] then scope[x0=entity(x[0])] = var1 = newEnv.newVar(x0); result.push [norm('var'), var1]
-  for x in exp[0] then result.push [norm('='), var1, convert(x[2], newEnv)]
+  for x in exp[1] then scope[x0=entity(x[0])] = var1 = newEnv.newVar(x0); result.push [norm('var'), var1]
+  for x in exp[1] then result.push [norm('='), var1, convert(x[2], newEnv)]
   result.push convert(exp[1], newEnv)
   result = begin(result)
   result.env = newEnv
   result
 
-exports['letloop!'] = (exp, env) ->
-  newEnv = env.extend(scope={})
-  result = []
-  exp0 = exp[0]
-  for x in exp0 then x0 = entity(x[0]); scope[x0] =newEnv.newVar(x0)#  var1 =  ; result.push ['var', var1]
-  params = []
-  bindings =  for x in exp0
-    value = x[2]
-    if value and value.push and value[0].value=='->'
-      for p, i in value[1]
-        p1 = entity(p)
-        if not params[i] then params.push p1
-        else if p1!=params[i] then error 'different parameter list for functions in letloop bindings is not allowed', p
-    if not fnBodyEnv then fnBodyEnv = newEnv.extend(fnScope={})
-    for p in params then fnScope[p] = {symbol: p}
-    [scope[entity(x[0])], return_(convert(value[2], fnBodyEnv))]
-  exp = [norm('letloop!'), params, bindings, convert(exp[1], newEnv)]
-  exp.env = newEnv
-  result.push exp
-  result = begin(result)
-  result
-
 # don't convert the bound expression, similar to macro
 # #letrecm is the same as the #letm exactly, so don't add it to meta builtins to avoid confusion
 
-keywordConvert = (keyword) -> (exp, env) -> [keyword].concat(for e in exp then convert e, env)
+keywordConvert = (keyword) -> (exp, env) -> [keyword].concat(for e in exp[1...] then convert e, env)
 
 do ->
   symbols  = 'throw return break label! if! cFor! while while! doWhile! try! try with! ?: ,'
   keywords = 'throw return break label!  if  cFor! while while  doWhile! try try with! ?: list!'
   for sym, i in splitSpace symbols then exports[sym] = keywordConvert(splitSpace(keywords)[i])
 
-exports['begin!'] = (exp, env) -> begin(for e in exp then convert e, env)
+exports['begin!'] = (exp, env) -> begin(for e in exp[1...] then convert e, env)
 
-exports['list!'] = convertArgumentList
+exports['list!'] = (exp, env) -> convertArgumentList(exp[1...], env)
 
 #['try', body, catchClauses: [list! ...], else_, final]
 #['try! body, catchVar, catchBody, final] # attention: assume no else_ clause in current target javascript version
 
 exports['if'] = (exp, env) ->
-  if exp[2]!=undefined
-    [norm('if'), convert(exp[0], env), convertList(exp[1], env), convertList(exp[2], env)]
-  else [norm('if'), convert(exp[0], env), convertList(exp[1], env)]
+  if exp[3]!=undefined
+    [norm('if'), convert(exp[1], env), convertList(exp[2], env), convertList(exp[3], env)]
+  else [norm('if'), convert(exp[1], env), convertList(exp[2], env), undefinedExp]
 
 exports['switch!'] = (exp, env) ->
-  result = ['switch', convert(exp[0], env)]
+  result = ['switch', convert(exp[1], env)]
   # cases: [list! case1, case2, ...]
   # case clause: [list! ...] body
-  result.push (for e in exp[1][1...] then [convertList(e[0][1...], env), convert(e[1], env)])
-  if exp[2] then result.push convert(exp[2], env)
+  result.push (for e in exp[2][1...] then [convertList(e[0][1...], env), convert(e[1], env)])
+  if exp[3] then result.push convert(exp[3], env)
   result
 
-idConvert = (keyword) -> (exp, env) -> [keyword, exp[0]]
+idConvert = (keyword) -> (exp, env) -> [keyword, exp[1]]
 
 do -> for word in splitSpace 'break continue' then exports[word] = idConvert(word)
 
 exports['lineComment!'] = (exp, env) ->  ''
-exports['directLineComment!'] = (exp, env) -> [norm('directLineComment!'), exp[0]]
+exports['directLineComment!'] = (exp, env) -> [norm('directLineComment!'), exp[1]]
 exports['codeBlockComment!'] = (exp, env) -> ''
-exports['directCBlockComment!'] = (exp, env) -> [norm('directCBlockComment!'), exp[0]]
+exports['directCBlockComment!'] = (exp, env) -> [norm('directCBlockComment!'), exp[1]]
 
-exports['direct!'] = (exp, env) -> exp[0]
-exports['quote!'] = (exp, env) -> [norm('quote!'), entity(exp[0])]
+exports['direct!'] = (exp, env) -> exp[1]
+exports['quote!'] = (exp, env) -> [norm('quote!'), entity(exp[1])]
 
-exports['call!'] = (exp, env) -> convert([exp[0]].concat(exp[1]), env)
+exports['call!'] = (exp, env) -> convert([exp[1]].concat(exp[2]), env)
 
-exports['label!'] = (exp, env) -> [norm('label!'), convertIdentifier(exp[0]), convert(exp[1], env)]
+exports['label!'] = (exp, env) -> [norm('label!'), convertIdentifier(exp[1]), convert(exp[2], env)]
 
 argumentsLength = ['attribute!', 'arguments', 'length']
 
@@ -323,9 +303,9 @@ convertDefinition =  (exp, env, mode) ->
     _this = env.newVar('_this')
     scope['@'] = _this
   else scope['@'] = 'this'
-  exp0 = exp[0]; exp1 = exp[1]; defaultList = []; thisParams = []
+  exp1 = exp[1]; exp2 = exp[2]; defaultList = []; thisParams = []
   params = []
-  for param, i in exp0
+  for param, i in exp1
     param = entity(param)
     if param[0]=='x...'
       if not ellipsis?
@@ -355,7 +335,7 @@ convertDefinition =  (exp, env, mode) ->
     for param in params then param = entity(param); scope[param] = param
   body.push.apply body, defaultList
   body.push.apply body, thisParams
-  body.push exp1
+  body.push exp2
   if mode[0]=='|' then body =  convert(begin(body), newEnv)
   else body =  return_(convert(begin(body), newEnv))
   functionExp = norm ['function', params, body]
@@ -371,14 +351,14 @@ exports['unquote-splice'] = (exp, env) -> error('unexpected unquote-splice', exp
 exports['quasiquote!'] = (exp, env) -> quasiquote(exp, env, 0)
 
 quasiquote = (exp, env, level) ->
-  exp0 = exp[0]
-  if not isArray(exp0) then return JSON.stringify entity(exp0)
-  else if not exp0.length then return []
-  if (head=entity exp0[0])=='unquote!' or head=='unquote-splice' then return convert(exp0[1], env, level-1)
-  else if head=='quasiquote!' then return norm ['list!', '"quasiquote!"', quasiquote(exp0[1], env, level+1)]
+  exp1 = exp[1]
+  if not isArray(exp1) then return JSON.stringify entity(exp1)
+  else if not exp1.length then return []
+  if (head=entity exp1[0])=='unquote!' or head=='unquote-splice' then return convert(exp1[1], env, level-1)
+  else if head=='quasiquote!' then return norm ['list!', '"quasiquote!"', quasiquote(exp1[1], env, level+1)]
   result = ['list!']
   meetSplice = false
-  for e in exp[0]
+  for e in exp1
     if isArray(e) and e.length
       head = entity(e[0])
       if head=='unquote-splice' and level==0
@@ -408,63 +388,63 @@ quasiquote = (exp, env, level) ->
   result
 
 exports['eval!'] = (exp, env) ->
-  exp0 = exp[0]
-  if isArray(exp0)
-    if exp0[0]=='quote!' then convert(exp0[1], env)
-    else if exp0[0]=='quasiquote!' then convert(quasiquote(exp0[1], env), env)
-    else ['call!', 'eval', [nonMetaCompileExp(exp0, env)]]
-  else if typeof (exp0=entity(exp0)) =='string'
-    if exp0[0]=='"'
-      exp = (parser=new Parser).parse(exp0[1...exp0.length-1], parser.moduleBody, 0, env)
+  exp1 = exp[1]
+  if isArray(exp1)
+    if exp1[0]=='quote!' then convert(exp1[1], env)
+    else if exp1[0]=='quasiquote!' then convert(quasiquote(exp1[1], env), env)
+    else ['call!', 'eval', [nonMetaCompileExp(exp1, env)]]
+  else if typeof (exp1=entity(exp1)) =='string'
+    if exp1[0]=='"'
+      exp = (parser=new Parser).parse(exp1[1...exp1.length-1], parser.moduleBody, 0, env)
       objCode = compileExp(exp.body, env.extend({}))
       norm ['call!',  'eval', [objCode]]
-    else norm ['call!', 'eval', exp0]
-  else norm ['call!', 'eval', [nonMetaCompileExp(exp0, env)]]
+    else norm ['call!', 'eval', exp1]
+  else norm ['call!', 'eval', [nonMetaCompileExp(exp1, env)]]
 
-exports['metaEval!'] = (exp, env) -> eval nonMetaCompileExp(exp[0], env)
+exports['metaEval!'] = (exp, env) -> eval nonMetaCompileExp(exp[1], env)
 
-convertMetaExp = (head) -> (exp, env) -> [head, convert(exp[0], env)]
+convertMetaExp = (head) -> (exp, env) -> [head, convert(exp[1], env)]
 exports['##'] = convertMetaExp('##')
 exports['#'] = convertMetaExp('#')
 exports['#/'] = convertMetaExp('#/')
-exports['#call!'] = (exp, env) -> ['#call', convert(exp[0], env), convert(exp[1], env)]
+exports['#call!'] = (exp, env) -> ['#call', convert(exp[1], env), convert(exp[2], env)]
 
 # prefix % will generate %x
 #exports['parserAttr!'] = (exp, env) ->
-#  convert(['attribute!', '__$taiji_$_$parser__', exp[0]], env)
+#  convert(['attribute!', '__$taiji_$_$parser__', exp[1]], env)
 
 exports['%x'] = (exp, env) ->
-  convert(norm(['attribute!', '__$taiji_$_$parser__', exp[0]]), env)
+  convert(norm(['attribute!', '__$taiji_$_$parser__', exp[1]]), env)
 
 # dynamic syntax, extend the parser on the fly
-# the head of exp[0] will be convert to attribute of __$taiji_$_$parser__
+# the head of exp[1] will be convert to attribute of __$taiji_$_$parser__
 # {%/ matchA(x,y)} will be converted { %% %matchA(x, y) }
 exports['%/'] = (exp, env) ->
-  convert(convertParserAttribute(exp[0]), env)
+  convert(convertParserAttribute(exp[1]), env)
 
 convertParserAttribute = (exp) ->
   if Object.prototype.toString.call(exp) == '[object Array]'
-    if exp[0]=='attribute!' or exp[0]=='call!' or exp[0]=='index!'
+    if exp[1]=='attribute!' or exp[1]=='call!' or exp[1]=='index!'
       exp[1] = convertParserAttribute exp[1]
     exp
   else if typeof exp == 'object'
-    if typeof exp.value=='string' and exp[0]!='"'
+    if typeof exp.value=='string' and exp[1]!='"'
       result = norm ['attribute!', '__$taiji_$_$parser__', exp.value]
       extend result, exp
     else exp
   else exp
 
-# identifier in exp[0] will be convert to attribute of __$taiji_$_$parser__
+# identifier in exp[1] will be convert to attribute of __$taiji_$_$parser__
 # {%! matchA(x,y)} will be converted { %% %matchA(%x, %y) }
 exports['%!'] = (exp, env) ->
-  convert(convertParserExpression(exp[0]), env)
+  convert(convertParserExpression(exp[1]), env)
 
 convertParserExpression = (exp) ->
   if Object.prototype.toString.call(exp) == '[object Array]'
     for e, i in exp then exp[i] = convertParserExpression e
     exp
   else if typeof exp == 'object'
-    if typeof exp.value=='string' and exp[0]!='"'
+    if typeof exp.value=='string' and exp[1]!='"'
       result = norm ['attribute!', '__$taiji_$_$parser__', exp.value]
       extend result, exp
     else exp
@@ -472,4 +452,4 @@ convertParserExpression = (exp) ->
 
 exports.binaryConverters = binaryConverters = {}
 
-exports['binary!'] = (exp, env, compiler) -> binaryConverters[(op=exp[0]).value](op, exp[1], exp[2], env)
+exports['binary!'] = (exp, env, compiler) -> binaryConverters[(op=exp[1]).value](op, exp[1], exp[2], env)

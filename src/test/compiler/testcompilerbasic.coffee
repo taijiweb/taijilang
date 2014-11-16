@@ -1,4 +1,4 @@
-{expect, idescribe, ndescribe, iit, nit, compile} = require '../utils'
+{expect, idescribe, ndescribe, iit, nit, compile} = require '../util'
 
 ndescribe "compiler basic: ",  ->
   describe "compile number: ",  ->
