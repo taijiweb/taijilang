@@ -989,7 +989,7 @@ exports.Parser = ->
         if token.value!=')' then lexError 'expect )'
       # To make interpolated string happy, we can not call nextToken() here
       #else nextToken() # do not match token here, so token.next==undefined, and nextToken() will matchToken instead.
-      prev.next = token = [{value:'()', kind:SYMBOL}, exp]
+      prev.next = token = norm([norm('()'), exp])
       token.type = tokenType = PAREN; token.cursor = cur; token.stopCursor = cursor
       token.line = line; token.column = column; token.indent = lexIndent; token.atom = true; token.parameters = true
       token
@@ -1040,7 +1040,7 @@ exports.Parser = ->
       tkn = nextToken()
       # To make interpolated string happy, we can not call nextToken() here
       if indent<ind then lexError 'unexpected undent while parsing parenethis "{...}"'
-    prev.next = token = [norm('{}'), begin(body)]
+    prev.next = token = norm [norm('{}'), begin(body)]
     token.type = tokenType=CURVE; token.atom = true; token.cursor = cur; token.stopCursor = cursor
     token.line = line; token.column = column; token.indent = lexIndent; token.next = tkn
     token
@@ -1557,7 +1557,7 @@ exports.Parser = ->
     else if token.value==',' and nextToken()
       if tokenType==SPACE then nextToken()
     if not value then return id
-    else return {value:[id, '=', value], start:id, stop:token}
+    else result = norm(['=', id, value]); result.start = id; result.stop = token; result
 
   varInitLine = ->
     result = []
@@ -1695,10 +1695,15 @@ exports.Parser = ->
       if varList.length==0 then syntaxError 'expect variable name'
       if tokenType!=NEWLINE and tokenType!=UNDENT and tokenType!=EOI and tokenType!=CONJUNCTION and tokenType!=RIGHT_DELIMITER and tokenType!=PUNCTUATION
         syntaxError 'unexpected token after var initialization list: "' + token.value+'"'
-      varList.unshift 'var'
-      {value:varList, start:start, stop:token}
+      varList.unshift('var')
+      result = norm(varList); result.start = start; result.stop = token; result
 
-    'extern!': (isHeadStatement) -> [{value:'extern!', kind:SYMBOL}].concat parser.identifierList()
+    'extern!': (isHeadStatement) ->
+      start = token; nextToken()
+      if tokenType==SPACE then nextToken()
+      ids = parser.identifierList()
+      ids.unshift 'extern!'
+      result =  norm(ids); result.start = start; result.stop = token; result
 
     'include!': (isHeadStatement) ->
       if tokenType==SPACE then nextToken()

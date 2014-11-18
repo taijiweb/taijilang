@@ -1,4 +1,6 @@
-{isArray, error, entity, begin, undefinedExp, pushExp, identifierCharSet, norm} = require '../utils'
+{isArray, error, begin, undefinedExp, pushExp, identifierCharSet, norm, constant} = require '../utils'
+{SYMBOL, VALUE, LIST} = constant
+
 {convertList, convert} = require '../compiler'
 
 {binaryConverters} = require './core'
@@ -13,18 +15,18 @@ ellipsisIndex = (kind, list, start, stop, env) ->
     else norm ['call!', ['attribute!', list, 'slice'], [start, ['+', stop, 1]]]
 
 exports['index!'] = (exp, env) ->
-  exp2 = exp[2]; exp20 = entity(exp2[0])
-  if Object::toString.call(exp2) == '[object Array]'
-    if exp20=='...' or exp20=='..'
-      return convert ellipsisIndex(exp20, exp[1], exp2[1], exp2[2]), env
-    else if exp20=='x...'
+  exp2 = exp[2]; exp20Value = exp2[0]
+  if exp2 instanceof Array
+    if exp20Value=='...' or exp20Value=='..'
+      return convert ellipsisIndex(exp20Value, exp[1], exp2[1], exp2[2]), env
+    else if exp20Value=='x...'
       return convert ellipsisIndex('...', exp[1], exp2[1], undefined), env
-    else if exp20=='...x'
+    else if exp20Value=='...x'
       return convert ellipsisIndex('...', exp[1], undefined, exp2[1]), env
-    else if exp20=='..x'
+    else if exp20Value=='..x'
       return convert ellipsisIndex('..', exp[1], undefined, exp2[1]), env
     else return ['index!', convert(exp[1], env), convert exp[2], env]
-  else if (eExp1=entity(exp2))=='..'or eExp1=='...'
+  else if (exp2Value=exp2.value)=='..'or exp2Value=='...'
     return  convert norm(['call!', ['attribute!', exp[1], 'slice'], []]), env
   norm ['index!', convert(exp[1], env), convert exp[2], env]
 
@@ -32,7 +34,7 @@ exports['::'] = norm ['attribute!', 'this', 'prototype']
 
 exports['attribute!'] = (exp, env) ->
   obj = convert(exp[1], env)
-  if (attr=entity(exp[2]))=='::' then return norm ['attribute!', obj, 'prototype']
+  if exp[2].kind==SYMBOL and (attr=exp[2].value)=='::' then return norm ['attribute!', obj, 'prototype']
   nonJs = false
   for c in attr
     if not identifierCharSet[c] then nonJs = true; break
@@ -41,14 +43,14 @@ exports['attribute!'] = (exp, env) ->
 
 call = (caller) -> (exp, env) -> convert norm(['call!', caller, exp]), env
 
-idBinaryConvert = (op, left, right, env) -> norm ['binary!', op, convert(left, env), convert(right, env)]
+idBinaryConvert = (exp, env) -> norm [exp[0], exp[1], convert(exp[2], env), convert(exp[3], env)]
 
 binary = (symbol) -> (exp, env) -> norm(['binary!', symbol]).concat convertList exp, env
 
 for symbol in '+ - * / && || << >> >>> != !== > < >= <='.split(' ')
   exports[symbol] = binary symbol
   binaryConverters[symbol] = idBinaryConvert
-  binaryConverters['='] = (op, left, right, env) -> [norm('='), convert(left, env), convert(right, env)]
+  binaryConverters['='] = (exp, env) -> [exp[1], convert(exp[2], env), convert(exp[3], env)]
 
 # learn coffee-script
 exports['=='] = binary '==='
@@ -70,7 +72,7 @@ for symbol in '+ -'.split ' '
 for symbol in '+ - * / && || << >> >>> ,'.split(' ')
   op = symbol+'='
   exports[op] = binary op
-  binaryConverters[op] = (op, left, right, env) -> [norm('binary!'), op, convert(left, env), convert(right, env)]
+  binaryConverters[op] = (exp, env) -> [exp[0], exp[1], convert(exp[2], env), convert(exp[3], env)]
 
 exports['instanceof'] = binary 'instanceof'
 
@@ -90,8 +92,8 @@ exports['!!x'] = (exp, env) -> norm ['prefix!', '!', ['prefix!', '!', convert(ex
 exports['print'] = call norm ['attribute!', 'console', 'log']
 
 exports['jsvar!'] = (exp, env) ->
-  env.set(entity(exp[1]), entity(exp[1]))
-  norm ['jsvar!', exp[1]]
+  env.set(exp[1].value, exp[1])
+  exp
 
 exports['return'] = (exp, env) -> norm ['return', convert(exp[1], env)]
 
@@ -120,22 +122,17 @@ exports["string!"] = convertInterpolatedString = (exp, env)->
   result = norm ['string!']
   piece = '""'
   for e in exp
-    if Object.prototype.toString.call(e) == '[object Array]'
-      x = convert(e, env)
-    else
-      e0 = entity(e)
-      if typeof e0=='string' and e0[0]=='"' then x = e0
-      else x = convert(e, env)
-    if typeof x =='string' and x[0]=='"' then piece = piece[...piece.length-1] + x[1...]
+    x = convert(e, env)
+    if x.kind==VALUE and x.value[0]=='"' then piece = piece[...piece.length-1] + x[1...]
     else
       if piece!='""' then result.push piece; piece = '""'
-      if Object.prototype.toString.call(x) == '[object Array]'
-        if x[0]=='string!' then result.push.apply result, x[1...]
+      if x.kind==LIST
+        if x0.kind==SYMBOL and x[0].value=='string!' then result.push.apply result, x[1...]
         else result.push x
       else result.push x
   if piece!='""' then result.push piece
-  if result.length==1 then return '""'
-  else if result.length==2 and typeof result[1]=='string' and result[1][0]=='"' then return result[1]
+  if result.length==1 then return norm '""'
+  else if result.length==2 and result[1].kind==VALUE then return result[1]
   else return result
 
 exports["hash!"] = convertHash = (exp, env) ->

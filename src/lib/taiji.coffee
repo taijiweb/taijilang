@@ -26,24 +26,24 @@ exports.initEnv = initEnv = (builtins, taijiModule, options) ->
 exports.parse = (code, taijiModule, builtins, options) ->
   env = initEnv(builtins, taijiModule, options); parser = env.parser
   exp = parser.parse(code, parser.module, 0, env)
-  formatTaijiJson(entity(exp.body), 0, 0, false, 2, 70)
+  formatTaijiJson(entity(exp), 0, 0, false, 2, 70)
 
 exports.convert = (code, taijiModule, builtins, options) ->
   env = initEnv(builtins, taijiModule, options); parser = env.parser
   exp = parser.parse(code, parser.module, 0, env)
-  exp = metaConvert(addPrelude(parser, exp.body), env)
+  exp = metaConvert(addPrelude(parser, exp), env)
   formatTaijiJson(entity(exp), 0, 0, false, 2, 70)
 
 exports.transform = (code, taijiModule, builtins, options) ->
   env = initEnv(builtins, taijiModule, options); parser = env.parser
   exp = parser.parse(code, parser.module, 0, env)
-  exp = transformExp(addPrelude(parser, exp.body), env)
+  exp = transformExp(addPrelude(parser, exp), env)
   formatTaijiJson(entity(exp), 0, 0, false, 2, 70)
 
 exports.optimize = (code, taijiModule, builtins, options) ->
   env = initEnv(builtins, taijiModule, options); parser = env.parser
   exp = parser.parse(code, parser.module, 0, env)
-  exp = optimizeExp(addPrelude(parser, exp.body), env)
+  exp = optimizeExp(addPrelude(parser, exp), env)
   formatTaijiJson(entity(exp), 0, 0, false, 2, 70)
 
 exports.compileInteractive = compileInteractive = (code, taijiModule, builtins, options) ->
@@ -54,17 +54,17 @@ exports.compileInteractive = compileInteractive = (code, taijiModule, builtins, 
 exports.metaCompile = (code, taijiModule, builtins, options) ->
   env = initEnv(builtins, taijiModule, options); parser = env.parser
   exp = parser.parse(code, parser.module, 0, env)
-  objCode = metaCompile(addPrelude(parser, exp.body), [], env)
+  objCode = metaCompile(addPrelude(parser, exp), [], env)
 
 exports.compile = compile = (code, taijiModule, builtins, options) ->
   env = initEnv(builtins, taijiModule, options); parser = env.parser
   exp = parser.parse(code, parser.module, 0, env)
-  objCode = compileExp(addPrelude(parser, exp.body), env)
+  objCode = compileExp(addPrelude(parser, exp), env)
 
 exports.compileNoOptimize  = (code, taijiModule, builtins, options) ->
   env = initEnv(builtins, taijiModule, options); parser = env.parser
   exp = parser.parse(code, parser.module, 0, env)
-  objCode = compileExpNoOptimize(addPrelude(parser, exp.body), env)
+  objCode = compileExpNoOptimize(addPrelude(parser, exp), env)
 
 exports.eval = (code, taijiModule, builtins, options) ->
   x = compile(code, taijiModule, builtins, options)

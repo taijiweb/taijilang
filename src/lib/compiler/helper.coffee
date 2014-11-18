@@ -1,5 +1,13 @@
-{constant, extend} = require '../utils'
+{constant, extend, str} = require '../utils'
 {VALUE, SYMBOL, LIST, COMMAND} = constant
+
+exports.compileError = compileError = (exp, message) ->
+  if message then throw new Error('compile error: '+message+': '+str(exp))
+  else throw new Error('compile error: '+str(exp))
+
+exports.symbolLookupError = symbolLookupError = (exp, message) ->
+  if message then throw new Error(message+': '+str(exp))
+  else throw new Error('symbol lookup error: '+str(exp))
 
 # transformExpression in transform.coffee need varsOf, assignVarsOf, pollutedOf
 exports.varsOf = varsOf = (exp) ->

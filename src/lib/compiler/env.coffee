@@ -1,4 +1,6 @@
-{extend, javascriptKeywordSet, entity, identifierCharSet} = require '../utils'
+{extend, str, javascriptKeywordSet, entity, identifierCharSet, assert, constant} = require '../utils'
+{symbolLookupError} = require './helper'
+{SYMBOL} = constant
 
 hasOwnProperty = Object::hasOwnProperty
 
@@ -9,10 +11,6 @@ toIdentifier = (symbol) ->
     else result += '$'
   if javascriptKeywordSet[symbol] then result += '1'
   result
-
-exports.symbolLookupError = symbolLookupError = (exp, message) ->
-  if message then throw new Error(message+': '+JSON.stringify(exp))
-  else throw new Error('symbol lookup error: '+JSON.stringify(exp))
 
 # options: {module, functionInfo, parser, ...}
 exports.Environment = class Environment
@@ -41,12 +39,12 @@ exports.Environment = class Environment
     name = toIdentifier(symbol)
     functionInfo = @getFunctionInfo()
     if not hasOwnProperty.call(functionInfo, name)
-      functionInfo[name] = 1; {symbol: name}
+      functionInfo[name] = 1; {value:name, kind:SYMBOL}
     else
       while symbolIndex = name+(++functionInfo[name])
         if not hasOwnProperty.call(functionInfo, symbolIndex) then break
       functionInfo[symbolIndex] = 1
-      {symbol: symbolIndex}
+      {value:symbolIndex, kind:SYMBOL}
 
   constVar: (symbol) -> v = @newVar(symbol); v.const = true; v
   ssaVar: (symbol) -> v = @newVar(symbol); v.ssa = true; v
@@ -95,13 +93,12 @@ exports.Environment = class Environment
         else return @ # instead of returning parent, return @. because the check in core.coffee exports['='] if env!=outerEnv and env.get(name)
       else parent = parent.parent
 
+  # todo value should be the form: {value:id, kind: SYMBOL}
   set: (symbol, value) ->
+    assert value.value and value.kind==SYMBOL, 'env.set: '+str(value)
     functionInfo = @getFunctionInfo()
-    if typeof(value) == 'object' then value.value = name = toIdentifier(entity(value))
-    else value = name = toIdentifier(value)
+    name = toIdentifier(value.value)
     if not functionInfo[name] then functionInfo[name] = 1
-    eValue = entity(value)
-    if not functionInfo[eValue] then functionInfo[eValue] = 1
     @scope[symbol] = value
 
   get: (symbol) ->

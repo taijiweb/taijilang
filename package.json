@@ -54,7 +54,8 @@
     "gulp-shell": "~0.2.4",
     "gulp-rename": "~0.2.2",
     "gulp-clean": "~0.2.4",
-    "run-sequence": "~0.3.6"
+    "run-sequence": "~0.3.6",
+    "tracer": "~0.7.3"
   },
   "scripts": {},
   "preferGlobal": true

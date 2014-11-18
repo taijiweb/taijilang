@@ -3,7 +3,7 @@
 lib = '../../lib/'
 
 {Parser} = require lib+'parser'
-{transformExpression, ShiftStatementInfo} =  require lib+'compiler/transform'
+{transformExpression, transform, ShiftStatementInfo} =  require lib+'compiler/transform'
 
 {constant, norm} = require lib+'utils'
 {VALUE, SYMBOL, LIST} = constant
@@ -32,7 +32,7 @@ strNonOptCompile = (exp) ->
   exp = nonMetaCompileExpNoOptimize exp, env
   str exp
 
-describe "test phases: ",  ->
+ndescribe "test phases: ",  ->
   describe "convert: ",  ->
     describe "convert simple: ",  ->
       it "convert 1", ->
@@ -44,7 +44,7 @@ describe "test phases: ",  ->
 
     describe "convert if: ",  ->
       it "convert [if, 1, [1]]", ->
-        expect(strConvert(['if', 1, [1]])).to.equal "[if 1 [1]]"
+        expect(strConvert(['if', 1, [1]])).to.equal "[if 1 [1] undefined]"
       it "convert [if, 1, [1], [2]]", ->
         expect(strConvert(['if', 1, [1], [2]])).to.equal "[if 1 [1] [2]]"
 
@@ -92,15 +92,15 @@ describe "test phases: ",  ->
       env = taiji.initEnv(taiji.builtins, taiji.rootModule, {})
       info = new ShiftStatementInfo({}, {})
       result = transformExpression(norm(['binary!', '+', 'a', ['return', ['=', 'b', 1]]]), env, info)
-      expect(str result[0]).to.equal "[return [= b 1]]"
-      expect(str result[1]).to.equal "[binary! + a undefined]"
+      expect(str result[0]).to.equal "[begin! [var t] [= t a] [return [= b 1]]]"
+      expect(str result[1]).to.equal "[binary! + t undefined]"
 
     it "['binary!', '+', ['=', 'a', 1], ['return', 'a']]", ->
       env = taiji.initEnv(taiji.builtins, taiji.rootModule, {})
       info = new ShiftStatementInfo({}, {})
       result = transformExpression(norm(['binary!', '+', ['=', 'a', 1], ['return', 'a']]), env, info)
-      expect(str result[0]).to.equal "[begin! [= a 1] [return a]]"
-      expect(str result[1]).to.equal "[binary! + a undefined]"
+      expect(str result[0]).to.equal "[begin! [var t] [= t [= a 1]] [return a]]"
+      expect(str result[1]).to.equal "[binary! + t undefined]"
 
 
   describe "parse, convert and transform: ",  ->
@@ -111,5 +111,11 @@ describe "test phases: ",  ->
       exp = convert(exp, env)
       exp = transform(exp, env)
 
-    iit "a+{return a}", ->
-      expect(str parseTransform("a+{return a}")).to.equal1
+    it "var a", ->
+      expect(str parseTransform("var a")).to.equal '[begin! [var a] undefined]'
+
+    it "var a; a+{return a}", ->
+      expect(str parseTransform("var a; a+{return a}")).to.equal "[begin! [var a] [var t] [= t a] [return a]]"
+
+    it "var a, b; (b=a)+{return a}", ->
+      expect(str parseTransform("var a, b; (b=a)+{return a}")).to.equal "[begin! [var a] [var b] [var t] [= t [= b a]] [return a]]"

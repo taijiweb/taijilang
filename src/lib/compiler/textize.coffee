@@ -181,7 +181,7 @@ tokenize = (exp) ->
     when LIST
       assert tokenFnMap[exp[0].value], 'found no tokenize function: '+exp[0].value
       tokenFnMap[exp[0].value](exp)
-    else throw 'wrong kind of exp while tokenizing'
+    else throw 'tokenize: wrong kind: '+str(exp)
 
 makeTextizer = (options) ->
   code = ''; prev = ''; indentRow = 0; lineno = 0; row = 0

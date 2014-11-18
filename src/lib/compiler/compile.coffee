@@ -1,7 +1,9 @@
 fs = require 'fs'
 path = require 'path'
+{compileError} = require './helper'
+
 {evaljs, isArray, extend, str, formatTaijiJson, wrapInfo1, extendSyntaxInfo, entity, pushExp, undefinedExp, begin,
-__TJ__QUOTE, constant, norm} = require '../utils'
+__TJ__QUOTE, constant, norm, trace} = require '../utils'
 
 {NUMBER, STRING, IDENTIFIER, SYMBOL, REGEXP, HEAD_SPACES, CONCAT_LINE, PUNCT, FUNCTION,
 BRACKET, PAREN, DATA_BRACKET, CURVE, INDENT_EXPRESSION
@@ -32,9 +34,6 @@ getStackTrace = ->
   Error.captureStackTrace(obj, getStackTrace)
   obj.stack
 
-exports.CompileError = class CompileError extends Error
-  constructor: (@exp, @message) ->
-
 madeConcat = (head, tail) ->
   if tail.concated then result = norm ['call!', ['attribute!', ['list', head], 'concat'], [tail]]
   else tail.shift(); result = [head].concat tail
@@ -43,11 +42,11 @@ madeConcat = (head, tail) ->
 
 madeCall = (head, tail, env) ->
   if tail.concated
-    if head and head.push and ((head0=head[0])=='attribute!' or head0=='index!')
-      h1 = entity(head[1])
-      if typeof h1=='string' and h1[0]!='"' then norm ['call!', ['attribute!', head, 'apply'], [h1, tail]]
+    if head instanceof Array and ((head0=head[0].value)=='attribute!' or head0=='index!')
+      head1 = head[1]
+      if head1.kind==SYMBOL then norm ['call!', ['attribute!', head, 'apply'], [head, tail]]
       else
-        result = norm ['begin!', ['var', obj=env.ssaVar('obj')], ['=', obj, head[1]]]
+        result = norm ['begin!', ['var', obj=env.ssaVar('obj')], ['=', obj, head1]]
         result.push norm ['call!', ['attribute!', [head0, obj, head[1]], 'apply'], [obj, tail]]
         result
     else norm ['call!', ['attribute!', head, 'apply'], ['null', tail]]
@@ -56,6 +55,7 @@ madeCall = (head, tail, env) ->
 exports.convert = convert = (exp, env) ->
 #  tmp = 1
 #  console.log 'convert:', exp
+  trace('convert: ', str(exp))
   switch exp.kind
     when LIST
       exp0 = exp[0]
@@ -78,10 +78,10 @@ exports.convert = convert = (exp, env) ->
         when VALUE
           result = for e in exp then convert(e, env)
           result.start = exp.start; result.stop = exp.stop
-        else throw new CompileError exp
+        else compileError exp, 'convert: wrong kind: '+exp.kind
     when SYMBOL then return env.get(exp)
     when VALUE then return exp
-    else throw new CompileError exp
+    else compileError exp, 'convert: wrong kind: '+exp.kind
 
 exports.convertExps = convertExps = (exp, env) -> begin(for e in exp then convert e, env)
 exports.convertList = (exp, env) -> for e in exp then convert(e, env)
@@ -258,6 +258,7 @@ exportsIndex = (name) -> norm ['index!', taijiExports , '"'+entity(name)+'"']
 # does exp contains any meta operations?
 # use the standard with most tolerance, avoid missing any possible meta operation
 hasMeta = (exp) ->
+  trace('hasMeta:', str(exp))
   if exp.hasMeta!=undefined then exp.hasMeta
   else if exp instanceof Array
     for e in exp
@@ -445,6 +446,7 @@ metaTransform = (exp, metaExpList, env) ->
 # all meta expression will be compiled to javascript code,
 # but original object level expression will be transformed to a _tjExp parameter index expression of the meta leval javascript function
 exports.metaConvert = metaConvert = (exp, metaExpList, env) ->
+  trace('metaConvert: ', str(exp))
   if exp instanceof Array
     exp0 = exp[0]
     if fn=metaConvertFnMap[exp0] then return fn(exp, metaExpList, env)
@@ -461,16 +463,18 @@ exports.metaConvert = metaConvert = (exp, metaExpList, env) ->
 # evaluate the function with the object expression pieces list as argument
 # and get the object level expression to wait convert and compile to object level javascript code
 exports.metaCompile = metaCompile = (exp, metaExpList, env) ->
+  trace('metaCompile: ', str(exp))
   # env = env.extend({}) # env is not used in metaCompile phase
   # todo: remove the parameter "env" from metaCompile, metaConvert and metaTransform ...
   env.metaIndex = 0 #todo: Instead of member of env, metaIndex may become a global variable
   exp = metaConvert exp, metaExpList, env
-  code = nonMetaCompileExp(['=', ['attribute!', 'module', 'exports'], ['->', ['__tjExp'], ['return', exp]]], env)
+  code = nonMetaCompileExp(norm(['=', ['attribute!', 'module', 'exports'], ['->', ['__tjExp'], ['return', exp]]]), env)
 
 # metaConvert expression to meta level and compile to javascript function code
 # evaluate the function with the object expression pieces list as argument
 # and get the object level expression to wait convert and compile to object level javascript code
 exports.metaProcess = metaProcess = (exp, env) ->
+  trace('metaProcess: ', str(exp))
   env = env.extend({}) # this line is necessary to avoid put the mete variable in the runtime scope.
   code = metaCompile(exp, metaExpList=[], env)
   compiledPath = path.join process.cwd(), '/lib/compiler/metacompiled.js'
@@ -481,6 +485,7 @@ exports.metaProcess = metaProcess = (exp, env) ->
   metaFn(metaExpList)
 
 exports.nonMetaCompileExp = nonMetaCompileExp = (exp, env) ->
+  trace('nonMetaCompileExp: ', str(exp))
   exp = convert exp, env
   #console.log formatTaijiJson entity exp
   exp = transform exp, env

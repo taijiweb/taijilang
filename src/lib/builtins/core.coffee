@@ -1,4 +1,5 @@
-{norm} = require '../utils'
+{norm, constant, str} = require '../utils'
+{VALUE, SYMBOL, LIST} = constant
 # meta language command, mainly some lisp style command.
 
 `__slice = [].slice`
@@ -28,27 +29,33 @@ exports['metaConvertVar!'] = (exp, env) -> exp
 # [var [a = 1] [a = a+1]] , second right a will be evaluated in old env
 declareVar = (fn) -> (exp, env) ->
   result = []
-  for e in exp[1...]
-    e0 = entity(e)
-    if typeof e0=='string'
-      if e0[0]=='"' then error 'variable name should not be a string'
-      if env.hasLocal(e0) then error 'repeat declaring variable: '+e0
-      v = env.set(e0, e); fn(v)
-      if v.const then error 'const need to be initialized to a value'
-      result.push(['var', v]); result.push v
-    else if Object.prototype.toString.call(e)=='[object Array]' and e[0]=='metaConvertVar!'
-      result.push [norm 'var', e]
-    else
-      e0 = entity(e[0])
-      if typeof e0!='string' or e0[0]=='"'
-        error 'illegal variable name in variable initialization: '+JSON.stringify e0
-      v = env.newVar(e0); fn(v); result.push(['var', v])
-      if (e2=entity(e[2])) and e2[1]=='=' and typeof e2[0]=='string' and e2[0][0]!='"'
-        result.push(['=', v, convert([exp[1], e[2]], env)])
-        result.push v
-      else result.push ['=', v, convert(e[2], env)]; result.push v
-      # [var [a = a+1]] ,right a will be evaluated in old env
-      env.set(e0, v)
+  len = exp.length
+  i = 1;
+  while i<len
+    e = exp[i++]
+    switch e.kind
+      when VALUE then error 'illegal variable name'
+      when SYMBOL
+        eValue = e.value
+        if env.hasLocal(e.value) then error 'repeat declaring variable: '+str(e)
+        v = env.set(eValue, e); fn(v) # when convert [const v], fn(v) will set v.const = true
+        if v.const then error 'const need to be initialized to a value'
+        result.push norm ['var', v]
+      when LIST
+        e0 = e[0]
+        if e0.kind==SYMBOL
+          if e0.value=='metaConvertVar!'
+            result.push norm [norm('var'), e]
+          else if e0.value=='='
+            e1 = e[1]
+            if e1.kind!=SYMBOL
+              error 'illegal variable name in variable initialization: '+str(e1)
+            if env.hasLocal(e1Value=e1.value) then error 'repeat declaring variable: '+str(e1)
+            v = env.newVar(e1Value); fn(v);  result.push(norm(['var', v]))
+            result.push(norm ['=', v, convert(e[2], env)])
+            # [var [a = a+1]] ,right a will be evaluated in old env
+            env.set(e1Value, e1);
+        else compileError e, 'wrong form of var initialization'
   begin(result)
 
 # assure when transforming, only there exists ['var', variable]
@@ -62,26 +69,22 @@ makeSlice = (obj, start, stop) ->
   if stop==undefined then norm ['call!', ['attribute!', '__slice', 'call'], [obj, start]]
   else norm ['call!', ['attribute!', '__slice', 'call'], [obj, start, stop]]
 
-convertAssignRight = (right, env) ->
-  if right==undefined then undefinedExp
-  else convert(right, env)
-
-convertAssign = (left, right, env) ->
-  eLeft = entity(left)
-  if typeof eLeft=='string'
-    if eLeft[0]=='"' then error 'wrong assign to string left side'
-    else if env.hasLocal(eLeft)
-      left = env.get(eLeft)
-      if left.const then error 'should not assign value to const variable: '+eLeft
+convertAssign = (exp, env) ->
+  left = exp[1]
+  if left.kind==SYMBOL
+    leftValue = left.value
+    if env.hasLocal(leftValue)
+      left = env.get(leftValue)
+      if left.const then error 'should not assign value to const variable: '+leftValue
       if left.outer
-        env.set(eLeft, left=env.newVar(eLeft))
+        env.set(leftValue, left=env.newVar(leftValue))
         left.const = true # create const by default
-        norm ['begin!', ['var', left], ['=', left, convertAssignRight(right, env)], left]
-      else norm ['=', left, convertAssignRight(right, env)]
+        norm ['begin!', ['var', left], ['=', left, convert(right, env)], left]
+      else norm ['=', left, convert(right, env)]
     else
-      env.set(eLeft, left=env.newVar(eLeft))
+      env.set(leftValue, left=env.newVar(leftValue))
       left.const = true # create const by default
-      norm ['begin!', ['var', left], ['=', left, convertAssignRight(right, env)], left]
+      norm ['begin!', ['var', left], ['=', left, convert(right, env)], left]
   # left is assignable expression list
   else if left[0]=='list!'
     # right is already list in the compilation time
@@ -149,11 +152,10 @@ convertAssign = (left, right, env) ->
   # ['@@' varName] is included by this case, see below: exports['@@'] = (exp, env) ->
   else
     # we should convert the right side at first
-    right = convertAssignRight(right, env)
-    ['=', convert(left, env), right]
+    norm [exp[0], convert(left, env), convert(exp[2], env)]
 
 # normal assign in object language
-exports['='] = (exp, env) -> convertAssign(exp[1], exp[2], env)
+exports['='] = (exp, env) -> convertAssign(exp, env)
 
 # {a, b, c } = x
 # {a} = x
@@ -194,7 +196,11 @@ exports['@@'] = (exp, env) ->
   v
 
 # create a block with new scope (i.e. evaluate all exp in new environment
-exports['block!'] = (exp, env) -> convertExps exp, env.extend({})
+exports['block!'] = (exp, env) -> convertExps exp[1...], env.extend({})
+
+exports['{}'] = (exp, env) -> convert exp[1], env
+
+exports['()'] = (exp, env) -> convert exp[1], env
 
 exports['let'] = (exp, env) ->
   newEnv = env.extend(scope={})
@@ -452,4 +458,4 @@ convertParserExpression = (exp) ->
 
 exports.binaryConverters = binaryConverters = {}
 
-exports['binary!'] = (exp, env, compiler) -> binaryConverters[(op=exp[1]).value](op, exp[1], exp[2], env)
+exports['binary!'] = (exp, env, compiler) -> binaryConverters[exp[1].value](exp, env)

@@ -2,9 +2,9 @@ var compile, expect, idescribe, iit, ndescribe, nit, _ref;
 
 _ref = require('../util'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, compile = _ref.compile;
 
-ndescribe("compiler basic: ", function() {
+describe("compiler basic: ", function() {
   describe("compile number: ", function() {
-    it("compile 1", function() {
+    iit("compile 1", function() {
       return expect(compile('1')).to.have.string("1");
     });
     it("compile 01", function() {

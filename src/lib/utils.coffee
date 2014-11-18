@@ -65,6 +65,18 @@ exports.constant = {
   VALUE, LIST, COMMAND
 }
 
+fs = require('fs')
+
+fileLogger = require('tracer').console
+  stackIndex : 1
+  format : "{{file}}:{{line}}: {{message}}",
+  transport : (data) ->
+    fs.open "./debug.log", "a", `0666`, (e, id) ->
+      fs.write id, data.output+"\r\n", null, 'utf8', -> fs.close(id,->)
+
+exports.log = (args...) -> fileLogger.log(args...); console.log(args...)
+exports.trace = (args...) -> fileLogger.log(args...)
+
 exports.charset = charset = (string) ->
   result = {}
   for c in string then result[c] = true
@@ -107,7 +119,7 @@ exports.norm = norm = (exp) ->
     else
       if isMetaOperation(exp) then {value:exp, kind:SYMBOL, meta:true, analyzed:true, transformed:true}
       else {value:exp, kind:SYMBOL, analyzed:true, transformed:true}
-  else if typeof exp =='object' then exp
+  else if typeof exp =='object' then exp.kind = SYMBOL; exp
   else {value:exp, kind:VALUE, analyzed:true, transformed:true, optimized:true}
 
 # todo: because this the core feature of taiji language, a safer method should be used to avoid redefinition by mistake
@@ -198,24 +210,34 @@ exports.isValue = isValue = (exp, env) ->
 
 exports.kindSymbol = (e) -> {value:e, kind:SYMBOL}
 
-addBeginItem = (result, e) ->
-  if e and e.push and e[0]=='begin!'
-    for x in e[1...] then addBeginItem(result, x)
-  else result.push e
+# return value:
+# undefined: meet return, throw, break, continue
+# value, symbol: meet value or symbol
+# LIST: meet list, this depends constant LIST != 0
+addBeginItem = (result, exp) ->
+  switch exp.kind
+    when VALUE, SYMBOL then return exp
+    when LIST
+      exp0Value = exp[0].value
+      if exp0Value=='begin!'
+        for e in exp[1...]
+          last = addBeginItem(result, e)
+          if not last then return
+        return last
+      else if exp0Value=='return' or exp0Value=='throw' or exp0Value=='break' or exp0Value=='continue'
+        result.push(exp); return
+      else result.push exp; return LIST
+    else throw 'addBeginItem: wrong kind: '+str(exp)
 
 exports.begin = begin = (exp) ->
-  result = []
-  for e in exp then addBeginItem(result, e)
-  length = result.length; i = length-1
-  while --i>=0
-    e = result[i]
-    if not e or isValue(e) or not (x=entity(e)) or typeof x=='string' or e==undefinedExp
-      result.splice(i, 1)
-    else if (e0=e[0]) and (e0=='return' or e0=='throw' or e0=='break' or e0=='continue')
-      result.splice(i+1, result.length)
-  if result.length==0 then norm 'undefined'
-  else if result.length==1 then result[0]
-  else result.unshift 'begin!'; result; result.kind = LIST; result
+    result = []
+    for e in exp
+      last = addBeginItem(result, e)
+      if not last then break
+    if last and last!=LIST then result.push last
+    if result.length>1 then result.unshift norm('begin!'); return norm(result)
+    else if result.length==1 then return result[0]
+    else return undefinedExp
 
 returnFnMap =
   'break': (exp) -> exp

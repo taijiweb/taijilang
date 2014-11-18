@@ -1,4 +1,4 @@
-var LIST, Parser, SYMBOL, ShiftStatementInfo, SymbolLookupError, VALUE, constant, convert, expect, idescribe, iit, lib, metaConvert, ndescribe, nit, nonMetaCompileExpNoOptimize, norm, parse, str, strConvert, strMetaConvert, strNonOptCompile, taiji, transformExpression, _ref, _ref1, _ref2, _ref3;
+var LIST, Parser, SYMBOL, ShiftStatementInfo, SymbolLookupError, VALUE, constant, convert, expect, idescribe, iit, lib, metaConvert, ndescribe, nit, nonMetaCompileExpNoOptimize, norm, parse, str, strConvert, strMetaConvert, strNonOptCompile, taiji, transform, transformExpression, _ref, _ref1, _ref2, _ref3;
 
 _ref = require('../util'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, strConvert = _ref.strConvert, str = _ref.str, parse = _ref.parse;
 
@@ -6,7 +6,7 @@ lib = '../../lib/';
 
 Parser = require(lib + 'parser').Parser;
 
-_ref1 = require(lib + 'compiler/transform'), transformExpression = _ref1.transformExpression, ShiftStatementInfo = _ref1.ShiftStatementInfo;
+_ref1 = require(lib + 'compiler/transform'), transformExpression = _ref1.transformExpression, transform = _ref1.transform, ShiftStatementInfo = _ref1.ShiftStatementInfo;
 
 _ref2 = require(lib + 'utils'), constant = _ref2.constant, norm = _ref2.norm;
 
@@ -44,7 +44,7 @@ strNonOptCompile = function(exp) {
   return str(exp);
 };
 
-describe("test phases: ", function() {
+ndescribe("test phases: ", function() {
   describe("convert: ", function() {
     describe("convert simple: ", function() {
       it("convert 1", function() {
@@ -61,7 +61,7 @@ describe("test phases: ", function() {
     });
     describe("convert if: ", function() {
       it("convert [if, 1, [1]]", function() {
-        return expect(strConvert(['if', 1, [1]])).to.equal("[if 1 [1]]");
+        return expect(strConvert(['if', 1, [1]])).to.equal("[if 1 [1] undefined]");
       });
       return it("convert [if, 1, [1], [2]]", function() {
         return expect(strConvert(['if', 1, [1], [2]])).to.equal("[if 1 [1] [2]]");
@@ -122,16 +122,16 @@ describe("test phases: ", function() {
       env = taiji.initEnv(taiji.builtins, taiji.rootModule, {});
       info = new ShiftStatementInfo({}, {});
       result = transformExpression(norm(['binary!', '+', 'a', ['return', ['=', 'b', 1]]]), env, info);
-      expect(str(result[0])).to.equal("[return [= b 1]]");
-      return expect(str(result[1])).to.equal("[binary! + a undefined]");
+      expect(str(result[0])).to.equal("[begin! [var t] [= t a] [return [= b 1]]]");
+      return expect(str(result[1])).to.equal("[binary! + t undefined]");
     });
     return it("['binary!', '+', ['=', 'a', 1], ['return', 'a']]", function() {
       var env, info, result;
       env = taiji.initEnv(taiji.builtins, taiji.rootModule, {});
       info = new ShiftStatementInfo({}, {});
       result = transformExpression(norm(['binary!', '+', ['=', 'a', 1], ['return', 'a']]), env, info);
-      expect(str(result[0])).to.equal("[begin! [= a 1] [return a]]");
-      return expect(str(result[1])).to.equal("[binary! + a undefined]");
+      expect(str(result[0])).to.equal("[begin! [var t] [= t [= a 1]] [return a]]");
+      return expect(str(result[1])).to.equal("[binary! + t undefined]");
     });
   });
   return describe("parse, convert and transform: ", function() {
@@ -144,8 +144,14 @@ describe("test phases: ", function() {
       exp = convert(exp, env);
       return exp = transform(exp, env);
     };
-    return iit("a+{return a}", function() {
-      return expect(str(parseTransform("a+{return a}"))).to.equal1;
+    it("var a", function() {
+      return expect(str(parseTransform("var a"))).to.equal('[begin! [var a] undefined]');
+    });
+    it("var a; a+{return a}", function() {
+      return expect(str(parseTransform("var a; a+{return a}"))).to.equal("[begin! [var a] [var t] [= t a] [return a]]");
+    });
+    return it("var a, b; (b=a)+{return a}", function() {
+      return expect(str(parseTransform("var a, b; (b=a)+{return a}"))).to.equal("[begin! [var a] [var b] [var t] [= t [= b a]] [return a]]");
     });
   });
 });

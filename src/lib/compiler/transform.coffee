@@ -1,7 +1,8 @@
-{str, extend, begin, pushExp, notExp, norm, undefinedExp, entity, wrapInfo1, constant, assert, hasOwnProperty, commentPlaceholder} = require '../utils'
-{assignVarsOf, varsOf, pollutedOf} = require './helper'
+{str, extend, begin, pushExp, notExp, norm, undefinedExp, entity, wrapInfo1, constant,
+assert, hasOwnProperty, commentPlaceholder, trace} = require '../utils'
+{assignVarsOf, varsOf, pollutedOf, compileError} = require './helper'
 
-{VALUE, SYMBOL, LIST} = constant
+{VALUE, SYMBOL, LIST, COMMAND} = constant
 
 # todo: keep the env of the function definition expression to optimization phase
 
@@ -10,9 +11,15 @@ exports.ShiftStatementInfo = class ShiftStatementInfo
   # then all exp and variable will be affected, variable must be referenced by temporary variable.
   # @assignVars: assigned variables occured in the shifted statements
   # @vars: all variables accured in the shifted statements, ssa variable(single assigned variable) is not considered.
-  constructor: (@assignVars, @vars, @polluted) ->
+  constructor: (@assignVars, @vars, @polluted, @returnThrow) ->
 
-  polluteOrAssign: (name) -> @polluted or hasOwnProperty.call(@assignVars, name)
+  affect: (name) -> @polluted or hasOwnProperty.call(@assignVars, name)
+  affectExp: (exp) ->
+    if @polluted then return true
+    vars = varsOf(exp)
+    for k of vars
+      if  hasOwnProperty.call(vars, k) and hasOwnProperty.call(@assignVars, k) then return true
+    false
 
   addEffect: (stmt) ->
     if @polluted then return
@@ -57,6 +64,7 @@ transformAndOrExpression = (op) ->
 
 transformReturnThrowExpression = (exp, env, shiftStmtInfo) ->
   [expStmt, valueExp] = transformExpression(exp[1], env, shiftStmtInfo)
+  shiftStmtInfo.polluted = true
   # the exprssion after return or throw has no effects.
   [begin([expStmt, norm([exp[0], valueExp])]), undefinedExp]
 
@@ -100,7 +108,7 @@ transformExpressionFnMap =
     exp1 = exp[1] # left
     if exp1.kind==SYMBOL
       [rightStmt, rightExp] = transformExpression(exp[2], env, shiftStmtInfo)
-      if shiftStmtInfo.polluteOrAssign(exp1.value)
+      if shiftStmtInfo.affect(exp1.value)
         [begin([rightStmt, ['var', (t=env.ssaVar('t'))], ['=', t, rightExp], ['=', exp1, t]]), t]
       else if hasOwnProperty.call(shiftStmtInfo.vars, exp1.value)
         [begin([rightStmt, ['=', exp1, rightExp]]), exp1]
@@ -154,7 +162,7 @@ transformExpressionFnMap =
   'noop!': (exp, env, shiftStmtInfo) -> [exp, undefinedExp]
 
   'jsvar!': (exp, env, shiftStmtInfo) ->
-    if shiftStmtInfo.polluteOrAssign(entity(exp[1]))
+    if shiftStmtInfo.affect(exp[1].value)
       stmt = begin([['var', t=env.ssaVar('t')], ['=', t, exp[1]]])
       stmt.vars = {}; stmt[exp[1].value] = true
       [stmt, t]
@@ -207,9 +215,10 @@ transformExpressionFnMap =
 
   'if': (exp, env, shiftStmtInfo) ->
     # before transforming, if expression should be standized as [if test then else]
-    [stmtTest, testExp] = transformExpression(exp[1], env, shiftStmtInfo.copy())
-    [stmtThen, thenExp] = transformExpression(exp[2], env, shiftStmtInfo.copy())
-    [stmtElse, elseExp] = transformExpression(exp[3], env, shiftStmtInfo.copy())
+    [stmtTest, testExp] = transformExpression(exp[1], env, testInfo=shiftStmtInfo.copy())
+    [stmtThen, thenExp] = transformExpression(exp[2], env, thenInfo=shiftStmtInfo.copy())
+    [stmtElse, elseExp] = transformExpression(exp[3], env, elseInfo=shiftStmtInfo.copy())
+    if testInfo.polluted or thenInfo.polluted or elseInfo.polluted then shiftStmtInfo.polluted = true
     resultVar = env.ssaVar('t')
     ifStmt = ['if', testExp,
               begin([stmtThen, ['=', resultVar, thenExp]]),
@@ -274,9 +283,10 @@ transformExpressionFnMap =
     [begin([initStmt, ['var', lst], cForStmt]), lst]
 
   'try': (exp, env, shiftStmtInfo) ->
-    [bodyStmt, bodyValue] = transformExpression(exp[1], env, shiftStmtInfo.copy())
-    catchAction = transform(exp[3], env, shiftStmtInfo.copy())
-    finallyAction = transform(exp[4], env, shiftStmtInfo.copy())
+    [bodyStmt, bodyValue] = transformExpression(exp[1], env, bodyInfo=shiftStmtInfo.copy())
+    catchAction = transform(exp[3], env, catchInfo=shiftStmtInfo.copy())
+    finallyAction = transform(exp[4], env, finallyInfo=shiftStmtInfo.copy())
+    if bodyInfo.polluted or finallyInfo.polluted or finallyInfo.polluted then shiftStmtInfo.polluted = true
     [['try', bodyStmt, exp[2], catchAction, finallyAction], bodyValue]
 
   # [switch test [[v, v, ...] clause] default]
@@ -286,11 +296,14 @@ transformExpressionFnMap =
       e = exp2[i]; e0 = e[0]; caseValues = []; j = e0.length
       while --j>=0
         x = e0[j]
-        caseValues.unshift [stmt, x1] = transformExpression(x, env, shiftStmtInfo.copy())
-      cases.unshift [caseValues, transformExpression(e[1], env, shiftStmtInfo.copy())]
+        caseValues.unshift [stmt, x1] = transformExpression(x, env, info=shiftStmtInfo.copy())
+        if info.polluted then shiftStmtInfo.polluted = true
+      cases.unshift [caseValues, transformExpression(e[1], env, info=shiftStmtInfo.copy())]
+      if info.polluted then shiftStmtInfo.polluted = true
     if exp3=exp[3]
-      [defaultStmt, defaultValue] = transformExpression(exp3, env, shiftStmtInfo.copy())
-    [testStmt, testValue] = transformExpression(exp[1], env, shiftStmtInfo.copy())
+      [defaultStmt, defaultValue] = transformExpression(exp3, env, info=shiftStmtInfo.copy())
+      if info.polluted then shiftStmtInfo.polluted = true
+    [testStmt, testValue] = transformExpression(exp[1], env, info=shiftStmtInfo)
     resultVar = env.ssaVar('t');
     if stmt00=cases[0][0][0][0] then testStmt = begin([testStmt, stmt00])
     resultCases = for [caseValues, action] in cases
@@ -299,18 +312,44 @@ transformExpressionFnMap =
     switchStmt = ['switch', testValue, resultCases, begin([defaultStmt, ['=', resultVar, defaultValue]])]
     [begin([testStmt, switchStmt]), resultVar]
 
+statementHeadMap = {'break':1, 'continue':1, 'switch':1, 'try':1, 'throw':1,
+'jsForIn!':1, 'forOf!': 1, 'cFor!':1, 'while':1, 'doWhile!':1,  'letloop':1,
+'with':1, 'var':1, 'label!':1}
+
+exports.toExpression = toExpression = (exp) ->
+  switch exp.kind
+    when VALUE, SYMBOL, COMMAND then return true
+    when LIST
+      exp0Value = exp[0].value
+      if statementHeadMap[exp0Value] then return false
+      for e, i in exp
+        # all list expression is converted to the form [command, ...]
+        if i==0 then continue
+        if not toExpression(e) then return false
+      # if begin! is contained in below
+      exp.asExpression = true
+      return true
+    else compileError exp, 'toExpression: wrong kind of expression'
+
 exports.transformExpression = transformExpression = (exp, env, shiftStmtInfo) ->
   switch exp.kind
     when VALUE then  [undefinedExp, exp]
     when SYMBOL
       if exp.ssa then return [undefinedExp, exp]
-      else if shiftStmtInfo.polluteOrAssign(exp.value)
+      else if shiftStmtInfo.affect(exp.value)
         stmt = begin([norm(['var', t=env.ssaVar('t')]), norm(['=', t, exp])])
         stmt.vars = [exp.value]
         return [stmt, t]
       else return [undefinedExp, exp]
     when LIST
-      assert transformExpressionFnMap[exp[0].value]
+      if toExpression(exp)
+        if shiftStmtInfo.affectExp(exp)
+          stmt = begin([norm(['var', t=env.ssaVar('t')]), norm(['=', t, exp])])
+          # while calling shiftStmtInfo.affectExp(exp), we call varsOf(exp) at first
+          stmt.vars = exp.vars
+          return [stmt, t]
+        else [undefinedExp, exp]
+      assert transformExpressionFnMap[exp[0].value], 'no transformExpressionFnMap for '+str(exp)
       result = transformExpressionFnMap[exp[0].value](exp, env, shiftStmtInfo)
       # result is in form [stmt, exp], now add the effects of stmt, which will be shifted ahead.
       return result
@@ -321,7 +360,7 @@ transformExpressionSequence = (exps, env, shiftStmtInfo) ->
   i = exps.length
   while --i>=0  # >=0 is necessary, else will missing the run on i==0
     exp = exps[i]
-    result.unshift (stmtExp = transformExpression exp, env, shiftStmtInfo)
+    result.unshift (stmtExp=transformExpression exp, env, shiftStmtInfo)
     if i>0 then shiftStmtInfo.addEffect(stmtExp[0])
   result
 
@@ -333,7 +372,7 @@ transformExpressionList = (exps, env, shiftStmtInfo, shifted) ->
     exp = exps[i]
     [stmt, e] = transformExpression exp, env, shiftStmtInfo, shifted
     stmts.unshift stmt; es.unshift e
-    if i>0 then shiftStmtInfo.addEffect(stmtExp[0])
+    if i>0 then shiftStmtInfo.addEffect(stmt)
   [begin(stmts), es]
 
 transformFnMap =
@@ -354,23 +393,23 @@ transformFnMap =
     begin(stmts)
 
   'if': (exp, env) ->
-    [stmtTest, testExp] = transformExpression(exp[1], env, new ShiftStatementInfo({}))
+    [stmtTest, testExp] = transformExpression(exp[1], env, new ShiftStatementInfo({}, {}))
     begin([stmtTest, ['if', testExp, transform(exp[2], env), transform(exp[3], env)]])
 
   'while': (exp, env) ->
-    [stmt, testExp] = transformExpression(exp[1], env, new ShiftStatementInfo({}))
+    [stmt, testExp] = transformExpression(exp[1], env, new ShiftStatementInfo({}, {}))
     bodyStmt = transform(exp[2], env)
     if stmt  then ['while', 1, begin([stmt,['if', notExp(testExp), 'break'],bodyStmt])]
     else ['while', testExp, bodyStmt]
 
   'doWhile!': (exp, env) ->
-    [stmt, testExp] = transformExpression(exp[2], env, new ShiftStatementInfo({}))
+    [stmt, testExp] = transformExpression(exp[2], env, new ShiftStatementInfo({}, {}))
     ['doWhile!', begin([ transform(exp[1], env), stmt]), testExp]
 
   # for key in hash {...}
   # [forIn! key hash body]
   'jsForIn!': (exp, env) ->
-    [stmt, hashExp] = transformExpression(exp[2], env, new ShiftStatementInfo({}))
+    [stmt, hashExp] = transformExpression(exp[2], env, new ShiftStatementInfo({}, {}))
     # do not transform exp[1], because it must be [var name] or name
     if stmt then ['begin!', stmt, ['jsForIn!', exp[1], hashExp, transform(exp[3], env)]]
     else ['jsForIn!', exp[1], hashExp, transform(exp[3], env)]
@@ -379,9 +418,9 @@ transformFnMap =
   #'forOf!': transformForInExpression
 
   'cFor!': (exp, env) ->
-    [initStmt, initExp] = transformExpression(exp[1], env, new ShiftStatementInfo({}))
-    [testStmt, testExp] = transformExpression(exp[2], env, new ShiftStatementInfo({}))
-    [stepStmt, stepExp] = transformExpression(exp[3], env, new ShiftStatementInfo({}))
+    [initStmt, initExp] = transformExpression(exp[1], env, new ShiftStatementInfo({}, {}))
+    [testStmt, testExp] = transformExpression(exp[2], env, new ShiftStatementInfo({}, {}))
+    [stepStmt, stepExp] = transformExpression(exp[3], env, new ShiftStatementInfo({}, {}))
     body = transform(exp[4], env)
     if isUndefinedExp(testStmt)
       cForStmt = ['cFor!', initExp, testExp, stepExp, begin([body, stepStmt])]
@@ -396,10 +435,11 @@ transformFnMap =
 exports.transform = transform = (exp, env) ->
   # value and symbol should be preset exp.transform = true
   if exp.transformed then return exp
-  assert exp.kind==LIST, 'wrong kind of exp: '+str(exp)
+  assert exp.kind==LIST, 'transform: wrong kind: '+str(exp)
+  trace('transform: ', str(exp))
   if (fn=transformFnMap[exp[0].value]) then result = fn(exp, env)
   else
     # transformExpression will produce [stmt, e], use begin to merge them
-    result = begin transformExpression(exp, env, new ShiftStatementInfo({}))
+    result = begin transformExpression(exp, env, new ShiftStatementInfo({}, {}))
   result.transformed  = true
   result
