@@ -1,8 +1,22 @@
-{expect, idescribe, ndescribe, iit, nit, compile} = require '../util'
+{expect, idescribe, ndescribe, iit, nit, parse, compile} = require '../util'
+
+lib = '../../lib/'
+
+taiji = require lib+'taiji'
+{nonMetaCompileExpNoOptimize} = require lib+'compiler'
+
+# below is compile without metaConvert
+# if comment the definiton below ,will use "compile" required from util, which is a full compile funciton
+compile = (text) ->
+  exp = parse(text)
+  exp = exp[3][1] # cut wrap layer: module!, moduleBody!
+  env = taiji.initEnv(taiji.builtins, taiji.rootModule, {})
+  exp = nonMetaCompileExpNoOptimize exp, env
+  exp
 
 describe "compiler basic: ",  ->
   describe "compile number: ",  ->
-    iit "compile 1", ->
+    it "compile 1", ->
       expect(compile('1')).to.have.string "1"
     it "compile 01", ->
       expect(compile('01')).to.have.string '1'
@@ -12,7 +26,7 @@ describe "compiler basic: ",  ->
       expect(compile('0xa')).to.have.string '10'
       expect(compile('0xa')).to.have.string '10'
     it "compile 1.", ->
-      expect(-> compile('1.')).to.throw /fail to look up symbol from environment/
+      expect(-> compile('1.')).to.throw /symbol lookup error: ./
 
   ndescribe "compile string: ",  ->
     describe "compile interpolate string: ",  ->

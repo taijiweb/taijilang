@@ -72,10 +72,18 @@ fileLogger = require('tracer').console
   format : "{{file}}:{{line}}: {{message}}",
   transport : (data) ->
     fs.open "./debug.log", "a", `0666`, (e, id) ->
-      fs.write id, data.output+"\r\n", null, 'utf8', -> fs.close(id,->)
+      fs.write id, data.output+"\r\n", null, 'utf8', -> fs.close(id, ->)
 
-exports.log = (args...) -> fileLogger.log(args...); console.log(args...)
-exports.trace = (args...) -> fileLogger.log(args...)
+#fileLogger2 = require('tracer').console
+#  stackIndex : 2
+#  format : "{{file}}:{{line}}: {{message}}",
+#  transport : (data) ->
+#    fs.open "./debug.log", "a", `0666`, (e, id) ->
+#      fs.write id, data.output+"\r\n", null, 'utf8', -> fs.close(id,->)
+
+exports.log = log = (args...) -> fileLogger.log(args...); console.log(args...)
+exports.trace = trace = (args...) -> fileLogger.log(args...)
+exports.trace2 = trace2 = (args...) -> # fileLogger2.log(args...)
 
 exports.charset = charset = (string) ->
   result = {}
@@ -108,6 +116,7 @@ isMetaOperation = isMetaOperation = (head) -> (head[0]=='#' and head[1]!='-') or
 # todo: this should be compile time function in taijilang bootstrap compilation program, so it can be optimized greatly.
 # to make "analyzed", "transformed", "optimized" being true here, we can avoid switch branch in the following phases.
 exports.norm = norm = (exp) ->
+  # trace('norm: ', str(exp))
   assert exp!=undefined, 'norm(exp) meet undefined'
   if exp.kind then return exp
   if exp instanceof Array
@@ -143,7 +152,9 @@ exports.str = str = (item) ->
   else item.toString()
 
 exports.assert = assert = (value, message) ->
-    if not value then throw new Error message or 'assert failed'
+    if not value
+      trace2('assert:', message or 'assert failed')
+      throw new Error message or 'assert failed'
 
 exports.isArray = isArray = (exp) -> Object::toString.call(exp) == '[object Array]'
 
@@ -199,15 +210,6 @@ exports.entity = entity = (exp) ->
     return entity(exp.value)
   exp
 
-exports.isValue = isValue = (exp, env) ->
-  if not exp then return true
-  if exp.push then return false
-  exp = entity(exp)
-  if typeof exp == 'string'
-    if exp[0]=='"' then return true
-    else return false
-  return true
-
 exports.kindSymbol = (e) -> {value:e, kind:SYMBOL}
 
 # return value:
@@ -227,7 +229,9 @@ addBeginItem = (result, exp) ->
       else if exp0Value=='return' or exp0Value=='throw' or exp0Value=='break' or exp0Value=='continue'
         result.push(exp); return
       else result.push exp; return LIST
-    else throw 'addBeginItem: wrong kind: '+str(exp)
+    else
+      trace('addBeginItem: wrong kind: '+str(exp))
+      throw 'addBeginItem: wrong kind: '+str(exp)
 
 exports.begin = begin = (exp) ->
     result = []

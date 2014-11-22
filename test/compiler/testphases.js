@@ -1,10 +1,8 @@
-var LIST, Parser, SYMBOL, ShiftStatementInfo, SymbolLookupError, VALUE, constant, convert, expect, idescribe, iit, lib, metaConvert, ndescribe, nit, nonMetaCompileExpNoOptimize, norm, parse, str, strConvert, strMetaConvert, strNonOptCompile, taiji, transform, transformExpression, _ref, _ref1, _ref2, _ref3;
+var LIST, SYMBOL, ShiftStatementInfo, SymbolLookupError, VALUE, constant, convert, expect, idescribe, iit, lib, metaConvert, ndescribe, nit, nonMetaCompileExpNoOptimize, norm, parse, str, strConvert, strMetaConvert, strNonOptCompile, taiji, transform, transformExpression, _ref, _ref1, _ref2, _ref3;
 
 _ref = require('../util'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, strConvert = _ref.strConvert, str = _ref.str, parse = _ref.parse;
 
 lib = '../../lib/';
-
-Parser = require(lib + 'parser').Parser;
 
 _ref1 = require(lib + 'compiler/transform'), transformExpression = _ref1.transformExpression, transform = _ref1.transform, ShiftStatementInfo = _ref1.ShiftStatementInfo;
 
@@ -150,8 +148,17 @@ ndescribe("test phases: ", function() {
     it("var a; a+{return a}", function() {
       return expect(str(parseTransform("var a; a+{return a}"))).to.equal("[begin! [var a] [var t] [= t a] [return a]]");
     });
-    return it("var a, b; (b=a)+{return a}", function() {
+    it("var a, b; (b=a)+{return a}", function() {
       return expect(str(parseTransform("var a, b; (b=a)+{return a}"))).to.equal("[begin! [var a] [var b] [var t] [= t [= b a]] [return a]]");
+    });
+    it("-> 1", function() {
+      return expect(str(parseTransform("-> 1"))).to.equal("[function [] [return 1]]");
+    });
+    it("var a; a = -> 1", function() {
+      return expect(str(parseTransform("var a; a = -> 1"))).to.equal("[begin! [var a] [= a [function [] [return 1]]]]");
+    });
+    return it("var a; a[1] = -> 1", function() {
+      return expect(str(parseTransform("var a; a[1] = -> 1"))).to.equal("[begin! [var a] [var t] [= t [function [] [return 1]]] [= [index! a 1] t] t]");
     });
   });
 });

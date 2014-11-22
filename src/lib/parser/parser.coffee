@@ -3,7 +3,7 @@ colors = require('colors')
 {charset, isArray, str, entity, dict, list2dict, extendSyntaxInfo, extend,
 firstIdentifierChars, firstIdentifierCharSet, letterDigitSet, identifierChars,
 digitCharSet, letterCharSet, identifierCharSet, firstSymbolCharset, digits, digitChars, letterChars
-taijiIdentifierCharSet, constant, kindSymbol, norm} = require '../utils'
+taijiIdentifierCharSet, constant, kindSymbol, norm, undefinedExp, trace} = require '../utils'
 
 {NULL, NUMBER,  STRING,  IDENTIFIER, SYMBOL, REGEXP,  HEAD_SPACES, CONCAT_LINE, PUNCTUATION, FUNCTION, C_BLOCK_COMMENT
 PAREN, BRACKET, DATA_BRACKET, CURVE, INDENT_EXPRESSION
@@ -54,6 +54,7 @@ exports.Parser = ->
 
   # global variable used by lexer
   text = '' # text to be parsed
+  textLength = text.length;
   cursor = 0 # position pointer while do lexical parsing, use cur for local position pointer
   char = '' # current character, should assure char is the value of text[cursor] whenerver entering or leaving a function
   lineno = 0 # current line number, use line for local line number
@@ -208,7 +209,7 @@ exports.Parser = ->
         return tkn
       else
         cursor--
-        return  token.next = {type:tokenType=SPACE, kind:VALUE, value:text[cur...cursor], cursor:cur, stopCursor: cursor,
+        return  token.next = {type:tokenType=SPACE, kind:VALUE, transformed:true, value:text[cur...cursor], cursor:cur, stopCursor: cursor,
         line:line, stopLine:lineno, column:column, indent:lexIndent}
     else if char
       if char!='\n' and char!='\r'
@@ -561,11 +562,11 @@ exports.Parser = ->
       if cursor==baseStart
         # e.g 0x+3, 0x(1+2)
         cursor--; char = text[cursor]
-        return token.next = { type:tokenType=NUMBER, kind:VALUE, value:parseInt(text[baseStart...cursor], base), atom:true
+        return token.next = { type:tokenType=NUMBER, kind:VALUE, transformed:true, value:parseInt(text[baseStart...cursor], base), atom:true
         cursor:cur, stopCursor:cursor
         line:lineno, column:column}
       else
-        return token.next = { type:tokenType=NUMBER, kind:VALUE, value:parseInt(text[baseStart...cursor], base), atom:true
+        return token.next = { type:tokenType=NUMBER, kind:VALUE, transformed:true, value:parseInt(text[baseStart...cursor], base), atom:true
         cursor:cur, line:lineno, column: column}
     # base==10
     while char
@@ -582,7 +583,7 @@ exports.Parser = ->
     dotCursor = cursor-1
     if not meetDigit and char!='e' and char!='E'
       cursor = dotCursor; char = text[cursor]
-      return token.next = { type: tokenType=NUMBER, kind:VALUE, value:parseInt(text[baseStart...cursor], base), atom:true
+      return token.next = { type: tokenType=NUMBER, kind:VALUE, transformed:true, value:parseInt(text[baseStart...cursor], base), atom:true
       cursor:cur, stopCursor:cursor
       line:lineno, column: column}
     if char=='e' or char=='E'
@@ -591,7 +592,7 @@ exports.Parser = ->
         char = text[++cursor]
         if not char or char<'0' or '9'<char
           cursor = dotCursor; char = text[cursor]
-          return token.next = { type: tokenType=NUMBER, kind:VALUE, value:parseInt(text[cur...dotCursor], base), atom:true
+          return token.next = { type: tokenType=NUMBER, kind:VALUE, transformed:true, value:parseInt(text[cur...dotCursor], base), atom:true
           cursor:cur, stopCursor:cursor
           line:lineno, column: column}
         else
@@ -600,13 +601,13 @@ exports.Parser = ->
             if  char<'0' or '9'<char then break
       else if not char or char<'0' or '9'<char
         cursor = dotCursor; char = text[cursor]
-        return token.next = { type: tokenType=NUMBER, kind:VALUE, value:parseInt(text[cur...dotCursor], base), atom:true
+        return token.next = { type: tokenType=NUMBER, kind:VALUE, transformed:true, value:parseInt(text[cur...dotCursor], base), atom:true
         cursor:cur, stopCursor:cursor
         line:lineno, column: column}
       else while char
           if  char<'0' or '9'<char then break
           char = text[++cursor]
-    token.next = { type: tokenType=NUMBER, kind:VALUE, value:parseFloat(text[cur...cursor], base), atom:true
+    token.next = { type: tokenType=NUMBER, kind:VALUE, transformed:true, value:parseFloat(text[cur...cursor], base), atom:true
     cursor:cur, stopCursor:cursor
     line:lineno, column: column}
 
@@ -633,7 +634,7 @@ exports.Parser = ->
         return token.next = leftRawNonInterpolatedString()
       else
         char = text[++cursor]
-        return token.next = {value:'""', type:tokenType=NON_INTERPOLATE_STRING, kind:VALUE, atom:true, cursor:cursor-2, line:lineno, column:column, atom:true}
+        return token.next = {value:'""', type:tokenType=NON_INTERPOLATE_STRING, kind:VALUE, transformed:true, atom:true, cursor:cursor-2, line:lineno, column:column, atom:true}
     else return token.next = leftNonInterpolatedString()
 
   leftRawNonInterpolatedString = ->
@@ -647,7 +648,7 @@ exports.Parser = ->
         if text[cursor+1]=="'"
           if text[cursor+2]=="'"
             cursor += 3; char = text[cursor]
-            return {type:tokenType=NON_INTERPOLATE_STRING, kind:VALUE, value:'"'+str+'"', atom:true, start:cur, stop:cursor, line:line, stopLine: lineno}
+            return {type:tokenType=NON_INTERPOLATE_STRING, kind:VALUE, transformed:true, value:'"'+str+'"', atom:true, start:cur, stop:cursor, line:line, stopLine: lineno}
           else str += "''"; cursor += 2; char = text[cursor]
         else str += "'"; char = text[++cursor]
       else if char=='\\'
@@ -662,7 +663,7 @@ exports.Parser = ->
         if text[cursor+1]=="'"
           if text[cursor+2]=="'"
             cursor += 3; char = text[cursor]
-            return {type:tokenType=NON_INTERPOLATE_STRING, kind:VALUE, value: '"'+str+'"', atom:true, start:cur, stop:cursor, line:line, stopLine: lineno}
+            return {type:tokenType=NON_INTERPOLATE_STRING, kind:VALUE, transformed:true, value: '"'+str+'"', atom:true, start:cur, stop:cursor, line:line, stopLine: lineno}
           else str += "''"; cursor += 2; char = text[cursor]
         else str += "'"; char = text[++cursor]
       else str += rawNonInterpolatedStringLine(indentInfo)
@@ -778,7 +779,7 @@ exports.Parser = ->
         return tkn2
       else
         char = text[++cursor]
-        return token.next = {value:'""', type:tokenType=NON_INTERPOLATE_STRING, kind:VALUE, atom:true, line:lineno, cursor:cursor-2, column:cursor-2-lineStart}
+        return token.next = {value:'""', type:tokenType=NON_INTERPOLATE_STRING, kind:VALUE, transformed:true, atom:true, line:lineno, cursor:cursor-2, column:cursor-2-lineStart}
     else
       tkn = token
       tkn2 = leftInterpolateString()
@@ -998,6 +999,7 @@ exports.Parser = ->
   }
 
   tokenFnMap['['] = tokenOnLeftBracketChar = ->
+#    trace "tokenFnMap['[']: " #,  nextPiece())
     cur = cursor; char = text[++cursor]; line = lineno; column = cursor-lineStart
     prev = token; matchToken()
     if (bracketVariantFn=bracketVariantMap[token.value])
@@ -1012,7 +1014,8 @@ exports.Parser = ->
       # To make interpolated string happy, we can not call nextToken() here
       # so that token.next==undefined, and nextToken() will matchToken instead.
       # tkn = nextToken()
-      token = [{value:'[]', kind:SYMBOL}, exp]
+      if not exp then token = norm [{value:'[]', kind:SYMBOL}]
+      else token = norm [{value:'[]', kind:SYMBOL}, exp]
       token.type = tokenType = BRACKET; token.cursor = cur; token.stopCursor = cursor
       token.line = line; token.column = column; token.indent = lexIndent
       prev.next = token; token.atom = true
@@ -1021,6 +1024,7 @@ exports.Parser = ->
   bracketVariantMap = {}
 
   tokenFnMap['{'] = ->
+#    trace "tokenFnMap['{']: " #+nextPiece())
     cur = cursor; char = text[++cursor]; line = lineno; column = cursor-lineStart; ind = lexIndent
     prev = token; matchToken()
     if (curveVariantFn=curveVariantMap[token.value])
@@ -1223,8 +1227,8 @@ exports.Parser = ->
           token[memoTag] = {}; return
         else priInc = 600
       when PAREN
-        return  {value:'concat()', priority: 800, start:token}
-      when BRACKET then return {value:'concat[]', priority: 800, start:token}
+        return  {value:'concat()', priority: 800, start:token, kind:SYMBOL}
+      when BRACKET then return {value:'concat[]', priority: 800, start:token, kind:SYMBOL}
       when IDENTIFIER
         start[binaryOperatorMemoIndex+mode] = {}; return
       when SYMBOL
@@ -1908,7 +1912,7 @@ exports.Parser = ->
       result.start = start; result.stop = token; result
 
   @sequenceClause = ->
-    start = token; clause = []
+    start = token; clause = norm []
     while 1
       if tokenType==SPACE then nextToken()
       tkn = token
@@ -1999,7 +2003,7 @@ exports.Parser = ->
     if tokenType==SPACE then nextToken()
     if tokenType==INDENT then body = parser.block()
     else body = parser.line()
-    result = [start, [], begin(body)]
+    result = norm [start, [], begin(body)]
     result.start = start; result.stop = token; return result
 
   symbol2clause['->'] = definitionSymbolBody
@@ -2009,7 +2013,13 @@ exports.Parser = ->
 
   @customDefinitionParameterList = ->
 
+  nextPiece = ->
+    if not char then ''
+    else text[cursor...(cursor+8>textLength? textLength: cursor+8)]
+
   @clause = ->
+#    trace("clause: ")
+#    trace("clause: "+nextPiece())
     if tokenType==SPACE then nextToken(); type = tokenType
     start = token
     switch tokenType
@@ -2022,7 +2032,7 @@ exports.Parser = ->
         if token.value=='#' and nextToken() and token.value==':' and nextToken()
           # label statement
           if tokenType==SPACE then nextToken()
-          result = [{value:'label!', kind:SYMBOL}, start, begin(parser.lineBlock())]
+          result = norm [{value:'label!', kind:SYMBOL}, start, begin(parser.lineBlock())]
           result.start = start; result.stop = token; return result
         else token = start; tokenType = token.type
       when SYMBOL
@@ -2034,7 +2044,7 @@ exports.Parser = ->
       # try to parse: prefix exp
       if (op=parser.prefixOperator())
         if tokenType==SPACE and nextToken() and (exp=parser.spaceClauseExpression())
-          result = [op, exp]
+          result = norm [op, exp]
           result.start = start; result.stop = token; return result
         else return op
       else if token.value==',' then nextToken(); return {value:'undefined', kind:SYMBOL, start:start, stop:token}
@@ -2076,7 +2086,9 @@ exports.Parser = ->
       if tokenType==UNDENT then syntaxError 'unexpected undent after assign symbol'+op.value
       else if tokenType==NEWLINE then syntaxError 'unexpected new line after assign symbol'+op.value
       else if tokenType==EOI then syntaxError 'unexpected end of input'+op.value
-      result = [opToken, head, parser.block() or parser.clause()]
+      right = parser.block() or parser.clause()
+      if not right then syntaxError 'expect the right side of assign'
+      result = norm [opToken, head, right]
       result.start = start; result.stop = token; return result
 
     else if token.value=='#' and nextToken()
@@ -2252,7 +2264,7 @@ exports.Parser = ->
 
   # #!use/bin/node taiji
   @binShellDirective = ->
-    if text[cursor...cursor+2]!='#!' then return
+    if text[cursor...cursor+2]!='#!' then return  undefinedExp
 
     cur = cursor
     while char and char!='\n' and char!='\r' then char = text[++cursor]
@@ -2292,7 +2304,7 @@ exports.Parser = ->
     {type: MODULE_HEADER, version: {main:x, minor:y}, value: text[...cursor], cursor:cur, stopCursor:cursor}
 
   @module = ->
-    scriptDirective = [{value:'scriptDirective!', kind:SYMBOL}, parser.binShellDirective()]
+    scriptDirective = [norm('scriptDirective!'), parser.binShellDirective()]
     header = parser.moduleHeader()
     body = parser.moduleBody()
     result = [{value:'module!', kind:SYMBOL}, scriptDirective, header, body]
@@ -2301,7 +2313,8 @@ exports.Parser = ->
     result
 
   @init = (data, cur, env) ->
-    @text = text = data; cursor = cur; char = text[cursor]; lineno = 1; lineStart = 0
+    @text = text = data; @textLength = textLength = text.length
+    cursor = cur; char = text[cursor]; lineno = 1; lineStart = 0
 
     # this line is necessary, because matchToken will have token.next = ..., token can not be undfined!
     token = {} # an empty token, {}.next is undefined, so nextToken will call matchToken;

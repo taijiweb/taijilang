@@ -109,14 +109,14 @@ transformExpressionFnMap =
     if exp1.kind==SYMBOL
       [rightStmt, rightExp] = transformExpression(exp[2], env, shiftStmtInfo)
       if shiftStmtInfo.affect(exp1.value)
-        [begin([rightStmt, ['var', (t=env.ssaVar('t'))], ['=', t, rightExp], ['=', exp1, t]]), t]
+        [begin([rightStmt, [norm('var'), (t=env.ssaVar('t'))], norm(['=', t, rightExp]), norm(['=', exp1, t])]), t]
       else if hasOwnProperty.call(shiftStmtInfo.vars, exp1.value)
-        [begin([rightStmt, ['=', exp1, rightExp]]), exp1]
-      else [rightStmt, ['=', exp1, rightExp]]
+        [begin([rightStmt, norm(['=', exp1, rightExp])]), exp1]
+      else [rightStmt, norm(['=', exp1, rightExp])]
     else
       # a.x = 1; b[2] = 3, ...
       [[leftStmt, leftExp], [rightStmt, rightExp]] = transformExpressionSequence(exp[1..2], env, shiftStmtInfo)
-      [begin([leftStmt, rightStmt, ['=', leftExp, rightExp], ], ['var', (t=env.ssaVar('t'))], ['=', t, leftExp]), t]
+      [begin([leftStmt, rightStmt, norm(['var', (t=env.ssaVar('t'))]), norm(['=', t, rightExp]), norm(['=', leftExp, t])]), t]
 
   'list!':(exp, env, shiftStmtInfo) ->
     [argsStmts, argsValues] = transformExpressionList(exp[1...], env, shiftStmtInfo)
@@ -196,7 +196,7 @@ transformExpressionFnMap =
 
   'function': (exp, env, shiftStmtInfo) ->
     env = exp.env
-    exp = ['function', exp[1], transform(exp[2], env)]
+    exp = norm ['function', exp[1], transform(exp[2], env)]
     exp.env = env
     [undefinedExp, exp]
 
@@ -312,9 +312,10 @@ transformExpressionFnMap =
     switchStmt = ['switch', testValue, resultCases, begin([defaultStmt, ['=', resultVar, defaultValue]])]
     [begin([testStmt, switchStmt]), resultVar]
 
-statementHeadMap = {'break':1, 'continue':1, 'switch':1, 'try':1, 'throw':1,
+# althought function itself is expression, but the body need to be processed as statementss
+statementHeadMap = {'break':1, 'continue':1, 'switch':1, 'try':1, 'throw':1, 'return':1,
 'jsForIn!':1, 'forOf!': 1, 'cFor!':1, 'while':1, 'doWhile!':1,  'letloop':1,
-'with':1, 'var':1, 'label!':1}
+'with':1, 'var':1, 'label!':1, 'function':1}
 
 exports.toExpression = toExpression = (exp) ->
   switch exp.kind
@@ -348,7 +349,7 @@ exports.transformExpression = transformExpression = (exp, env, shiftStmtInfo) ->
           # while calling shiftStmtInfo.affectExp(exp), we call varsOf(exp) at first
           stmt.vars = exp.vars
           return [stmt, t]
-        else [undefinedExp, exp]
+        else return [undefinedExp, exp]
       assert transformExpressionFnMap[exp[0].value], 'no transformExpressionFnMap for '+str(exp)
       result = transformExpressionFnMap[exp[0].value](exp, env, shiftStmtInfo)
       # result is in form [stmt, exp], now add the effects of stmt, which will be shifted ahead.
@@ -359,8 +360,8 @@ transformExpressionSequence = (exps, env, shiftStmtInfo) ->
   result = []
   i = exps.length
   while --i>=0  # >=0 is necessary, else will missing the run on i==0
-    exp = exps[i]
-    result.unshift (stmtExp=transformExpression exp, env, shiftStmtInfo)
+    stmtExp = transformExpression(exps[i], env, shiftStmtInfo)
+    result.unshift stmtExp
     if i>0 then shiftStmtInfo.addEffect(stmtExp[0])
   result
 

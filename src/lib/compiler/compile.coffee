@@ -1,6 +1,6 @@
 fs = require 'fs'
 path = require 'path'
-{compileError} = require './helper'
+{compileError, symbolLookupError} = require './helper'
 
 {evaljs, isArray, extend, str, formatTaijiJson, wrapInfo1, extendSyntaxInfo, entity, pushExp, undefinedExp, begin,
 __TJ__QUOTE, constant, norm, trace} = require '../utils'
@@ -67,7 +67,8 @@ exports.convert = convert = (exp, env) ->
         when SYMBOL
 #          console.log 'is symbol'
 #          console.log env, 'get is what:', env.get
-          head = env.get(exp0)
+          head = env.get(exp0.value)
+          if not head then symbolLookupError(symbol, exp)
           if typeof head == 'function'
             result = head(exp, env)
             result.start = exp.start; result.stop = exp.stop
@@ -79,7 +80,9 @@ exports.convert = convert = (exp, env) ->
           result = for e in exp then convert(e, env)
           result.start = exp.start; result.stop = exp.stop
         else compileError exp, 'convert: wrong kind: '+exp.kind
-    when SYMBOL then return env.get(exp)
+    when SYMBOL
+      if result=env.get(exp.value) then return result
+      else symbolLookupError(exp)
     when VALUE then return exp
     else compileError exp, 'convert: wrong kind: '+exp.kind
 

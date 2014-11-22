@@ -1,4 +1,4 @@
-{str, isArray, extend, entity, charset, begin, undefinedExp, isValue, digitCharSet, letterCharSet, identifierCharSet, constant, assert} = require '../utils'
+{str, isArray, extend, charset, begin, undefinedExp, isValue, digitCharSet, letterCharSet, identifierCharSet, constant, assert, trace} = require '../utils'
 
 {SYMBOL, VALUE, LIST} = constant
 
@@ -80,8 +80,9 @@ tokenFnMap =
     pri = binaryPriority[op=exp[1]]; x = tokenize(exp[2]); y = tokenize(exp[3])
     priority(binary([(if x.pri>pri then paren(x) else x), op, (if y.pri>pri then paren(y) else y)]), pri)
   'prefix!': (exp) ->
-    pri = unaryPriority[exp[1]]; x = tokenize(exp[2]);
-    priority([exp[1], (if letterCharSet[entity(exp[1])[0]] then ' ' else ''), (if x.pri>pri then paren(x) else x)], pri)
+    op = exp[1].value
+    pri = unaryPriority[op]; x = tokenize(exp[2]);
+    priority([op, (if letterCharSet[op[0]] then ' ' else ''), (if x.pri>pri then paren(x) else x)], pri)
   'suffix!': (exp) ->
     pri = unaryPriority[exp[1]]; x = tokenize(exp[2]);
     priority([(if x.pri>pri then paren(x) else x), exp[1]], pri)
@@ -90,8 +91,8 @@ tokenFnMap =
     priority([(if x.pri>15 then paren(x) else x), '? ',
               (if y.pri>15 then paren(y) else y), ': ',  (if z.pri>15 then paren(z) else z)],15) # test? then: else
   'noop!': (exp) ->  ''
-  'directLineComment!': (exp) -> entity(exp[1])
-  'directCBlockComment!': (exp) -> entity(exp[1])
+  'directLineComment!': (exp) -> exp[1].value
+  'directCBlockComment!': (exp) -> exp[1].value
   'var': (exp) ->
     exps = []; assigns = []
     for e in exp[1...]
@@ -117,11 +118,11 @@ tokenFnMap =
       if not e then exps.push e
       else if e1[0]=='var'
         if e[0]=='var' then e1.push e[1]
-        else if e[0]=='=' and (ee1=entity(e[1])) and (typeof ee1 == 'string') and ee1==entity(e1[e1.length-1]) then e1.pop(); e1.push e
+        else if e[0]=='=' and (ee1=e[1].value) and (typeof ee1 == 'string') and ee1==e1[e1.length-1].value then e1.pop(); e1.push e
         else exps.push e; e1 = e
       else exps.push e; e1 = e
     e = exps[exps.length-1]
-    if e=='' or (ee=entity(e))=='' or e==undefined or ee==undefined then exps.pop()
+    if e=='' or (ee=e.value)=='' or e==undefined or ee==undefined then exps.pop()
     if exps.length==1 then return statement exps[0]
     else statementList(for e in exps then statement(e))
   'debugger!': (exp) -> 'debugger'
@@ -132,7 +133,7 @@ tokenFnMap =
   'throw': (exp) ->  ['throw ', tokenize(exp[1])]
   'new': (exp) ->  priority(['new ', tokenize(exp[1])], 1)
   'function': (exp) ->
-    exp2 = entity(exp[2])
+    exp2 = exp[2].value
     if exp2[0]=='return'
       if not (exp21=exp2[1]) then body = '{}'
       else if exp21[0]=='jsvar!' and exp21[1]=='undefined' then body = '{}'
@@ -176,6 +177,7 @@ tokenFnMap =
     tokenize begin(exps)
 
 tokenize = (exp) ->
+  trace('tokenize: ', str(exp))
   switch exp.kind
     when SYMBOL, VALUE then exp.value
     when LIST

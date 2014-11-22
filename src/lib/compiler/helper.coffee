@@ -1,9 +1,13 @@
-{constant, extend, str} = require '../utils'
+{constant, extend, str, trace} = require '../utils'
 {VALUE, SYMBOL, LIST, COMMAND} = constant
 
 exports.compileError = compileError = (exp, message) ->
-  if message then throw new Error('compile error: '+message+': '+str(exp))
-  else throw new Error('compile error: '+str(exp))
+  if message
+    trace('compile error: '+message+': '+str(exp))
+    throw new Error('compile error: '+message+': '+str(exp))
+  else
+    trace('compile error: '+str(exp))
+    throw new Error('compile error: '+str(exp))
 
 exports.symbolLookupError = symbolLookupError = (exp, message) ->
   if message then throw new Error(message+': '+str(exp))

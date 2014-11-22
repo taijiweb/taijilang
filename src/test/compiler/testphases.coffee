@@ -2,7 +2,6 @@
 
 lib = '../../lib/'
 
-{Parser} = require lib+'parser'
 {transformExpression, transform, ShiftStatementInfo} =  require lib+'compiler/transform'
 
 {constant, norm} = require lib+'utils'
@@ -119,3 +118,12 @@ ndescribe "test phases: ",  ->
 
     it "var a, b; (b=a)+{return a}", ->
       expect(str parseTransform("var a, b; (b=a)+{return a}")).to.equal "[begin! [var a] [var b] [var t] [= t [= b a]] [return a]]"
+
+    it "-> 1", ->
+      expect(str parseTransform("-> 1")).to.equal "[function [] [return 1]]"
+
+    it "var a; a = -> 1", ->
+      expect(str parseTransform("var a; a = -> 1")).to.equal "[begin! [var a] [= a [function [] [return 1]]]]"
+
+    it "var a; a[1] = -> 1", ->
+      expect(str parseTransform("var a; a[1] = -> 1")).to.equal "[begin! [var a] [var t] [= t [function [] [return 1]]] [= [index! a 1] t] t]"

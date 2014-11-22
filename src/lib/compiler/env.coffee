@@ -1,5 +1,5 @@
 {extend, str, javascriptKeywordSet, entity, identifierCharSet, assert, constant} = require '../utils'
-{symbolLookupError} = require './helper'
+
 {SYMBOL} = constant
 
 hasOwnProperty = Object::hasOwnProperty
@@ -54,12 +54,12 @@ exports.Environment = class Environment
     name = toIdentifier(symbol)
     functionInfo = @getFunctionInfo()
     if not hasOwnProperty.call(functionInfo, name)
-      functionInfo[name] = 1; {symbol: name}
+      functionInfo[name] = 1; {value: name, kind:SYMBOL}
     else
       while symbolIndex = name[...name.length-2]+(++functionInfo[name])+name[name.length-2...]
         if not hasOwnProperty.call(functionInfo, symbolIndex) then break
       functionInfo[symbolIndex] = 1
-      {symbol: symbolIndex}
+      {value: symbolIndex, kind:SYMBOL}
 
   getSymbolIndex: (symbol) ->
     functionInfo = @getFunctionInfo()
@@ -102,13 +102,11 @@ exports.Environment = class Environment
     @scope[symbol] = value
 
   get: (symbol) ->
-    sym = symbol.value
     env = @
     while env
       scope = env.scope
-      if hasOwnProperty.call(scope, sym) then  return scope[sym]
+      if hasOwnProperty.call(scope, symbol) then  return scope[symbol]
       env =  env.parent
-    symbolLookupError(symbol)
 
   info: (symbol) ->
     if @optimizeInfoMap and hasOwnProperty.call(@optimizeInfoMap, symbol) then  return @optimizeInfoMap[symbol]

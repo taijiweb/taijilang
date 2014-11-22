@@ -30,7 +30,7 @@ analyzeFnMap =
     if typeof eLeft=='string'
       # while optimizing, replace the reference of left with value unconditionally.
       # is this necessary to do this while analyzing?
-      if left.const and isAtomicValue(exp[2]) then exp.removable = true
+      if left.const and exp[2].kind==VALUE then exp.removable = true
       else
         info = env.info(left)
         if not info then env.optimizeInfoMap[left] = info = {}

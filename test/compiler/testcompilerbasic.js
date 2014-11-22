@@ -1,10 +1,25 @@
-var compile, expect, idescribe, iit, ndescribe, nit, _ref;
+var compile, expect, idescribe, iit, lib, ndescribe, nit, nonMetaCompileExpNoOptimize, parse, taiji, _ref;
 
-_ref = require('../util'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, compile = _ref.compile;
+_ref = require('../util'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, parse = _ref.parse, compile = _ref.compile;
+
+lib = '../../lib/';
+
+taiji = require(lib + 'taiji');
+
+nonMetaCompileExpNoOptimize = require(lib + 'compiler').nonMetaCompileExpNoOptimize;
+
+compile = function(text) {
+  var env, exp;
+  exp = parse(text);
+  exp = exp[3][1];
+  env = taiji.initEnv(taiji.builtins, taiji.rootModule, {});
+  exp = nonMetaCompileExpNoOptimize(exp, env);
+  return exp;
+};
 
 describe("compiler basic: ", function() {
   describe("compile number: ", function() {
-    iit("compile 1", function() {
+    it("compile 1", function() {
       return expect(compile('1')).to.have.string("1");
     });
     it("compile 01", function() {
@@ -20,7 +35,7 @@ describe("compiler basic: ", function() {
     return it("compile 1.", function() {
       return expect(function() {
         return compile('1.');
-      }).to["throw"](/fail to look up symbol from environment/);
+      }).to["throw"](/symbol lookup error: ./);
     });
   });
   ndescribe("compile string: ", function() {

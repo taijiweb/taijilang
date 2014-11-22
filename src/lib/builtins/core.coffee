@@ -1,5 +1,8 @@
-{norm, constant, str} = require '../utils'
+{norm, constant, str, trace} = require '../utils'
 {VALUE, SYMBOL, LIST} = constant
+
+{compileError} = require '../compiler/helper'
+
 # meta language command, mainly some lisp style command.
 
 `__slice = [].slice`
@@ -79,12 +82,12 @@ convertAssign = (exp, env) ->
       if left.outer
         env.set(leftValue, left=env.newVar(leftValue))
         left.const = true # create const by default
-        norm ['begin!', ['var', left], ['=', left, convert(right, env)], left]
-      else norm ['=', left, convert(right, env)]
+        norm ['begin!', ['var', left], ['=', left, convert(exp[2], env)], left]
+      else norm ['=', left, convert(exp[2], env)]
     else
       env.set(leftValue, left=env.newVar(leftValue))
       left.const = true # create const by default
-      norm ['begin!', ['var', left], ['=', left, convert(right, env)], left]
+      norm ['begin!', ['var', left], ['=', left, convert(exp[2], env)], left]
   # left is assignable expression list
   else if left[0]=='list!'
     # right is already list in the compilation time
@@ -95,6 +98,7 @@ convertAssign = (exp, env) ->
         if not ellipsis then ellipsis = i; left[i] = x[1]
         else error 'can not have multiple ellipsis item in the left side of assign'
     if ellipsis==undefined
+      right = exp[2]
       # no exp... is met in the left side, just do the normal list assign
       if right[0]=='list!'
         if left.length>1
@@ -457,5 +461,17 @@ convertParserExpression = (exp) ->
   else exp
 
 exports.binaryConverters = binaryConverters = {}
+
+## todo: a(1), a(1, 2), need to be refined.
+binaryConverters['concat()'] = (exp, env, compiler) ->
+  norm ['call!', convert(exp[2], env), convert(exp[3], env)]
+
+# todo a[x]
+binaryConverters['concat[]'] = (exp, env, compiler) ->
+  trace("binaryConverters('concat[]'):", str(exp))
+  subscript = exp[3][1]
+  if subscript.length==0 or subscript.length>1
+    compileError exp, 'wrong subscript: '
+  norm ['index!', convert(exp[2], env), convert(subscript[0], env)]
 
 exports['binary!'] = (exp, env, compiler) -> binaryConverters[exp[1].value](exp, env)
