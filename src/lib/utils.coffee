@@ -72,7 +72,10 @@ stackReg = /at\s+(.*)\s+\((.*):(\d*):(\d*)\)/gi
 stackReg2 = /at\s+()(.*):(\d*):(\d*)/gi
 
 _trace = (stackIndex, args) ->
-  args = (for arg in args then arg.toString()).join(', ')
+  argsStr = ''
+  for arg in args
+    if argsStr=='' or argsStr[argsStr.length-2...]==': ' or argsStr[argsStr.length-1]==':' then argsStr += arg.toString()
+    else argsStr += ', '+ arg.toString()
   stacklist = (new Error()).stack.split('\n').slice(3)
   s = stacklist[stackIndex]
   sp = stackReg.exec(s) || stackReg2.exec(s)
@@ -81,9 +84,9 @@ _trace = (stackIndex, args) ->
     file = path.basename(sp[2])
     line = sp[3]
     pos = sp[4]
-    fs.appendFileSync("./debug.log", file+': '+method+': '+line+':'+pos+': '+args+'\r\n')
+    fs.appendFileSync("./debug.log", file+': '+method+': '+line+':'+pos+': '+argsStr+'\r\n')
   else
-    fs.appendFileSync("./debug.log", 'noname'+': '+' '+': '+'xx'+':'+'yy'+': '+args+'\r\n')
+    fs.appendFileSync("./debug.log", 'noname:  noname: xx: yy: '+argsStr+'\r\n')
 
 exports.log = log = (level, args...) -> _trace(level, args); console.log(args...)
 exports.trace = trace = (args...) ->  _trace(0, args)

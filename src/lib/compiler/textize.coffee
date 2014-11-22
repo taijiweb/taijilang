@@ -35,7 +35,9 @@ statement = (exp) ->
   if t.sort==TKN_STATEMENT or t.sort==TKN_STATEMENT_LIST then t
   else {sort: TKN_STATEMENT, value: t}
 compound = (exps...) -> {sort: TKN_STATEMENT, value: exps, compound: true}
-statementList = (exp) -> {sort: TKN_STATEMENT_LIST, value: tokenize(e) for e in exp}
+statementList = (exp) ->
+  trace str(exp)
+  {sort: TKN_STATEMENT_LIST, value: tokenize(e) for e in exp}
 block = (exp) -> {sort: TKN_BLOCK, value: exp}
 wrapBlock = (exp) -> {sort: TKN_WRAP_BLOCK, value: exp}
 func = (exps...) -> {sort: TKN_FUNCTION, value: exps, function:true}
@@ -94,16 +96,18 @@ tokenFnMap =
   'directLineComment!': (exp) -> exp[1].value
   'directCBlockComment!': (exp) -> exp[1].value
   'var': (exp) ->
-    exps = []; assigns = []
+    trace 'tokenize var: '+str(exp)
+    result = ['var ']
+    assigns = []
     for e in exp[1...]
-      if not e.push then exps.push e else assigns.push e
-    result = ['var ', list(exps)]
-    if exps.length and assigns.length
-      result.push ', '
+      if e not instanceof Array then result.push e
+      else assigns.push e
+    if not assigns.length then return result
+    if result.length>1 then result.push ', '
     if assigns.length>1 then result.push indentToken(4)
     t = tokenize(assigns[0])
+    result.push t
     if t.function then result.function = true
-    if assigns.length then result.push t
     for e in assigns[1...]
       result.push ', '; result.push line
       t = tokenize(e)
@@ -112,19 +116,19 @@ tokenFnMap =
     if assigns.length>1 then result.push undentToken(4)
     result
   'begin!': (exp) ->
+    trace 'tokenize begin!:', str(exp)
     exps = []
     e1 = ''
     for e in exp[1...]
-      if not e then exps.push e
-      else if e1[0]=='var'
+      assert(e, 'unexpected undefined while textizing '+str(exp))
+      if e1[0]=='var'
         if e[0]=='var' then e1.push e[1]
         else if e[0]=='=' and (ee1=e[1].value) and (typeof ee1 == 'string') and ee1==e1[e1.length-1].value then e1.pop(); e1.push e
         else exps.push e; e1 = e
       else exps.push e; e1 = e
-    e = exps[exps.length-1]
-    if e=='' or (ee=e.value)=='' or e==undefined or ee==undefined then exps.pop()
+    if e=='' or e==undefinedExp then exps.pop()
     if exps.length==1 then return statement exps[0]
-    else statementList(for e in exps then statement(e))
+    else statementList(exps)
   'debugger!': (exp) -> 'debugger'
   'label!': (exp) -> [tokenize(exp[1]), ': ', tokenize(exp[2])]
   'break': (exp) -> ['break ', tokenize(exp[1])]
@@ -168,13 +172,6 @@ tokenFnMap =
     compound('switch ', paren(tokenize(exp[1])), wrapBlock(body))
 
   'with!': (exp) -> compound('with ', paren(tokenize(exp[1])), block(tokenize(exp[2])))
-
-  'letloop!': (exp) ->
-    exps = []
-    params = exp[1]; bindings = exp[2]; body = exp[3]
-    for b in bindings then exps.push ['var', b[0]]; exps.push ['=', b[0], ['function ', params, b[1]]]
-    exps.push body
-    tokenize begin(exps)
 
 tokenize = (exp) ->
   trace('tokenize: ', str(exp))

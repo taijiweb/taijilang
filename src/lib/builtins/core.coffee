@@ -202,10 +202,6 @@ exports['@@'] = (exp, env) ->
 # create a block with new scope (i.e. evaluate all exp in new environment
 exports['block!'] = (exp, env) -> convertExps exp[1...], env.extend({})
 
-exports['{}'] = (exp, env) -> convert exp[1], env
-
-exports['()'] = (exp, env) -> convert exp[1], env
-
 exports['let'] = (exp, env) ->
   newEnv = env.extend(scope={})
   result = []
@@ -460,13 +456,11 @@ convertParserExpression = (exp) ->
     else exp
   else exp
 
+exports['binary!'] = (exp, env, compiler) -> binaryConverters[exp[1].value](exp, env)
+
 exports.binaryConverters = binaryConverters = {}
 
-## todo: a(1), a(1, 2), need to be refined.
-binaryConverters['concat()'] = (exp, env, compiler) ->
-  norm ['call!', convert(exp[2], env), convert(exp[3], env)]
-
-# todo a[x]
+# todo a[x], a[x, y]
 binaryConverters['concat[]'] = (exp, env, compiler) ->
   trace("binaryConverters('concat[]'):", str(exp))
   subscript = exp[3][1]
@@ -474,4 +468,16 @@ binaryConverters['concat[]'] = (exp, env, compiler) ->
     compileError exp, 'wrong subscript: '
   norm ['index!', convert(exp[2], env), convert(subscript[0], env)]
 
-exports['binary!'] = (exp, env, compiler) -> binaryConverters[exp[1].value](exp, env)
+## todo: a(1), a(1, 2), need to be refined.
+binaryConverters['concat()'] = (exp, env, compiler) ->
+  norm ['call!', convert(exp[2], env), convert(exp[3], env)]
+
+exports['{}'] = (exp, env) -> convert exp[1], env
+
+exports['()'] = (exp, env) -> convert exp[1], env
+
+exports['[]'] = (exp, env) ->
+  items = for e in exp[1] then convert e, env
+  items.unshift norm 'list!'
+  items.kind = LIST
+  items

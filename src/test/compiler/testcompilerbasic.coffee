@@ -49,9 +49,9 @@ describe "compiler basic: ",  ->
         expect(parseClause('"a(1)"')).to.equal '[string! "a" [() 1]]'
         expect(compile('"a(1)"')).to.have.string "\"a(1)\""
       it """compile "a[1]" """, ->
-        expect(compile('"a[1]"')).to.have.string "\"a[\" + JSON.stringify([1]) + \"]\""
+        expect(compile('"a[1]"')).to.have.string '"a" + JSON.stringify([1])'
       it """compile "a[1] = $a[1]" """, ->
-        expect(compile('var a; "a[1] = $a[1]"')).to.have.string "var a;\n\"a[\" + JSON.stringify([1]) + \"] = \" + JSON.stringify(a[1])"
+        expect(compile('var a; "a[1] = $a[1]"')).to.have.string 'var a;\n"a" + JSON.stringify([1]) + " = " + JSON.stringify(a[[1]])'
 
     describe "compile raw string without interpolation: ",  ->
       it "compile '''a\\b'''", ->

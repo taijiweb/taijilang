@@ -1414,12 +1414,12 @@ exports.Parser = ->
       cur = cursor
       if (char=text[cursor])=='.'
         if char=text[++cursor] and firstIdentifierCharSet[char] and (id=tokenOnIdentifierChar())
-          exp = ['.', exp, id]
+          exp = norm [norm('.'), exp, id]
           id.start = id; id.stop = id; exp.start = start; exp.stop = id
         else break
       else if char=='['
         if (tkn=tokenOnLeftBracketChar()) and tokenType==BRACKET
-          exp = ['index!', exp, tkn]
+          exp = norm [norm('index!'), exp, tkn]
           exp.start = start; exp.stop = tkn
         else lexError 'error while parsing "[" leading interpolate expression in double qoute string'
       else cursor = cur; break

@@ -9,9 +9,9 @@ exports.compileError = compileError = (exp, message) ->
     trace('compile error: '+str(exp))
     throw new Error('compile error: '+str(exp))
 
-exports.symbolLookupError = symbolLookupError = (exp, message) ->
-  if message then throw new Error(message+': '+str(exp))
-  else throw new Error('symbol lookup error: '+str(exp))
+exports.symbolLookupError = symbolLookupError = (symbol, exp, message) ->
+  if message then throw new Error(message+': '+symbol.value+': '+str(exp))
+  else throw new Error('symbol lookup error: '+symbol.value+': '+str(exp))
 
 # transformExpression in transform.coffee need varsOf, assignVarsOf, pollutedOf
 exports.varsOf = varsOf = (exp) ->

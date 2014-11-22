@@ -66,10 +66,10 @@ describe("compiler basic: ", function() {
         return expect(compile('"a(1)"')).to.have.string("\"a(1)\"");
       });
       it("compile \"a[1]\" ", function() {
-        return expect(compile('"a[1]"')).to.have.string("\"a[\" + JSON.stringify([1]) + \"]\"");
+        return expect(compile('"a[1]"')).to.have.string('"a" + JSON.stringify([1])');
       });
       return it("compile \"a[1] = $a[1]\" ", function() {
-        return expect(compile('var a; "a[1] = $a[1]"')).to.have.string("var a;\n\"a[\" + JSON.stringify([1]) + \"] = \" + JSON.stringify(a[1])");
+        return expect(compile('var a; "a[1] = $a[1]"')).to.have.string('var a;\n"a" + JSON.stringify([1]) + " = " + JSON.stringify(a[[1]])');
       });
     });
     describe("compile raw string without interpolation: ", function() {

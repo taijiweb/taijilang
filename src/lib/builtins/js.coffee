@@ -25,7 +25,7 @@ exports['index!'] = (exp, env) ->
       return convert ellipsisIndex('...', exp[1], undefined, exp2[1]), env
     else if exp20Value=='..x'
       return convert ellipsisIndex('..', exp[1], undefined, exp2[1]), env
-    else return ['index!', convert(exp[1], env), convert exp[2], env]
+    else return norm ['index!', convert(exp[1], env), convert exp[2], env]
   else if (exp2Value=exp2.value)=='..'or exp2Value=='...'
     return  convert norm(['call!', ['attribute!', exp[1], 'slice'], []]), env
   norm ['index!', convert(exp[1], env), convert exp[2], env]

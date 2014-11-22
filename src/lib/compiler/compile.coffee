@@ -68,7 +68,7 @@ exports.convert = convert = (exp, env) ->
 #          console.log 'is symbol'
 #          console.log env, 'get is what:', env.get
           head = env.get(exp0.value)
-          if not head then symbolLookupError(symbol, exp)
+          if not head then symbolLookupError(exp0, exp)
           if typeof head == 'function'
             result = head(exp, env)
             result.start = exp.start; result.stop = exp.stop

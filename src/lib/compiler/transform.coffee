@@ -140,7 +140,7 @@ transformExpressionFnMap =
   'new': (exp, env, shiftStmtInfo) ->
     # [new X] should be converted to standardized form [new [call X []]]
     [stmt, e] = transformExpression(exp[1], env, shiftStmtInfo)
-    [begin([['var', t=env.ssaVar('t')], stmt, ['=', t, ['new', e]]]), t]
+    [begin([norm(['var', t=env.ssaVar('t')]), stmt, norm(['=', t, norm(['new', e])])]), t]
 
   'return': transformReturnThrowExpression
 
@@ -152,12 +152,12 @@ transformExpressionFnMap =
       env = env.outerVarScopeEnv()
       metaVar = exp[1][1]
       variable = metaVar+(env.getSymbolIndex(metaVar) or '')
-      [['var', variable], variable]
+      [norm(['var', variable]), variable]
     else [exp, undefinedExp]
 
   'label!': (exp, env, shiftStmtInfo) ->
     [stmt, e] = transformExpression(exp[1], env, shiftStmtInfo)
-    [['label!', stmt], e]
+    [norm(['label!', stmt]), e]
 
   'noop!': (exp, env, shiftStmtInfo) -> [exp, undefinedExp]
 
@@ -182,7 +182,7 @@ transformExpressionFnMap =
 
   'hashitem!': (exp, env, shiftStmtInfo) ->
     [stmt, e] = transformExpression(exp[2], env, shiftStmtInfo)
-    [stmt, ['hashitem!', exp[1], e]]
+    [stmt, norm(['hashitem!', exp[1], e])]
 
   'call!': (exp, env, shiftStmtInfo) ->
     [argsStmts, argsValues] = transformExpressionList(exp[2], env, shiftStmtInfo)
@@ -356,6 +356,7 @@ exports.transformExpression = transformExpression = (exp, env, shiftStmtInfo) ->
       result = transformExpressionFnMap[exp[0].value](exp, env, shiftStmtInfo)
       # result is in form [stmt, exp], now add the effects of stmt, which will be shifted ahead.
       return result
+    else compileError 'wrong kind: '+exp.kind+' of '+str(exp)
 
 # used by binary!, =, augmentAssign, result in sequence need to be processed independently
 transformExpressionSequence = (exps, env, shiftStmtInfo) ->
