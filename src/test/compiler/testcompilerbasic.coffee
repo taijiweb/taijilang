@@ -1,9 +1,17 @@
-{expect, idescribe, ndescribe, iit, nit, parse, compile} = require '../util'
+{expect, idescribe, ndescribe, iit, nit, matchRule, parse, compile} = require '../util'
 
 lib = '../../lib/'
 
+{str} = require lib+'utils'
+{Parser} = require lib+'parser'
+
 taiji = require lib+'taiji'
 {nonMetaCompileExpNoOptimize} = require lib+'compiler'
+
+parseClause = (text) ->
+  parser = new Parser()
+  x = parser.parse(text, matchRule(parser, parser.clause), 0)
+  str x
 
 # below is compile without metaConvert
 # if comment the definiton below ,will use "compile" required from util, which is a full compile funciton
@@ -28,40 +36,42 @@ describe "compiler basic: ",  ->
     it "compile 1.", ->
       expect(-> compile('1.')).to.throw /symbol lookup error: ./
 
-  ndescribe "compile string: ",  ->
+  describe "compile string: ",  ->
     describe "compile interpolate string: ",  ->
       it "compile a", ->
         expect(compile('"a"')).to.have.string "\"a\""
       it "compile a\\b", ->
         expect(compile('"a\\b"')).to.have.string "\"a\\b\""
       it "compile '''a\"'\\n'''", ->
-        expect(compile('"""a\\"\'\\n"""')).to.have.string "\"a\\\"'\\n\""
+        expect(parseClause('"""a\\"\'\\n"""')).to.equal '[string! "a\\\\"\'\\\\n"]'
+        expect(compile('"""a\\"\'\\n"""')).to.have.string '"a\\\\"\'\\\\n"'
       it """compile "a(1)" """, ->
+        expect(parseClause('"a(1)"')).to.equal '[string! "a" [() 1]]'
         expect(compile('"a(1)"')).to.have.string "\"a(1)\""
       it """compile "a[1]" """, ->
         expect(compile('"a[1]"')).to.have.string "\"a[\" + JSON.stringify([1]) + \"]\""
       it """compile "a[1] = $a[1]" """, ->
         expect(compile('var a; "a[1] = $a[1]"')).to.have.string "var a;\n\"a[\" + JSON.stringify([1]) + \"] = \" + JSON.stringify(a[1])"
 
-    ndescribe "compile raw string without interpolation: ",  ->
+    describe "compile raw string without interpolation: ",  ->
       it "compile '''a\\b'''", ->
-        expect(compile("'''a\\b'''")).to.have.string "\"a\\b\""
+        expect(compile("'''a\\b'''")).to.have.string "\"a\\\\b\""
       it "compile '''a\\b\ncd'''", ->
-        expect(compile("'''a\\b\ncd'''")).to.have.string "\"a\\b\\ncd\""
+        expect(compile("'''a\\b\ncd'''")).to.have.string "\"a\\\\b\\ncd\""
       it "compile '''a\"'\\n'''", ->
-        expect(compile("'''a\"'\\n'''")).to.have.string "\"a\\\"'\\n\""
+        expect(compile("'''a\"'\\n'''")).to.have.string "\"a\"'\\\\n\""
 
-    ndescribe "compile escape string without interpolation: ",  ->
+    describe "compile escape string without interpolation: ",  ->
       it "compile 'a\\b'", ->
         expect(compile("'a\\b'")).to.have.string "\"a\\b\""
       it "compile 'a\\b\ncd'", ->
         expect(compile("'a\\b\ncd'")).to.have.string "\"a\\b\\ncd\""
       it "compile 'a\"\\\"\'\\n'", ->
-        expect(compile("'a\"\\\"\\'\\n'")).to.have.string "\"a\\\"\\\"\\'\\n\""
+        expect(compile("'a\"\\\"\\'\\n'")).to.have.string "\"a\"\\\"'\\n\""
       it "compile 'a\"\\\"\\'\\n\n'", ->
-        expect(compile("'a\"\\\"\\'\\n\n'")).to.have.string "\"a\\\"\\\"\\'\\n\\n\""
+        expect(compile("'a\"\\\"\\'\\n\n'")).to.have.string "\"a\"\\\"'\\n\\n\""
       it "compile 'a\"\\\"\n\'\\n'", ->
-        expect(compile("'a\"\\\"\n\\'\\n\n'")).to.have.string "\"a\\\"\\\"\\n\\'\\n\\n\""
+        expect(compile("'a\"\\\"\n\\'\\n\n'")).to.have.string "\"a\"\\\"\\n'\\n\\n\""
 
   ndescribe "parenthesis: ",  ->
     it 'should compile ()', ->

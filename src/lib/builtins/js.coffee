@@ -121,18 +121,17 @@ exports['__dir'] = norm ['jsvar!', '__dir']
 exports["string!"] = convertInterpolatedString = (exp, env)->
   result = norm ['string!']
   piece = '""'
-  for e in exp
+  for e in exp[1...]
     x = convert(e, env)
-    if x.kind==VALUE and x.value[0]=='"' then piece = piece[...piece.length-1] + x[1...]
+    if x.kind==VALUE and x.value[0]=='"' then piece = piece[...piece.length-1] + x.value[1...]
     else
-      if piece!='""' then result.push piece; piece = '""'
+      if piece!='""' then result.push norm(piece); piece = '""'
       if x.kind==LIST
-        if x0.kind==SYMBOL and x[0].value=='string!' then result.push.apply result, x[1...]
+        if (x0=x[0]).kind==SYMBOL and x0.value=='string!' then result.push.apply result, x[1...]
         else result.push x
       else result.push x
-  if piece!='""' then result.push piece
+  if piece!='""' then result.push norm piece
   if result.length==1 then return norm '""'
-  else if result.length==2 and result[1].kind==VALUE then return result[1]
   else return result
 
 exports["hash!"] = convertHash = (exp, env) ->

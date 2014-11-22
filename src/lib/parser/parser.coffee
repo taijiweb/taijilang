@@ -1,6 +1,6 @@
 colors = require('colors')
 
-{charset, isArray, str, entity, dict, list2dict, extendSyntaxInfo, extend,
+{charset, str, entity, dict, list2dict, extendSyntaxInfo, extend,
 firstIdentifierChars, firstIdentifierCharSet, letterDigitSet, identifierChars,
 digitCharSet, letterCharSet, identifierCharSet, firstSymbolCharset, digits, digitChars, letterChars
 taijiIdentifierCharSet, constant, kindSymbol, norm, undefinedExp, trace} = require '../utils'
@@ -51,6 +51,7 @@ begin = (exp) ->
 
 exports.Parser = ->
   parser = @
+  @name = 'parser'
 
   # global variable used by lexer
   text = '' # text to be parsed
@@ -641,32 +642,32 @@ exports.Parser = ->
     cur = cursor-3; line = lineno
     if cursor==indent+3 then indentInfo = {indent:lexIndent}
     else indentInfo = {}
-    str = ''
+    s = ''
     # the left characters of the same line after '''
     while char
       if char=="'"
         if text[cursor+1]=="'"
           if text[cursor+2]=="'"
             cursor += 3; char = text[cursor]
-            return {type:tokenType=NON_INTERPOLATE_STRING, kind:VALUE, transformed:true, value:'"'+str+'"', atom:true, start:cur, stop:cursor, line:line, stopLine: lineno}
-          else str += "''"; cursor += 2; char = text[cursor]
-        else str += "'"; char = text[++cursor]
+            return {type:tokenType=NON_INTERPOLATE_STRING, kind:VALUE, transformed:true, value:'"'+s+'"', atom:true, start:cur, stop:cursor, line:line, stopLine: lineno}
+          else s += "''"; cursor += 2; char = text[cursor]
+        else s += "'"; char = text[++cursor]
       else if char=='\\'
         # the '\' at end of line will not in the result string
         if (c=text[cursor+1])=='\n' or c=='\r'
           char = text[++cursor]; concatenating = true; break
-        else str += '\\\\'; char = text[++cursor]
-      else if char!='\n' and char!='\r' then str += char; char = text[++cursor]
+        else s += '\\\\'; char = text[++cursor]
+      else if char!='\n' and char!='\r' then s += char; char = text[++cursor]
       else break
     while char
       if char=="'"
         if text[cursor+1]=="'"
           if text[cursor+2]=="'"
             cursor += 3; char = text[cursor]
-            return {type:tokenType=NON_INTERPOLATE_STRING, kind:VALUE, transformed:true, value: '"'+str+'"', atom:true, start:cur, stop:cursor, line:line, stopLine: lineno}
-          else str += "''"; cursor += 2; char = text[cursor]
-        else str += "'"; char = text[++cursor]
-      else str += rawNonInterpolatedStringLine(indentInfo)
+            return {type:tokenType=NON_INTERPOLATE_STRING, kind:VALUE, transformed:true, value: '"'+s+'"', atom:true, start:cur, stop:cursor, line:line, stopLine: lineno}
+          else s += "''"; cursor += 2; char = text[cursor]
+        else s += "'"; char = text[++cursor]
+      else s += rawNonInterpolatedStringLine(indentInfo)
     if not text[cursor] then lexError "expect ''', unexpected end of input while parsing interpolated string"
 
   rawNonInterpolatedStringLine = (indentInfo) ->
@@ -713,23 +714,23 @@ exports.Parser = ->
     cur = cursor-1; line = lineno; column = cur-lineStart
     if cursor==indent+1 then indentInfo = {value:indent}
     else indentInfo = {}
-    str = ''
+    s = ''
     # the left characters of the same line after '''
     while char
       if char=="'"
         char = text[++cursor]
-        return {type:tokenType=NON_INTERPOLATE_STRING, value: '"'+str+'"', atom:true, cursor:cur, stopCursor:cursor, line:line, stopLine:lineno, column:column}
+        return {type:tokenType=NON_INTERPOLATE_STRING, value: '"'+s+'"', kind:VALUE, transformed:true, atom:true, cursor:cur, stopCursor:cursor, line:line, stopLine:lineno, column:column}
       else if char=='\\'
         # the '\' at end of line will not in the result string
         if (c=text[cursor+1])=='\n' or c=='\r' then char = text[++cursor]; concatenating = true; break
-        else if c=="'" then str += "'"; cursor += 2; char = text[cursor]
-        else str += '\\'; char = text[++cursor]
-      else if char!='\n' and char!='\r' then str += char; char = text[++cursor]
+        else if c=="'" then s += "'"; cursor += 2; char = text[cursor]
+        else s += '\\'; char = text[++cursor]
+      else if char!='\n' and char!='\r' then s += char; char = text[++cursor]
       else break
-    while char and char!="'" then str += nonInterpolatedStringLine(indentInfo)
+    while char and char!="'" then s += nonInterpolatedStringLine(indentInfo)
     if char=="'"
       char = text[++cursor]
-      return {type:tokenType=NON_INTERPOLATE_STRING, value: '"'+str+'"', atom:true, cursor:cur, stopCursor:cursor, line:line, stopLine:lineno, column:column}
+      return {type:tokenType=NON_INTERPOLATE_STRING, value: '"'+s+'"', kind:VALUE, transformed:true, atom:true, cursor:cur, stopCursor:cursor, line:line, stopLine:lineno, column:column}
     else lexError "expect \"'\", unexpected end of input while parsing interpolated string"
 
   nonInterpolatedStringLine = (indentInfo) ->
@@ -789,35 +790,40 @@ exports.Parser = ->
   @leftRawInterpolateString = leftRawInterpolateString = ->
     cur = cursor; line = lineno
     if cursor-lineStart==indent+3 then indentInfo = {value:indent} else indentInfo = {}
-    pieces = []; str = '"'
+    pieces = []; s = '"'
     while char
       if char=='"'
         if text[cursor+1]=='"'
           if text[cursor+2]=='"'
             cursor += 3
-            if str!='"' then pieces.push str += '"'
-            return {type:tokenType=INTERPOLATE_STRING, kind:LIST, value: ['string!'].concat(pieces), atom:true
-            cursor:cur, stopCursor: cursor,
-            line:line, stopLine: line}
+            char = text[cursor]
+            if s!='"' then pieces.push norm(s += '"')
+            pieces.unshift(norm('string!'))
+            pieces.type = tokenType = INTERPOLATE_STRING;
+            pieces.kind = LIST
+            pieces.atom = true
+            pieces.cursor = cur; pieces.stopCursor =  cursor;
+            pieces.line = line; pieces.stopLine =  line
+            return pieces
           else cursor += 2; char = text[cursor]
-        else str += '"'; char = text[++cursor]
+        else s += '"'; char = text[++cursor]
       else if char=='\n'
-        if not concatenating then str += '\\n'
+        if not concatenating then s += '\\n'
         char = text[++cursor]
         if char=='\r'
-          if not concatenating then str += '\\r'
+          if not concatenating then s += '\\r'
           char = text[++cursor]
         concatenating = false
         while 1
           lineno++
-          while char==' ' then str += char; char = text[++cursor]
+          while char==' ' then s += char; char = text[++cursor]
           if char=='\n'
-            str += '\\n'; char = text[++cursor]
-            if char=='\r' then str += '\\r'; char = text[++cursor]
+            s += '\\n'; char = text[++cursor]
+            if char=='\r' then s += '\\r'; char = text[++cursor]
             continue
           else if char=='\r'
-            str += '\\r'; char = text[++cursor]
-            if char=='\n' then str += '\\n'; char = text[++cursor]
+            s += '\\r'; char = text[++cursor]
+            if char=='\n' then s += '\\n'; char = text[++cursor]
             continue
           else break
         column = cursor-lineStart
@@ -825,87 +831,93 @@ exports.Parser = ->
         if indentInfo.value==undefined then indentInfo.value = column
         ind = indentInfo.value
         if ind<column then lexError 'expect equal to or more than the indent of first line of the string'
-        else if ind>column then i = 0; n = column-ind; while i++<n then str += ' '
+        else if ind>column then i = 0; n = column-ind; while i++<n then s += ' '
       else if char=='\r'
-        if not concatenating then str += '\\r'
+        if not concatenating then s += '\\r'
         char = text[++cursor]
         if char=='\n'
-          if not concatenating then str += '\\n'
+          if not concatenating then s += '\\n'
           char = text[++cursor]
         concatenating = false
         while 1
           lineno++
-          while char==' ' then str += char; char = text[++cursor]
+          while char==' ' then s += char; char = text[++cursor]
           if char=='\n'
-            str += '\\n'; char = text[++cursor]
-            if char=='\r' then str += '\\r'; char = text[++cursor]
+            s += '\\n'; char = text[++cursor]
+            if char=='\r' then s += '\\r'; char = text[++cursor]
             continue
           else if char=='\r'
-            str += '\\r'; char = text[++cursor]
-            if char=='\n' then str += '\\n'; char = text[++cursor]
+            s += '\\r'; char = text[++cursor]
+            if char=='\n' then s += '\\n'; char = text[++cursor]
             continue
           else break
         column = cursor-lineStart
         if char=='\t' then lexError 'unexpected tab character "\t" in the head of line'
         else if (ind=indentInfo.value)!=undefined then indentInfo.value = column
-        else if ind>column then i = 0; n = column-ind; while i++<n then str += ' '
+        else if ind>column then i = 0; n = column-ind; while i++<n then s += ' '
         else if ind<column then lexError 'expect equal to or more than the indent of first line of the string'
       else if char=='(' or char=='{' or char=='['
         # for efficiency, do not match next token while matching delimiter token (...), [...], {...} in tokenOnLeftParenChar, tokenOnLeftBracketChar, tokenOnLeftCurveChar
-        pieces.push str+'"'
+        pieces.push s+'"'
         matchToken()
         pieces.push token
-        str = '"'
+        s = '"'
       else if  char=='$'
         if (char=text[++cursor])
-          if not firstIdentifierCharSet[char] then str += '$'
-          else char = '$'; --cursor; pieces.push str+'"'; str = '"'
+          if not firstIdentifierCharSet[char] then s += '$'
+          else char = '$'; --cursor; pieces.push norm(s+'"'); s = '"'
         else break
       else if char=='$'
         literalStart = ++cursor; char = text[cursor]
-        if not firstIdentifierCharSet[char] then str += '$'
+        if not firstIdentifierCharSet[char] then s += '$'
         else
           x = parser.interpolateExpression()
           if text[cursor]==':'
             char = text[++cursor]
-            pieces.push str+text[literalStart...cursor]+'"'; str = '"'
-          else if str!='"' then pieces.push str+'"'; str = '"'
+            pieces.push norm(s+text[literalStart...cursor]+'"'); s = '"'
+          else if s!='"' then pieces.push norm(s+'"'); s = '"'
           pieces.push x
       else if char=='\\'
         char = text[++cursor]
         if char=='\n' or char=='\r' then concatenating = true
-        else if char then str += '\\\\'
+        else if char then s += '\\\\'
         else lexError 'unexpected end of input while parsing interpolated string'
-      else str += char; char = text[++cursor]
+      else s += char; char = text[++cursor]
     if not text[cursor] then lexError 'expect \'"\', unexpected end of input while parsing interpolated string'
 
   leftInterpolateString = ->
     cur = cursor-1; line = lineno
     if cursor-1-lineStart==indent+1 then indentInfo = {value:indent} else indentInfo = {}
-    pieces = []; str = '"'
+    pieces = []; s = '"'
     while char
       if char=='"'
-        if str!='"' then pieces.push str+'"'; char = text[++cursor]
-        return {type:tokenType=INTERPOLATE_STRING, kind:LIST, value: ['string!'].concat(pieces), atom:true
-        cursor:cur, stopCursor:cursor,
-        line:line, stopLine: lineno}
+        if s!='"' then pieces.push(norm(s+'"'))
+        char = text[++cursor]
+        pieces.unshift(norm('string!'))
+        pieces = norm pieces
+        pieces.type = tokenType = INTERPOLATE_STRING;
+        pieces.kind = LIST; pieces.transformed = true
+        pieces.atom = true
+        pieces.cursor = cur; pieces.stopCursor = cursor;
+        pieces.line = line; pieces.stopLine =  lineno
+        return pieces
       else if char=='\n'
-        if not concatenating then str += char
+        if not concatenating then s += char
         char = text[++cursor]
         if char=='\r'
-          if not concatenating then str += char
+          if not concatenating then s += char
           char = text[++cursor]
         concatenating = false
         while 1
           lineno++
-          while char==' ' then str += char; char = text[++cursor]
+          while char==' ' then s += char; char = text[++cursor]
           if char=='\n'
-            str += char; char = text[++cursor]
-            if char=='\r' then str += char; char = text[++cursor]
+            s += char; char = text[++cursor]
+            if char=='\r' then s += char; char = text[++cursor]
             continue
           else if char=='\r'
-            str += char; char = text[++cursor]
-            if char=='\n' then str += char; char = text[++cursor]
+            s += char; char = text[++cursor]
+            if char=='\n' then s += char; char = text[++cursor]
             continue
           else break
         column = cursor-lineStart
@@ -916,22 +928,22 @@ exports.Parser = ->
           if ind>column then i = 0; n = column-ind; while i++<n then result += ' '
           else if ind<column then lexError 'expect equal to or more than the indent of first line of the string'
       else if char=='\r'
-        if not concatenating then str += char
+        if not concatenating then s += char
         char = text[++cursor]
         if char=='\n'
-          if not concatenating then str += char
+          if not concatenating then s += char
           char = text[++cursor]
         concatenating = false
         while 1
           lineno++
-          while char==' ' then str += char; char = text[++cursor]
+          while char==' ' then s += char; char = text[++cursor]
           if char=='\n'
-            str += char; char = text[++cursor]
-            if char=='\r' then str += char; char = text[++cursor]
+            s += char; char = text[++cursor]
+            if char=='\r' then s += char; char = text[++cursor]
             continue
           else if char=='\r'
-            str += char; char = text[++cursor]
-            if char=='\n' then str += char; char = text[++cursor]
+            s += char; char = text[++cursor]
+            if char=='\n' then s += char; char = text[++cursor]
             continue
           else break
         column = cursor-lineStart
@@ -943,25 +955,25 @@ exports.Parser = ->
           else if ind<column then lexError 'expect equal to or more than the indent of first line of the string'
       else if char=='$'
         literalStart = ++cursor; char = text[cursor]
-        if not firstIdentifierCharSet[char] then str += '$'
+        if not firstIdentifierCharSet[char] then s += '$'
         else
           x = parser.interpolateExpression()
           if text[cursor]==':'
             char = text[++cursor]
-            pieces.push str+text[literalStart...cursor]+'"'; str = '"'
-          else if str!='"' then pieces.push str+'"'; str = '"'
+            pieces.push norm s+text[literalStart...cursor]+'"'; s = '"'
+          else if s!='"' then pieces.push norm s+'"'; s = '"'
           pieces.push x
       else if char=='(' or char=='{' or char=='['
         # for efficiency, do not match next token while matching delimiter token (...), [...], {...} in tokenOnLeftParenChar, tokenOnLeftBracketChar, tokenOnLeftCurveChar
-        pieces.push str+'"'
+        pieces.push norm(s+'"')
         matchToken()
         pieces.push token
-        str = '"'
+        s = '"'
       else if char=='\\'
         if not (char=text[++cursor]) then break
         else if char=='\n' or char=='\r' then char = text[++cursor]; concatenating = true
-        else str += '\\'+char; char = text[++cursor]
-      else str += char; char = text[++cursor]
+        else s += '\\'+char; char = text[++cursor]
+      else s += char; char = text[++cursor]
     if not text[cursor] then lexError 'expect \'"\', but meet end of input while parsing interpolated string'
 
   # for efficiency, in tokenOnLeftParenChar, tokenOnLeftBracketChar, tokenOnLeftCurveChar
@@ -999,7 +1011,7 @@ exports.Parser = ->
   }
 
   tokenFnMap['['] = tokenOnLeftBracketChar = ->
-#    trace "tokenFnMap['[']: " #,  nextPiece())
+    trace "tokenFnMap['[']: ",  nextPiece()
     cur = cursor; char = text[++cursor]; line = lineno; column = cursor-lineStart
     prev = token; matchToken()
     if (bracketVariantFn=bracketVariantMap[token.value])
@@ -1024,7 +1036,7 @@ exports.Parser = ->
   bracketVariantMap = {}
 
   tokenFnMap['{'] = ->
-#    trace "tokenFnMap['{']: " #+nextPiece())
+    trace "tokenFnMap['{']: " +nextPiece()
     cur = cursor; char = text[++cursor]; line = lineno; column = cursor-lineStart; ind = lexIndent
     prev = token; matchToken()
     if (curveVariantFn=curveVariantMap[token.value])
@@ -2014,12 +2026,11 @@ exports.Parser = ->
   @customDefinitionParameterList = ->
 
   nextPiece = ->
-    if not char then ''
+    if not char then 'end of input'
     else text[cursor...(cursor+8>textLength? textLength: cursor+8)]
 
   @clause = ->
-#    trace("clause: ")
-#    trace("clause: "+nextPiece())
+    trace("clause: "+nextPiece())
     if tokenType==SPACE then nextToken(); type = tokenType
     start = token
     switch tokenType
@@ -2338,11 +2349,13 @@ exports.Parser = ->
 
   @syntaxError = syntaxError = (message, tkn) ->
     tkn = tkn or token; cur = tkn.cursor
-    str =  cur+'('+tkn.line+':'+tkn.column+'): '+message+", meet \"#{token.value}\"\n"+text[cur-40...cur]+(text[cur...cur+40])
+    s =  cur+'('+tkn.line+':'+tkn.column+'): '+message+", meet \"#{token.value}\"\n"+text[cur-40...cur]+(text[cur...cur+40])
     # todo: the code below works great! add it in some time.
-    # console.log str.red
-    throw str
+    # console.log s.red
+    throw s
 
   return @
+
+exports.Parser.name = 'Parser'
 
 {compileExp} = require '../compiler'

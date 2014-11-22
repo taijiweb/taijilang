@@ -1,12 +1,23 @@
-var compile, expect, idescribe, iit, lib, ndescribe, nit, nonMetaCompileExpNoOptimize, parse, taiji, _ref;
+var Parser, compile, expect, idescribe, iit, lib, matchRule, ndescribe, nit, nonMetaCompileExpNoOptimize, parse, parseClause, str, taiji, _ref;
 
-_ref = require('../util'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, parse = _ref.parse, compile = _ref.compile;
+_ref = require('../util'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, matchRule = _ref.matchRule, parse = _ref.parse, compile = _ref.compile;
 
 lib = '../../lib/';
+
+str = require(lib + 'utils').str;
+
+Parser = require(lib + 'parser').Parser;
 
 taiji = require(lib + 'taiji');
 
 nonMetaCompileExpNoOptimize = require(lib + 'compiler').nonMetaCompileExpNoOptimize;
+
+parseClause = function(text) {
+  var parser, x;
+  parser = new Parser();
+  x = parser.parse(text, matchRule(parser, parser.clause), 0);
+  return str(x);
+};
 
 compile = function(text) {
   var env, exp;
@@ -38,7 +49,7 @@ describe("compiler basic: ", function() {
       }).to["throw"](/symbol lookup error: ./);
     });
   });
-  ndescribe("compile string: ", function() {
+  describe("compile string: ", function() {
     describe("compile interpolate string: ", function() {
       it("compile a", function() {
         return expect(compile('"a"')).to.have.string("\"a\"");
@@ -47,9 +58,11 @@ describe("compiler basic: ", function() {
         return expect(compile('"a\\b"')).to.have.string("\"a\\b\"");
       });
       it("compile '''a\"'\\n'''", function() {
-        return expect(compile('"""a\\"\'\\n"""')).to.have.string("\"a\\\"'\\n\"");
+        expect(parseClause('"""a\\"\'\\n"""')).to.equal('[string! "a\\\\"\'\\\\n"]');
+        return expect(compile('"""a\\"\'\\n"""')).to.have.string('"a\\\\"\'\\\\n"');
       });
       it("compile \"a(1)\" ", function() {
+        expect(parseClause('"a(1)"')).to.equal('[string! "a" [() 1]]');
         return expect(compile('"a(1)"')).to.have.string("\"a(1)\"");
       });
       it("compile \"a[1]\" ", function() {
@@ -59,18 +72,18 @@ describe("compiler basic: ", function() {
         return expect(compile('var a; "a[1] = $a[1]"')).to.have.string("var a;\n\"a[\" + JSON.stringify([1]) + \"] = \" + JSON.stringify(a[1])");
       });
     });
-    ndescribe("compile raw string without interpolation: ", function() {
+    describe("compile raw string without interpolation: ", function() {
       it("compile '''a\\b'''", function() {
-        return expect(compile("'''a\\b'''")).to.have.string("\"a\\b\"");
+        return expect(compile("'''a\\b'''")).to.have.string("\"a\\\\b\"");
       });
       it("compile '''a\\b\ncd'''", function() {
-        return expect(compile("'''a\\b\ncd'''")).to.have.string("\"a\\b\\ncd\"");
+        return expect(compile("'''a\\b\ncd'''")).to.have.string("\"a\\\\b\\ncd\"");
       });
       return it("compile '''a\"'\\n'''", function() {
-        return expect(compile("'''a\"'\\n'''")).to.have.string("\"a\\\"'\\n\"");
+        return expect(compile("'''a\"'\\n'''")).to.have.string("\"a\"'\\\\n\"");
       });
     });
-    return ndescribe("compile escape string without interpolation: ", function() {
+    return describe("compile escape string without interpolation: ", function() {
       it("compile 'a\\b'", function() {
         return expect(compile("'a\\b'")).to.have.string("\"a\\b\"");
       });
@@ -78,13 +91,13 @@ describe("compiler basic: ", function() {
         return expect(compile("'a\\b\ncd'")).to.have.string("\"a\\b\\ncd\"");
       });
       it("compile 'a\"\\\"\'\\n'", function() {
-        return expect(compile("'a\"\\\"\\'\\n'")).to.have.string("\"a\\\"\\\"\\'\\n\"");
+        return expect(compile("'a\"\\\"\\'\\n'")).to.have.string("\"a\"\\\"'\\n\"");
       });
       it("compile 'a\"\\\"\\'\\n\n'", function() {
-        return expect(compile("'a\"\\\"\\'\\n\n'")).to.have.string("\"a\\\"\\\"\\'\\n\\n\"");
+        return expect(compile("'a\"\\\"\\'\\n\n'")).to.have.string("\"a\"\\\"'\\n\\n\"");
       });
       return it("compile 'a\"\\\"\n\'\\n'", function() {
-        return expect(compile("'a\"\\\"\n\\'\\n\n'")).to.have.string("\"a\\\"\\\"\\n\\'\\n\\n\"");
+        return expect(compile("'a\"\\\"\n\\'\\n\n'")).to.have.string("\"a\"\\\"\\n'\\n\\n\"");
       });
     });
   });

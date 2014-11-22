@@ -74,12 +74,12 @@ transformExpressionFnMap =
 
   'string!': (exp, env, shiftStmtInfo) ->
      [stmt, es] = transformExpressionList(exp[1...], env, shiftStmtInfo)
-     if es[0].kind==VALUE then str = es[0]
-     else str = norm ['call!', ['attribute!', ['jsvar!', 'JSON'], 'stringify'], [es[0]]]
+     if es[0].kind==VALUE then s = es[0]
+     else s = norm ['call!', ['attribute!', ['jsvar!', 'JSON'], 'stringify'], [es[0]]]
      for e in es[1...]
-       if e.kind==VALUE then str = ['binary!', '+', str, e]
-       else str = norm ['binary!', '+', str, ['call!', ['attribute!', ['jsvar!', 'JSON'], 'stringify'], [e]]]
-     [stmt,  str]
+       if e.kind==VALUE then s = norm ['binary!', '+', s, e]
+       else s = norm ['binary!', '+', s, ['call!', ['attribute!', ['jsvar!', 'JSON'], 'stringify'], [e]]]
+     [stmt,  s]
 
   'index!': (exp, env, shiftStmtInfo) ->
     [stmt, es] = transformExpressionList(exp[1...], env, shiftStmtInfo)
@@ -312,10 +312,12 @@ transformExpressionFnMap =
     switchStmt = ['switch', testValue, resultCases, begin([defaultStmt, ['=', resultVar, defaultValue]])]
     [begin([testStmt, switchStmt]), resultVar]
 
-# althought function itself is expression, but the body need to be processed as statementss
 statementHeadMap = {'break':1, 'continue':1, 'switch':1, 'try':1, 'throw':1, 'return':1,
 'jsForIn!':1, 'forOf!': 1, 'cFor!':1, 'while':1, 'doWhile!':1,  'letloop':1,
-'with':1, 'var':1, 'label!':1, 'function':1}
+'with':1, 'var':1, 'label!':1,
+'function':1, # althought function itself is expression, but the body need to be processed as statements
+'string!':1, #always transformExpression the element in [string! ...]
+}
 
 exports.toExpression = toExpression = (exp) ->
   switch exp.kind

@@ -4,7 +4,7 @@ lib = '../../lib/'
 
 {transformExpression, transform, ShiftStatementInfo} =  require lib+'compiler/transform'
 
-{constant, norm} = require lib+'utils'
+{constant, norm, trace} = require lib+'utils'
 {VALUE, SYMBOL, LIST} = constant
 
 {convert, metaConvert, nonMetaCompileExpNoOptimize} = require lib+'compiler'
@@ -66,44 +66,46 @@ ndescribe "test phases: ",  ->
         expect(strNonOptCompile(['binary!', '+', 1, 2])).to.equal "1 + 2"
 
   describe "transformExpression: ",  ->
-    it "return 'a'", ->
+    transformExp = (exp) ->
       env = taiji.initEnv(taiji.builtins, taiji.rootModule, {})
       info = new ShiftStatementInfo({}, {})
-      result = transformExpression(norm(['return', 'a']), env, info)
+      result = transformExpression(norm(exp), env, info)
+
+    it "[string! 'a']", ->
+      result = transformExp(['string!', 'a'])
+      expect(str result[1]).to.equal '[call! [attribute! [jsvar! JSON] stringify] [a]]'
+
+    it "[return 'a']", ->
+      result = transformExp(['return', 'a'])
       expect(str result[0]).to.equal "[return a]"
 #      expect(info.affectVars['a']).to.equal(undefined)
 #      expect(info.shiftVars['a']).to.equal(true)
     it "['binary!', '+', 1, ['return', 'a']]", ->
       env = taiji.initEnv(taiji.builtins, taiji.rootModule, {})
       info = new ShiftStatementInfo({}, {})
-      result = transformExpression(norm(['binary!', '+', 1, ['return', 'a']]), env, info)
+      result = transformExp(['binary!', '+', 1, ['return', 'a']])
       expect(str result[0]).to.equal "[return a]"
       expect(str result[1]).to.equal "[binary! + 1 undefined]"
 
     it "['binary!', '+', 'a', ['return', ['=', 'a', 1]]]", ->
-      env = taiji.initEnv(taiji.builtins, taiji.rootModule, {})
-      info = new ShiftStatementInfo({}, {})
-      result = transformExpression(norm(['binary!', '+', 'a', ['return', ['=', 'a', 1]]]), env, info)
+      result = transformExp(['binary!', '+', 'a', ['return', ['=', 'a', 1]]])
       expect(str result[0]).to.equal "[begin! [var t] [= t a] [return [= a 1]]]"
       expect(str result[1]).to.equal "[binary! + t undefined]"
 
     it "['binary!', '+', 'a', ['return', ['=', 'b', 1]]]", ->
-      env = taiji.initEnv(taiji.builtins, taiji.rootModule, {})
-      info = new ShiftStatementInfo({}, {})
-      result = transformExpression(norm(['binary!', '+', 'a', ['return', ['=', 'b', 1]]]), env, info)
+      result = transformExp(['binary!', '+', 'a', ['return', ['=', 'b', 1]]])
       expect(str result[0]).to.equal "[begin! [var t] [= t a] [return [= b 1]]]"
       expect(str result[1]).to.equal "[binary! + t undefined]"
 
     it "['binary!', '+', ['=', 'a', 1], ['return', 'a']]", ->
-      env = taiji.initEnv(taiji.builtins, taiji.rootModule, {})
-      info = new ShiftStatementInfo({}, {})
-      result = transformExpression(norm(['binary!', '+', ['=', 'a', 1], ['return', 'a']]), env, info)
+      result = transformExp(['binary!', '+', ['=', 'a', 1], ['return', 'a']])
       expect(str result[0]).to.equal "[begin! [var t] [= t [= a 1]] [return a]]"
       expect(str result[1]).to.equal "[binary! + t undefined]"
 
 
   describe "parse, convert and transform: ",  ->
     parseTransform = (text) ->
+      trace '\r\n\r\nparseTransform: ', text
       exp = parse(text)
       exp = exp[3][1] # cut wrap layer: module!, moduleBody!
       env = taiji.initEnv(taiji.builtins, taiji.rootModule, {})
@@ -112,6 +114,9 @@ ndescribe "test phases: ",  ->
 
     it "var a", ->
       expect(str parseTransform("var a")).to.equal '[begin! [var a] undefined]'
+
+    it '"a(1)"', ->
+      expect(str parseTransform('"a(1)"')).to.equal "[binary! + \"a\" 1]"
 
     it "var a; a+{return a}", ->
       expect(str parseTransform("var a; a+{return a}")).to.equal "[begin! [var a] [var t] [= t a] [return a]]"

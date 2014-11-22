@@ -66,24 +66,31 @@ exports.constant = {
 }
 
 fs = require('fs')
+path = require('path')
 
-fileLogger = require('tracer').console
-  stackIndex : 1
-  format : "{{file}}:{{line}}: {{message}}",
-  transport : (data) ->
-    fs.open "./debug.log", "a", `0666`, (e, id) ->
-      fs.write id, data.output+"\r\n", null, 'utf8', -> fs.close(id, ->)
+stackReg = /at\s+(.*)\s+\((.*):(\d*):(\d*)\)/gi
+stackReg2 = /at\s+()(.*):(\d*):(\d*)/gi
 
-#fileLogger2 = require('tracer').console
-#  stackIndex : 2
-#  format : "{{file}}:{{line}}: {{message}}",
-#  transport : (data) ->
-#    fs.open "./debug.log", "a", `0666`, (e, id) ->
-#      fs.write id, data.output+"\r\n", null, 'utf8', -> fs.close(id,->)
+_trace = (stackIndex, args) ->
+  args = (for arg in args then arg.toString()).join(', ')
+  stacklist = (new Error()).stack.split('\n').slice(3)
+  s = stacklist[stackIndex]
+  sp = stackReg.exec(s) || stackReg2.exec(s)
+  if sp && sp.length == 5
+    method = sp[1]
+    file = path.basename(sp[2])
+    line = sp[3]
+    pos = sp[4]
+    fs.appendFileSync("./debug.log", file+': '+method+': '+line+':'+pos+': '+args+'\r\n')
+  else
+    fs.appendFileSync("./debug.log", 'noname'+': '+' '+': '+'xx'+':'+'yy'+': '+args+'\r\n')
 
-exports.log = log = (args...) -> fileLogger.log(args...); console.log(args...)
-exports.trace = trace = (args...) -> fileLogger.log(args...)
-exports.trace2 = trace2 = (args...) -> # fileLogger2.log(args...)
+exports.log = log = (level, args...) -> _trace(level, args); console.log(args...)
+exports.trace = trace = (args...) ->  _trace(0, args)
+exports.trace0 = trace0 = (args...) -> _trace(0, args)
+exports.trace1 = trace1 = (args...) -> _trace(1, args)
+exports.trace2 = trace2 = (args...) -> _trace(2, args)
+exports.trace3 = trace3 = (args...) -> _trace(3, args)
 
 exports.charset = charset = (string) ->
   result = {}
