@@ -1,6 +1,6 @@
 colors = require('colors')
 
-{charset, str, entity, dict, list2dict, extendSyntaxInfo, extend,
+{charset, str, dict, list2dict, extendSyntaxInfo, extend,
 firstIdentifierChars, firstIdentifierCharSet, letterDigitSet, identifierChars,
 digitCharSet, letterCharSet, identifierCharSet, firstSymbolCharset, digits, digitChars, letterChars
 taijiIdentifierCharSet, constant, kindSymbol, norm, undefinedExp, trace} = require '../utils'
@@ -991,7 +991,7 @@ exports.Parser = ->
         if token.value!=')' then lexError 'expect )'
       # To make interpolated string happy, we can not call nextToken() here
       #else nextToken() # do not match token here, so token.next==undefined, and nextToken() will matchToken instead.
-      return prev.next = token = {value:norm([norm('()'), exp]), kind:LIST
+      return prev.next = token = {value:[norm('()'), exp], kind:LIST
       type:tokenType=PAREN, cursor:cur, stopCursor:cursor
       line:line, column:column, indent:lexIndent, atom:true, parameters:true}
 
@@ -1014,8 +1014,8 @@ exports.Parser = ->
       # To make interpolated string happy, we can not call nextToken() here
       # so that token.next==undefined, and nextToken() will matchToken instead.
       # tkn = nextToken()
-      if not exp then value = ['[]']
-      else value = ['[]', exp]
+      if not exp then value = [norm '[]']
+      else value = [norm('[]'), exp]
       return prev.next = token = {value:value, type:tokenType=BRACKET, kind:LIST, cursor:cur, stopCursor:cursor
       line:line, column:column, indent:lexIndent, atom:true}
 
@@ -1320,7 +1320,7 @@ exports.Parser = ->
       pri = if priority>op.priority then priority else op.priority
       x = parser.expression(mode, pri, true)
       if x
-        return {value:[{value:'prefix!', kind:SYMBOL}, op, x]
+        return {value:[{value:'prefix!', kind:SYMBOL}, op, x], kind:LIST
         expressionType:PREFIX, priority:op.priority, rightAssoc:op.rightAssoc, start:op.start, stop:(op.stop or op.start)}
       else token = start; tokenType = token.type;  return
 
@@ -1338,9 +1338,9 @@ exports.Parser = ->
       tkn1 = token
       if (op = parser.suffixOperator(mode, x))
         if op.priority>=priority
-          return {value:[{value:'suffix!', kind:SYMBOL}, op, x]
+          return {value:[{value:'suffix!', kind:SYMBOL}, op, x], kind:LIST
           expressionType:SUFFIX, priority:op.priority, rightAssoc:op.rightAssoc
-          start:op.start, stop:(op.stop or op.start), kind:LIST}
+          start:op.start, stop:(op.stop or op.start)}
         else token = tkn1; tokenType = token.type;  break
       else break
     # the priority and association of suffix operator does not affect the following expression
@@ -1351,9 +1351,9 @@ exports.Parser = ->
           # should assure that a right operand is here while parsing binary operator
           y = expression(mode, opPri, not op.rightAssoc)
           if y
-            x = {value:[{value:'binary!', kind:SYMBOL}, op, x, y]
+            x = {value:[{value:'binary!', kind:SYMBOL}, op, x, y], kind:LIST
             expressionType:BINARY, priority:op.priority, rightAssoc:op.rightAssoc
-            start:op.start, stop:(op.stop or op.start), kind:LIST}
+            start:op.start, stop:(op.stop or op.start)}
           else token = tkn2; tokenType = token.type;  break
         else token = tkn2; tokenType = token.type;  break
       else break
@@ -1362,9 +1362,9 @@ exports.Parser = ->
         tkn = token
         if (op = parser.suffixOperator(mode, x))
           if op.priority>=priority
-            x = {value:[{value:'suffix!', kind:SYMBOL}, op, x]
+            x = {value:[{value:'suffix!', kind:SYMBOL}, op, x], kind:LIST
             expressionType:SUFFIX, priority:op.priority, rightAssoc:op.rightAssoc
-            start:op.start, stop:(op.stop or op.start), kind:LIST}
+            start:op.start, stop:(op.stop or op.start)}
           else token = tkn; tokenType = token.type;  break
         else break
     start[memoTag] = {result:x, next:token}
@@ -1414,7 +1414,7 @@ exports.Parser = ->
       else if item0.value=='x...'
         parser.meetEllipsis = item[1].ellipsis = true
         return item
-      else if entity(item0)=='=' # default parameter
+      else if item0.value=='=' # default parameter
         # default parameter should not be ellipsis parameter at the same time
         # and this is the behavior in coffee-script too
         # and (item01[0].value!='x...' or not isIdentifier(item01[1]).type==IDENTIFIER)
@@ -1472,7 +1472,7 @@ exports.Parser = ->
     else if tkn then token = tkn; tokenType = token.type
     if else_ then result = [kindSymbol(keyword), test, begin(then_), begin(else_)]
     else result = [kindSymbol(keyword), test, begin(then_)]
-    {value:result, start:start, stop:token}
+    {value:result, kind:LIST, start:start, stop:token}
 
   # whileTestStatement
   whileTestStatement = (keyword) -> (isHeadStatement) ->
@@ -1482,7 +1482,7 @@ exports.Parser = ->
       syntaxError "expect compact clause expression to be used as condition"
     body = parser.block() or parser.line()
     if not body then syntaxError 'expect the body for while! statement'
-    {value:[kindSymbol(keyword), test, begin(body)]
+    {value:[kindSymbol(keyword), test, begin(body)], kind:LIST
     start:start, stop:token}
 
   # throw or return value
@@ -1491,7 +1491,7 @@ exports.Parser = ->
     if tokenType==SPACE then nextToken()
     if clause = parser.clause() then result = [kindSymbol(keyword), clause]
     else result = [kindSymbol(keyword)]
-    {value:result, start:start, stop:token}
+    {value:result, start:start, stop:token, kind:LIST}
 
   # break; continue
   breakContinueStatement = (keyword) -> (isHeadStatement) ->
@@ -1504,14 +1504,14 @@ exports.Parser = ->
     else
       if tokenType==SPACE then nextToken()
       result = [kindSymbol(keyword)]
-    {value:result, start:start, stop:token}
+    {value:result, kind:LIST, start:start, stop:token}
 
   letLikeStatement = (keyword) -> (isHeadStatement) ->
     start = token; nextToken(); ind = indent; if tokenType==SPACE then nextToken()
     varDesc = parser.varInitList() or parser.clause()
     expectThen(isHeadStatement, ind)
     body = parser.block() or parser.line()
-    {value:[kindSymbol(keyword), varDesc, begin(body)]
+    {value:[kindSymbol(keyword), varDesc, begin(body)], kind:LIST
     start:start, stop:token}
 
   # no cursor and lineno is attached in result, so can not be memorized directly.
@@ -1693,14 +1693,14 @@ exports.Parser = ->
       if varList.length==0 then syntaxError 'expect variable name'
       if tokenType!=NEWLINE and tokenType!=UNDENT and tokenType!=EOI and tokenType!=CONJUNCTION and tokenType!=RIGHT_DELIMITER and tokenType!=PUNCTUATION
         syntaxError 'unexpected token after var initialization list: "' + token.value+'"'
-      varList.unshift('var')
+      varList.unshift(norm('var'))
       {value:varList, kind:LIST, start:start, stop:token}
 
     'extern!': (isHeadStatement) ->
       start = token; nextToken()
       if tokenType==SPACE then nextToken()
       ids = parser.identifierList()
-      ids.unshift 'extern!'
+      ids.unshift norm 'extern!'
       {value:ids, kind:LIST, start:start, stop:token}
 
     'include!': (isHeadStatement) ->
@@ -1753,11 +1753,11 @@ exports.Parser = ->
         for x in item
           if x[2] then  metaImportList.push x
           else runtimeImportList.push x
-      {value: ['import!', srcModule, parseMethod, alias, metaAlias, runtimeImportList, metaImportList], kind:LIST, start:start, stop:token}
+      {value: [norm('import!'), srcModule, parseMethod, alias, metaAlias, runtimeImportList, metaImportList], kind:LIST, start:start, stop:token}
 
     'export!': (isHeadStatement) ->
       start = token; nextToken(); if tokenType==SPACE then nextToken()
-      {value:[{value:'export!', kind:SYMBOL}].concat parser.exportItemList(), kind:LIST, start:start, stop:token}
+      {value:[norm 'export!'].concat parser.exportItemList(), kind:LIST, start:start, stop:token}
 
     'let': letLikeStatement('let')
     'letrec!': letLikeStatement('letrec!')
@@ -1789,7 +1789,7 @@ exports.Parser = ->
         if tokenType==SPACE then nextToken()
         expectThen(isHeadStatement, ind)
         body = parser.block() or parser.line()
-        return {value:['cFor!', init, test, step, begin(body)], start:start, stop:token}
+        return {value:[norm('cFor!'), init, test, step, begin(body)], start:start, stop:token}
       matchToken()  # here should not use nextToken, because we just skipToken and skipSpace, and switch to determined cursor and char
       if tokenType==SPACE then nextToken()
       if tokenType!=IDENTIFIER then syntaxError 'expect identifier'
@@ -1811,7 +1811,7 @@ exports.Parser = ->
       expectThen(isHeadStatement, ind)
       body = parser.block() or parser.line()
       if inOf=='in' then kw = 'forIn!' else kw = 'forOf!'
-      {value:[kw, name1, name2, obj, begin(body)], start:start, stop:token}
+      {value:[norm(kw), name1, name2, obj, begin(body)], start:start, stop:token}
 
     'do': (isHeadStatement) ->
       start = token; ind = indent; nextToken(); # skip "do"
@@ -1826,9 +1826,9 @@ exports.Parser = ->
       if not conj then return {value:body, start:start, stop:token}
       if conjValue=='where' then tailClause = parser.varInitList()
       else tailClause = parser.clause()
-      if conjValue=='where' then {value:['let', tailClause, begin(body)], start:start, stop:token}
-      else if conjValue=='when' then {value:['doWhile!', begin(body), tailClause], start:start, stop:token}
-      else {value:['doWhile!', begin(body), ['prefix', '!', tailClause]], start:start, stop:token}
+      if conjValue=='where' then {value:[norm('let'), tailClause, begin(body)], kind:LIST, start:start, stop:token}
+      else if conjValue=='when' then {value:[norm('doWhile!'), begin(body), tailClause], kind:LIST, start:start, stop:token}
+      else {value:[norm('doWhile!'), begin(body), [norm('prefix'), '!', tailClause]], kind:LIST, start:start, stop:token}
 
     # switch value case 1: body1 case 2 3: body2 else: body
     # switch value
@@ -1859,7 +1859,7 @@ exports.Parser = ->
         cases.push [caseValues, begin(body)]
       if maybeIndentConjunction('else', isHeadStatement, ind, indentInfo)
         else_ = parser.block() or parser.line()
-      {value:['switch', test, cases, begin(else_)], start:start, stop:token}
+      {value:[norm('switch'), test, cases, begin(else_)], start:start, stop:token}
 
     'try': (isHeadStatement) ->
       start = token; ind = indent; nextToken(); # skip "try"
@@ -1881,8 +1881,8 @@ exports.Parser = ->
       if maybeConjunction("finally", isHeadStatement, ind)
         if tokenType==SPACE then nextToken()
         final = parser.block() or parser.line()
-        result = ['try', test, catchVar, begin(catch_)]
-      else result = ['try', begin(test), catchVar, begin(catch_), begin(final)]
+        result = [norm('try'), test, catchVar, begin(catch_)]
+      else result = [norm('try'), begin(test), catchVar, begin(catch_), begin(final)]
       {value:result, start:start,  stop:token}
 
     'class': (isHeadStatement) ->
@@ -2075,7 +2075,7 @@ exports.Parser = ->
       else if tokenType==EOI then syntaxError 'unexpected end of input'+op.value
       right = parser.block() or parser.clause()
       if not right then syntaxError 'expect the right side of assign'
-      return {value:[opToken, head, right], kind:LIST, start:start, stop:token}
+      return {value:[norm(opToken), head, right], kind:LIST, start:start, stop:token}
 
     else if token.value=='#' and nextToken()
       if tokenType==SPACE

@@ -102,7 +102,7 @@ analyzeFnMap =
 
 exports.analyze = analyze = (exp, env) ->
   if exp.analyzed then return
-  switch exp
+  switch exp.kind
     when VALUE then exp.analyzed  = true; return
     when SYMBOL
       info = env.info(exp)

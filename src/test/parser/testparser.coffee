@@ -4,7 +4,7 @@ lib = '../../lib/'
 {constant, isArray, str} = require lib+'utils'
 {Parser} = require lib+'parser'
 
-describe "parse: ",  ->
+ndescribe "parse: ",  ->
   describe "clause: ",  ->
     parse = (text) ->
       parser = new Parser()

@@ -257,10 +257,11 @@ exports['list!'] = (exp, env) -> convertArgumentList(exp[1...], env)
 
 exports['if'] = (exp, env) ->
   if exp[3]!=undefined
-    [norm('if'), convert(exp[1], env), convertList(exp[2], env), convertList(exp[3], env)]
-  else [norm('if'), convert(exp[1], env), convertList(exp[2], env), undefinedExp]
+    [norm('if'), convert(exp[1], env), convert(exp[2], env), convert(exp[3], env)]
+  else [norm('if'), convert(exp[1], env), convert(exp[2], env), undefinedExp]
 
 exports['switch!'] = (exp, env) ->
+  assert false, 'todo: rewrite switch'
   result = ['switch', convert(exp[1], env)]
   # cases: [list! case1, case2, ...]
   # case clause: [list! ...] body
@@ -481,7 +482,7 @@ exports.binaryConverters = binaryConverters = {}
 # todo a[x], a[x, y]
 binaryConverters['concat[]'] = (exp, env, compiler) ->
   trace("binaryConverters('concat[]'):", str(exp))
-  subscript = exp[3][1]
+  subscript = exp[3].value[1]
   if subscript.length==0 or subscript.length>1
     compileError exp, 'wrong subscript: '
   norm ['index!', convert(exp[2], env), convert(subscript[0], env)]
@@ -516,5 +517,4 @@ exports['()'] = (exp, env) ->
 exports['[]'] = (exp, env) ->
   items = for e in exp[1] then convert e, env
   items.unshift norm 'list!'
-  items.kind = LIST
-  items
+  {value:items, kind:LIST}

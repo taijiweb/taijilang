@@ -1,4 +1,4 @@
-{isArray, error, begin, undefinedExp, pushExp, identifierCharSet, norm, constant} = require '../utils'
+{isArray, error, begin, undefinedExp, pushExp, identifierCharSet, norm, constant, str} = require '../utils'
 {SYMBOL, VALUE, LIST} = constant
 
 {convertList, convert} = require '../compiler'
@@ -119,7 +119,7 @@ exports['__filename'] = norm ['jsvar!', '__filename']
 exports['__dir'] = norm ['jsvar!', '__dir']
 
 exports["string!"] = convertInterpolatedString = (exp, env)->
-  result = norm ['string!']
+  result = ['string!']
   piece = '""'
   for e in exp[1...]
     x = convert(e, env)
@@ -127,12 +127,12 @@ exports["string!"] = convertInterpolatedString = (exp, env)->
     else
       if piece!='""' then result.push norm(piece); piece = '""'
       if x.kind==LIST
-        if (x0=x[0]).kind==SYMBOL and x0.value=='string!' then result.push.apply result, x[1...]
+        if (xValue0=x.value[0]).kind==SYMBOL and xValue0.value=='string!' then result.push.apply result, x.value[1...]
         else result.push x
       else result.push x
   if piece!='""' then result.push norm piece
   if result.length==1 then return norm '""'
-  else return result
+  else return norm result
 
 exports["hash!"] = convertHash = (exp, env) ->
   jsHashItems = []; pyHashItems = []

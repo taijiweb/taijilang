@@ -58,11 +58,12 @@ exports.convert = convert = (exp, env) ->
   trace('convert: ', str(exp))
   switch exp.kind
     when LIST
-      exp0 = exp[0]
+      expValue = exp.value
+      exp0 = expValue[0]
       switch exp0.kind
         when LIST
           head = convert(exp0)
-          tail = convertArgumentList(exp[1...], env)
+          tail = convertArgumentList(expValue[1...], env)
           return madeCall(head, tail, env)
         when SYMBOL
 #          console.log 'is symbol'
@@ -70,16 +71,16 @@ exports.convert = convert = (exp, env) ->
           head = env.get(exp0.value)
           if not head then symbolLookupError(exp0, exp)
           if typeof head == 'function'
-            result = head(exp, env)
+            result = head(expValue, env)
             result.start = exp.start; result.stop = exp.stop
             return result
           else
-            tail = convertArgumentList(exp[1...], env)
+            tail = convertArgumentList(expValue[1...], env)
             return madeCall head, tail, env
         when VALUE
           result = for e in exp then convert(e, env)
           result.start = exp.start; result.stop = exp.stop
-        else compileError exp, 'convert: wrong kind: '+exp.kind
+        else compileError exp0, 'convert: wrong kind: '+exp0.kind
     when SYMBOL
       if result=env.get(exp.value) then return result
       else symbolLookupError(exp)

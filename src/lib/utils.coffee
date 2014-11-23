@@ -251,9 +251,10 @@ addBeginItem = (result, exp) ->
   switch exp.kind
     when VALUE, SYMBOL then return exp
     when LIST
-      exp0Value = exp[0].value
+      expValue = exp.value
+      exp0Value = expValue[0].value
       if exp0Value=='begin!'
-        for e in exp[1...]
+        for e in expValue[1...]
           last = addBeginItem(result, e)
           if not last then return
         return last

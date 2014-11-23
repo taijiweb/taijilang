@@ -60,11 +60,11 @@ ndescribe("test phases: ", function() {
       });
     });
     describe("convert if: ", function() {
-      it("convert [if, 1, [1]]", function() {
-        return expect(strConvert(['if', 1, [1]])).to.equal("[if 1 [1] undefined]");
+      it("convert [if, 1, 1]", function() {
+        return expect(strConvert(['if', 1, 1])).to.equal("[if 1 1 undefined]");
       });
-      return it("convert [if, 1, [1], [2]]", function() {
-        return expect(strConvert(['if', 1, [1], [2]])).to.equal("[if 1 [1] [2]]");
+      return it("convert [if, 1, 1, 2]", function() {
+        return expect(strConvert(['if', 1, 1, 2])).to.equal("[if 1 1 2]");
       });
     });
     describe("convert binary!", function() {
@@ -149,7 +149,7 @@ ndescribe("test phases: ", function() {
       var env, exp;
       trace('\r\n\r\nparseTransform: ', text);
       exp = parse(text);
-      exp = exp[3][1];
+      exp = exp.value[3].value[1];
       env = taiji.initEnv(taiji.builtins, taiji.rootModule, {});
       exp = convert(exp, env);
       return exp = transform(exp, env);

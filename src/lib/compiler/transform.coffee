@@ -74,9 +74,9 @@ transformExpressionFnMap =
 
   'string!': (exp, env, shiftStmtInfo) ->
      [stmt, es] = transformExpressionList(exp[1...], env, shiftStmtInfo)
-     if es[0].kind==VALUE then s = es[0]
-     else s = norm ['call!', ['attribute!', ['jsvar!', 'JSON'], 'stringify'], [es[0]]]
-     for e in es[1...]
+     if (esValue=es.value) and esValue[0].kind==VALUE then s = esValue[0]
+     else s = norm ['call!', ['attribute!', ['jsvar!', 'JSON'], 'stringify'], [esValue[0]]]
+     for e in esValue[1...]
        if e.kind==VALUE then s = norm ['binary!', '+', s, e]
        else s = norm ['binary!', '+', s, ['call!', ['attribute!', ['jsvar!', 'JSON'], 'stringify'], [e]]]
      [stmt,  s]
@@ -102,7 +102,7 @@ transformExpressionFnMap =
     [[leftStmt, leftExp], [rightStmt, rightExp]] = result
     # in js, it can be assured that all binary operator has no effects
     # in python, this must be rethought.
-    norm [begin([leftStmt, rightStmt]),  [norm('binary!'), exp[1], leftExp, rightExp]]
+    [begin([leftStmt, rightStmt]),  [norm('binary!'), exp[1], leftExp, rightExp]]
 
   '=': (exp, env, shiftStmtInfo) ->
     exp1 = exp[1] # left
@@ -126,16 +126,16 @@ transformExpressionFnMap =
       else args.push e
     [argsStmts, ['list!'].concat(args)]
 
-  'debugger': (exp, env, shiftStmtInfo) -> [exp, undefinedExp]
+  'debugger': (exp, env, shiftStmtInfo) -> [norm(exp), undefinedExp]
 
   # {break label} and {continue label}
-  'break': (exp, env, shiftStmtInfo) -> [exp, undefinedExp]
+  'break': (exp, env, shiftStmtInfo) -> [norm(exp), undefinedExp]
 
-  'continue': (exp, env, shiftStmtInfo) -> [exp, undefinedExp]
+  'continue': (exp, env, shiftStmtInfo) -> [norm(exp), undefinedExp]
 
-  'quote!': (exp, env, shiftStmtInfo) -> [undefinedExp, exp]
+  'quote!': (exp, env, shiftStmtInfo) -> [undefinedExp, norm exp]
 
-  'regexp!': (exp, env, shiftStmtInfo) -> [undefinedExp, exp]
+  'regexp!': (exp, env, shiftStmtInfo) -> [undefinedExp, norm exp]
 
   'new': (exp, env, shiftStmtInfo) ->
     # [new X] should be converted to standardized form [new [call X []]]
@@ -153,13 +153,13 @@ transformExpressionFnMap =
       metaVar = exp[1][1]
       variable = metaVar+(env.getSymbolIndex(metaVar) or '')
       [norm(['var', variable]), variable]
-    else [exp, undefinedExp]
+    else [norm(exp), undefinedExp]
 
   'label!': (exp, env, shiftStmtInfo) ->
     [stmt, e] = transformExpression(exp[1], env, shiftStmtInfo)
     [norm(['label!', stmt]), e]
 
-  'noop!': (exp, env, shiftStmtInfo) -> [exp, undefinedExp]
+  'noop!': (exp, env, shiftStmtInfo) -> [norm(exp), undefinedExp]
 
   'jsvar!': (exp, env, shiftStmtInfo) ->
     if shiftStmtInfo.affect(exp[1].value)
@@ -323,9 +323,10 @@ exports.toExpression = toExpression = (exp) ->
   switch exp.kind
     when VALUE, SYMBOL, COMMAND then return true
     when LIST
-      exp0Value = exp[0].value
+      expValue = exp.value
+      exp0Value = expValue[0].value
       if statementHeadMap[exp0Value] then return false
-      for e, i in exp
+      for e, i in expValue
         # all list expression is converted to the form [command, ...]
         if i==0 then continue
         if not toExpression(e) then return false
@@ -352,8 +353,9 @@ exports.transformExpression = transformExpression = (exp, env, shiftStmtInfo) ->
           stmt.vars = exp.vars
           return [stmt, t]
         else return [undefinedExp, exp]
-      assert transformExpressionFnMap[exp[0].value], 'no transformExpressionFnMap for '+str(exp)
-      result = transformExpressionFnMap[exp[0].value](exp, env, shiftStmtInfo)
+      expValue = exp.value
+      assert transformExpressionFnMap[expValue[0].value], 'no transformExpressionFnMap for '+str(exp)
+      result = transformExpressionFnMap[expValue[0].value](expValue, env, shiftStmtInfo)
       # result is in form [stmt, exp], now add the effects of stmt, which will be shifted ahead.
       return result
     else compileError 'wrong kind: '+exp.kind+' of '+str(exp)
@@ -437,13 +439,16 @@ transformFnMap =
 # todo: we can assure "transformed" of value and symbol always be true in the previous phases.
 # so we can simplify this function by removing the first two cases of switch
 exports.transform = transform = (exp, env) ->
-  # value and symbol should be preset exp.transform = true
   if exp.transformed then return exp
-  assert exp.kind==LIST, 'transform: wrong kind: '+str(exp)
-  trace('transform: ', str(exp))
-  if (fn=transformFnMap[exp[0].value]) then result = fn(exp, env)
-  else
-    # transformExpression will produce [stmt, e], use begin to merge them
-    result = begin transformExpression(exp, env, new ShiftStatementInfo({}, {}))
-  result.transformed  = true
-  result
+  switch exp.kind
+    when SYMBOL, VALUE then exp.transformed = true; return exp
+    when LIST
+      trace('transform: ', str(exp))
+      expValue = exp.value
+      if (fn=transformFnMap[expValue[0].value]) then result = fn(expValue, env)
+      else
+        # transformExpression will produce [stmt, e], use begin to merge them
+        result = begin transformExpression(exp, env, new ShiftStatementInfo({}, {}))
+      result.transformed  = true
+      result
+    else 'transform: wrong kind: '+exp.kind+' of '+str(exp)

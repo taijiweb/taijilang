@@ -43,10 +43,10 @@ ndescribe "test phases: ",  ->
         expect(-> strConvert('x')).to.throw SymbolLookupError
 
     describe "convert if: ",  ->
-      it "convert [if, 1, [1]]", ->
-        expect(strConvert(['if', 1, [1]])).to.equal "[if 1 [1] undefined]"
-      it "convert [if, 1, [1], [2]]", ->
-        expect(strConvert(['if', 1, [1], [2]])).to.equal "[if 1 [1] [2]]"
+      it "convert [if, 1, 1]", ->
+        expect(strConvert(['if', 1, 1])).to.equal "[if 1 1 undefined]"
+      it "convert [if, 1, 1, 2]", ->
+        expect(strConvert(['if', 1, 1, 2])).to.equal "[if 1 1 2]"
 
     describe "convert binary!", ->
       it "convert ['binary!', '+', 1, 2]", ->
@@ -112,7 +112,7 @@ ndescribe "test phases: ",  ->
     parseTransform = (text) ->
       trace '\r\n\r\nparseTransform: ', text
       exp = parse(text)
-      exp = exp[3][1] # cut wrap layer: module!, moduleBody!
+      exp = exp.value[3].value[1] # cut wrap layer: module!, moduleBody!
       env = taiji.initEnv(taiji.builtins, taiji.rootModule, {})
       exp = convert(exp, env)
       exp = transform(exp, env)

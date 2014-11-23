@@ -122,9 +122,13 @@ tokenFnMap =
     e1 = ''
     for e in exp[1...]
       assert(e, 'unexpected undefined while textizing '+str(exp))
-      if e1 and e1[0].value=='var'
-        if e[0] and e[0].value=='var' then e1.push e[1]
-        else if e[0] and e[0].value=='=' and (ee1=e[1].value) and (typeof ee1 == 'string') and ee1==e1[e1.length-1].value then e1.pop(); e1.push e
+      eValue = e.value
+      if e1 and (e1Value=e1.value)[0].value=='var'
+        if (eValue0=eValue[0])
+          if eValue0.value=='var' then e1Value.push eValue[1]
+          else if eValue0.value=='=' and (eValue1Value=eValue[1].value) and (typeof eValue1Value == 'string') and eValue1Value==eValue[eValue.length-1].value
+            e1Value.pop(); e1Value.push e
+          else exps.push e; e1 = e
         else exps.push e; e1 = e
       else exps.push e; e1 = e
     if e=='' or e==undefinedExp then exps.pop()
@@ -179,8 +183,8 @@ exports.tokenize = tokenize = (exp) ->
   switch exp.kind
     when SYMBOL, VALUE then exp.value
     when LIST
-      assert tokenFnMap[exp[0].value], 'found no tokenize function: '+exp[0].value
-      tokenFnMap[exp[0].value](exp)
+      assert tokenFnMap[exp.value[0].value], 'found no tokenize function: '+exp.value[0].value
+      tokenFnMap[exp.value[0].value](exp.value)
     else throw 'tokenize: wrong kind: '+str(exp)
 
 makeTextizer = (options) ->

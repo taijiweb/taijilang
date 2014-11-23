@@ -22,13 +22,13 @@ parseClause = function(text) {
 compile = noOptCompile = function(text) {
   var env, exp;
   exp = parse(text);
-  exp = exp[3][1];
+  exp = exp.value[3].value[1];
   env = taiji.initEnv(taiji.builtins, taiji.rootModule, {});
   exp = nonMetaCompileExpNoOptimize(exp, env);
   return exp;
 };
 
-ndescribe("compiler basic: ", function() {
+describe("compiler basic: ", function() {
   describe("compile number: ", function() {
     it("compile 1", function() {
       return expect(compile('1')).to.have.string("1");
@@ -69,7 +69,7 @@ ndescribe("compiler basic: ", function() {
         expect(parseClause('"a(1)"')).to.equal('[string! "a" [() 1]]');
         return expect(compile('"a(1)"')).to.have.string("\"a(1)\"");
       });
-      it("compile \"a[1]\" ", function() {
+      iit("compile \"a[1]\" ", function() {
         return expect(compile('"a[1]"')).to.have.string('"a" + JSON.stringify([1])');
       });
       return it("compile \"a[1] = $a[1]\" ", function() {
@@ -143,7 +143,7 @@ ndescribe("compiler basic: ", function() {
   });
   describe("quote expression:", function() {
     return describe("quote expression:", function() {
-      iit('should compile ~ a.b', function() {
+      it('should compile ~ a.b', function() {
         return expect(compile('~ a.b')).to.have.string("[\"attribute!\",\"a\",\"b\"]");
       });
       it('should compile ~ print a b', function() {

@@ -17,12 +17,12 @@ parseClause = (text) ->
 # if comment the definiton below ,will use "compile" required from util, which is a full compile funciton
 compile = noOptCompile = (text) ->
   exp = parse(text)
-  exp = exp[3][1] # cut wrap layer: module!, moduleBody!
+  exp = exp.value[3].value[1] # cut wrap layer: module!, moduleBody!
   env = taiji.initEnv(taiji.builtins, taiji.rootModule, {})
   exp = nonMetaCompileExpNoOptimize exp, env
   exp
 
-ndescribe "compiler basic: ",  ->
+describe "compiler basic: ",  ->
   describe "compile number: ",  ->
     it "compile 1", ->
       expect(compile('1')).to.have.string "1"
@@ -51,7 +51,7 @@ ndescribe "compiler basic: ",  ->
       xit """compile "a(1)" """, ->
         expect(parseClause('"a(1)"')).to.equal '[string! "a" [() 1]]'
         expect(compile('"a(1)"')).to.have.string "\"a(1)\""
-      it """compile "a[1]" """, ->
+      iit """compile "a[1]" """, ->
         expect(compile('"a[1]"')).to.have.string '"a" + JSON.stringify([1])'
       it """compile "a[1] = $a[1]" """, ->
         expect(compile('var a; "a[1] = $a[1]"')).to.have.string 'var a;\n"a" + JSON.stringify([1]) + " = " + JSON.stringify(a[[1]])'
@@ -104,7 +104,7 @@ ndescribe "compiler basic: ",  ->
 
   describe "quote expression:", ->
     describe "quote expression:", ->
-      iit 'should compile ~ a.b', ->
+      it 'should compile ~ a.b', ->
         expect(compile('~ a.b')).to.have.string "[\"attribute!\",\"a\",\"b\"]"
       it 'should compile ~ print a b', ->
         expect(compile('~ print a b')).to.have.string "[\"print\",\"a\",\"b\"]"
