@@ -1,4 +1,4 @@
-var Parser, compile, expect, idescribe, iit, lib, matchRule, ndescribe, nit, nonMetaCompileExpNoOptimize, parse, parseClause, str, taiji, _ref;
+var Parser, compile, expect, idescribe, iit, lib, matchRule, ndescribe, nit, noOptCompile, nonMetaCompileExpNoOptimize, parse, parseClause, str, taiji, _ref;
 
 _ref = require('../util'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, matchRule = _ref.matchRule, parse = _ref.parse, compile = _ref.compile;
 
@@ -19,7 +19,7 @@ parseClause = function(text) {
   return str(x);
 };
 
-compile = function(text) {
+compile = noOptCompile = function(text) {
   var env, exp;
   exp = parse(text);
   exp = exp[3][1];
@@ -28,7 +28,7 @@ compile = function(text) {
   return exp;
 };
 
-describe("compiler basic: ", function() {
+ndescribe("compiler basic: ", function() {
   describe("compile number: ", function() {
     it("compile 1", function() {
       return expect(compile('1')).to.have.string("1");
@@ -61,7 +61,11 @@ describe("compiler basic: ", function() {
         expect(parseClause('"""a\\"\'\\n"""')).to.equal('[string! "a\\\\"\'\\\\n"]');
         return expect(compile('"""a\\"\'\\n"""')).to.have.string('"a\\\\"\'\\\\n"');
       });
-      it("compile \"a(1)\" ", function() {
+      it("noOptCompile \"a(1)\" ", function() {
+        expect(parseClause('"a(1)"')).to.equal('[string! "a" [() 1]]');
+        return expect(noOptCompile('"a(1)"')).to.have.string('"a" + 1');
+      });
+      xit("compile \"a(1)\" ", function() {
         expect(parseClause('"a(1)"')).to.equal('[string! "a" [() 1]]');
         return expect(compile('"a(1)"')).to.have.string("\"a(1)\"");
       });
@@ -101,7 +105,7 @@ describe("compiler basic: ", function() {
       });
     });
   });
-  ndescribe("parenthesis: ", function() {
+  describe("parenthesis: ", function() {
     it('should compile ()', function() {
       return expect(compile('()')).to.have.string('');
     });
@@ -112,7 +116,7 @@ describe("compiler basic: ", function() {
       return expect(compile('var a, b; (a,b)')).to.have.string('var a, b;\n[a, b]');
     });
   });
-  ndescribe("@ as this", function() {
+  describe("@ as this", function() {
     it('should compile @', function() {
       return expect(compile('@')).to.have.string('this');
     });
@@ -123,7 +127,7 @@ describe("compiler basic: ", function() {
       return expect(compile('var a; @ a')).to.have.string("var a;\nthis(a)");
     });
   });
-  ndescribe(":: as prototype: ", function() {
+  describe(":: as prototype: ", function() {
     it('should compile @:: ', function() {
       return expect(compile('@::')).to.have.string("this.prototype");
     });
@@ -137,9 +141,9 @@ describe("compiler basic: ", function() {
       return expect(compile('::a')).to.have.string("this.prototype.a");
     });
   });
-  ndescribe("quote expression:", function() {
+  describe("quote expression:", function() {
     return describe("quote expression:", function() {
-      it('should compile ~ a.b', function() {
+      iit('should compile ~ a.b', function() {
         return expect(compile('~ a.b')).to.have.string("[\"attribute!\",\"a\",\"b\"]");
       });
       it('should compile ~ print a b', function() {

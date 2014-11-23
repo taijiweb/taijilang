@@ -44,7 +44,7 @@ exports.Environment = class Environment
       while symbolIndex = name+(++functionInfo[name])
         if not hasOwnProperty.call(functionInfo, symbolIndex) then break
       functionInfo[symbolIndex] = 1
-      {value:symbolIndex, kind:SYMBOL}
+      {value:symbolIndex, kind:SYMBOL, transformed:true}
 
   constVar: (symbol) -> v = @newVar(symbol); v.const = true; v
   ssaVar: (symbol) -> v = @newVar(symbol); v.ssa = true; v
@@ -54,7 +54,7 @@ exports.Environment = class Environment
     name = toIdentifier(symbol)
     functionInfo = @getFunctionInfo()
     if not hasOwnProperty.call(functionInfo, name)
-      functionInfo[name] = 1; {value: name, kind:SYMBOL}
+      functionInfo[name] = 1; {value: name, kind:SYMBOL, transformed:true}
     else
       while symbolIndex = name[...name.length-2]+(++functionInfo[name])+name[name.length-2...]
         if not hasOwnProperty.call(functionInfo, symbolIndex) then break

@@ -1,4 +1,4 @@
-{norm, constant, str, trace} = require '../utils'
+{norm, constant, str, trace, convertIdentifier, begin, return_, error, isArray, error, extend, splitSpace, undefinedExp, addPrelude} = require '../utils'
 {VALUE, SYMBOL, LIST} = constant
 
 {compileError} = require '../compiler/helper'
@@ -8,7 +8,6 @@
 `__slice = [].slice`
 
 fs = require 'fs'
-{convertIdentifier, entity, begin, return_, error, isArray, error, extend, splitSpace, undefinedExp, addPrelude} = require '../utils'
 {Parser} = require '../parser'
 {convert, convertList, convertArgumentList, convertExps, compileExp, nonMetaCompileExp, transformToCode, metaProcessConvert, metaProcess} = require '../compiler'
 
@@ -17,7 +16,7 @@ metaIndex = 0
 exports['extern!'] = (exp, env) ->
   if exp[1]=='const' then isConst = true; exp = exp[2...]
   for e in exp[1...]
-    if env.hasLocal(v=entity(e))
+    if env.hasLocal(v=e.value)
       error v+' has been declared as local variable, so it can not be declared as extern variable any more.', e
     env.set(v, v)
     if isConst then e.const = true
@@ -65,7 +64,7 @@ declareVar = (fn) -> (exp, env) ->
 exports['var'] = declareVar((v) -> v)
 exports['const'] = declareVar( (v) -> v.const=true; v )
 
-exports['newvar!'] = (exp, env) -> '"'+env.newVar((x=entity(exp[1])).slice(1, x.length-1)).symbol+'"'
+exports['newvar!'] = (exp, env) -> '"'+env.newVar((x=exp[1].value).slice(1, x.length-1)).symbol+'"'
 
 # obj.slice(start, stop)
 makeSlice = (obj, start, stop) ->
@@ -93,7 +92,7 @@ convertAssign = (exp, env) ->
     # right is already list in the compilation time
     ellipsis = undefined
     for item, i in left
-      x = entity(item)
+      x = item.value
       if x and x[0]=='x...'
         if not ellipsis then ellipsis = i; left[i] = x[1]
         else error 'can not have multiple ellipsis item in the left side of assign'
@@ -167,7 +166,8 @@ exports['hashAssign!'] = (exp, env) ->
   exp1 = exp[1]; exp2 = exp[2]
   if exp1.length>1
     result = []
-    if typeof entity(exp2)!='string'
+    if exp2.kind!=SYMBOL
+      # need saved in a temporary varibale, so as to avoid duplicate evaluation
       vObj = env.newVar('obj')
       result.push norm  ['direct!', ['var', vObj]]
       env.set(vObj.symbol, vObj)
@@ -182,7 +182,7 @@ exports['#='] = (exp, env) -> ['##', convert([norm('='), exp[1], exp[2]], env)]
 exports['#/'] = (exp, env) -> ['#/', convert([norm('='), exp[1], exp[2]], env)]
 
 exports['@@'] = (exp, env) ->
-  name = entity(exp[1])
+  name = exp[1].value
   # the outer scope that can define new var in javascript, would be function or the top scope of a file, and the like.
   outerEnv = env.outerVarScopeEnv()
   # I've forgotten the effect of the line below ;)
@@ -206,7 +206,7 @@ exports['let'] = (exp, env) ->
   newEnv = env.extend(scope={})
   result = []
   for x in exp[1]
-    x0 = entity(x[0])
+    x0 = x[0].value
     scope[x0] = var1 = newEnv.newVar(x0)
     result.push (['var', var1])
     result.push ['=', var1, convert(x[2], env)]
@@ -220,7 +220,7 @@ exports['letm!'] = (exp, env) ->
   newEnv = env.extend(scope={})
   result = []
   for x in exp[1]
-    x0 = entity(x[0])
+    x0 = x[0].value
     scope[x0] = var1 = env.newVar(x0)
     result.push [norm('var'), var1]
     result.push [norm('='), var1, x[1]]
@@ -231,7 +231,7 @@ exports['letm!'] = (exp, env) ->
 exports['letrec!'] = (exp, env) ->
   newEnv = env.extend(scope={})
   result = []
-  for x in exp[1] then scope[x0=entity(x[0])] = var1 = newEnv.newVar(x0); result.push [norm('var'), var1]
+  for x in exp[1] then scope[x0=x[0].value] = var1 = newEnv.newVar(x0); result.push [norm('var'), var1]
   for x in exp[1] then result.push [norm('='), var1, convert(x[2], newEnv)]
   result.push convert(exp[1], newEnv)
   result = begin(result)
@@ -278,7 +278,8 @@ exports['codeBlockComment!'] = (exp, env) -> ''
 exports['directCBlockComment!'] = (exp, env) -> [norm('directCBlockComment!'), exp[1]]
 
 exports['direct!'] = (exp, env) -> exp[1]
-exports['quote!'] = (exp, env) -> [norm('quote!'), entity(exp[1])]
+exports['quote!'] = (exp, env) -> norm [norm('quote!'), exp[1]]
+exports['~'] = (exp, env) -> norm [norm('quote!'), exp[1]]
 
 exports['call!'] = (exp, env) -> convert([exp[1]].concat(exp[2]), env)
 
@@ -456,6 +457,23 @@ convertParserExpression = (exp) ->
     else exp
   else exp
 
+exports['prefix!'] = (exp, env, compiler) -> prefixConverters[exp[1].value](exp, env)
+
+exports.prefixConverters = prefixConverters = {}
+
+prefixConverters['@'] = (exp, env) ->
+  norm ['attribute!', 'this', exp[2]]
+
+prefixConverters['::'] = (exp, env) ->
+  norm ['attribute!', ['attribute!', 'this', 'prototype'], exp[2]]
+
+exports['suffix!'] = (exp, env, compiler) -> suffixConverters[exp[1].value](exp, env)
+
+exports.suffixConverters = suffixConverters = {}
+
+suffixConverters['::'] = (exp, env) ->
+  norm ['attribute!', convert(exp[2], env), 'prototype']
+
 exports['binary!'] = (exp, env, compiler) -> binaryConverters[exp[1].value](exp, env)
 
 exports.binaryConverters = binaryConverters = {}
@@ -472,9 +490,28 @@ binaryConverters['concat[]'] = (exp, env, compiler) ->
 binaryConverters['concat()'] = (exp, env, compiler) ->
   norm ['call!', convert(exp[2], env), convert(exp[3], env)]
 
+binaryConverters['::'] = (exp, env, compiler) ->
+  norm ['attribute!', ['attribute!', convert(exp[2], env), 'prototype'], exp[3]]
+
 exports['{}'] = (exp, env) -> convert exp[1], env
 
-exports['()'] = (exp, env) -> convert exp[1], env
+# ['binary!' "," left right]
+commaList = (exp) ->
+  exp2 = exp[2]
+  if exp2.kind==LIST and exp2[0].value=='binary!' and exp2[1].value==','
+    result = commaList(exp2)
+    result.push exp[3]
+    result
+  else [exp2, exp[3]]
+
+binaryConverters[','] = (exp, env) ->
+  result = for e in commaList(exp) then convert(e, env)
+  result.unshift norm 'list!'
+  norm result
+
+exports['()'] = (exp, env) ->
+  if exp[1] then convert exp[1], env
+  else norm ['list!']
 
 exports['[]'] = (exp, env) ->
   items = for e in exp[1] then convert e, env

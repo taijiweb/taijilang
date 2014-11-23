@@ -3,6 +3,7 @@
 lib = '../../lib/'
 
 {transformExpression, transform, ShiftStatementInfo} =  require lib+'compiler/transform'
+{tokenize} =  require lib+'compiler/textize'
 
 {constant, norm, trace} = require lib+'utils'
 {VALUE, SYMBOL, LIST} = constant
@@ -50,6 +51,10 @@ ndescribe "test phases: ",  ->
     describe "convert binary!", ->
       it "convert ['binary!', '+', 1, 2]", ->
         expect(strConvert(['binary!', '+', 1, 2])).to.equal '[binary! + 1 2]'
+
+    describe "convert clause", ->
+      it "convert ['@', 'a']", ->
+        expect(strConvert(['begin!', ['var', 'a'], ['@', 'a']])).to.equal "[begin! [var a] [call! [jsvar! this] [a]]]"
 
   describe "meta convert: ",  ->
     describe "convert simple: ",  ->
@@ -132,3 +137,11 @@ ndescribe "test phases: ",  ->
 
     it "var a; a[1] = -> 1", ->
       expect(str parseTransform("var a; a[1] = -> 1")).to.equal "[begin! [var a] [var t] [= t [function [] [return 1]]] [= [index! a 1] t] t]"
+
+  describe "tokenize: ",  ->
+    token = (exp) ->
+      exp = tokenize(norm(exp), env)
+      str exp
+
+    it "['begin!', ['var', 'a'], ['var', 'b']]", ->
+      expect(str token(['begin!', ['var', 'a'], ['var', 'b']])).to.equal "[var a , b]"

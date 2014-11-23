@@ -129,17 +129,14 @@ exports.norm = norm = (exp) ->
   # trace('norm: ', str(exp))
   assert exp!=undefined, 'norm(exp) meet undefined'
   if exp.kind then return exp
-  if exp instanceof Array
-    exp = for e in exp then norm(e)
-    exp.kind = LIST
-    exp
+  if exp instanceof Array then {value:(for e in exp then norm(e)), kind:LIST}
   else if typeof exp == 'string'
-    if exp[0]=='"' then {value:exp, kind:VALUE, analyzed:true, transformed: true, optimized:true}
+    if exp[0]=='"' then {value:exp, kind:VALUE}
     else
-      if isMetaOperation(exp) then {value:exp, kind:SYMBOL, meta:true, analyzed:true, transformed:true}
-      else {value:exp, kind:SYMBOL, analyzed:true, transformed:true}
+      if isMetaOperation(exp) then {value:exp, kind:SYMBOL, meta:true}
+      else {value:exp, kind:SYMBOL}
   else if typeof exp =='object' then exp.kind = SYMBOL; exp
-  else {value:exp, kind:VALUE, analyzed:true, transformed:true, optimized:true}
+  else {value:exp, kind:VALUE}
 
 # todo: because this the core feature of taiji language, a safer method should be used to avoid redefinition by mistake
 exports.QUOTE = {value:'~', kind:SYMBOL}
@@ -160,6 +157,30 @@ exports.str = str = (item) ->
   else if item==undefined then 'undefined'
   else if item==null then 'null'
   else item.toString()
+
+exports.stringifyQuote = stringifyQuote = (item) ->
+  kind = item.kind
+  switch kind
+    when SYMBOL, VALUE
+      result = {value:item.value, kind:kind}
+    when LIST
+      value = for e in item.value then stringifyQuote(e)
+      result = {value:value, kind:kind}
+    else trace2 'wrong kind: '+kind+': '+str(item)
+  if item.type then result.type = item.type
+  if item.cursor then result.cursor = item.cursor
+  if item.stopCursor then result.stopCursor = item.stopCursor
+  if item.line then result.line = item.line
+  if item.column then result.column = item.column
+  if (start=item.start) and start!=item
+    start = extend {}, start
+    delete start['value']
+    result.start = start
+  if (stop=item.stop) and stop!=item
+    stop = extend {}, stop
+    delete stop['value']
+    result.stop = stop
+  JSON.stringify(result)
 
 exports.assert = assert = (value, message) ->
     if not value

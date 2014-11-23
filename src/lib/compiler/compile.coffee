@@ -91,19 +91,17 @@ exports.convertList = (exp, env) -> for e in exp then convert(e, env)
 
 # convert list! construct which contains x..., e.g. [x, y, z..., m]
 exports.convertArgumentList = convertArgumentList = (exp, env) ->
-  if exp.length==0 then return []
+  if exp.length==0 then return ['list!']
   if exp.length==1
-    if (e = exp[0]) and e[0]=='x...' then return convert e[0][1], env
-    else
-      result = convert(e, env)
-      if result and result.convertToList then return [{value:'list!', kind:SYMBOL}].concat result
-      else return [norm 'list!', result]
+    if (exp0=exp[0]) and exp0[0] and exp0[0].value=='x...' then return convert exp0[0][1], env
+    result = convert(exp0, env)
+    if result and result.convertToList then return ['list!'].concat result
+    else return ['list!', result]
   ellipsis = undefined
   for item, i in exp
-    x = entity(item)
-    if x and x[0]=='x...' then ellipsis = i; break
+    if item and item[0].value=='x...' then ellipsis = i; break
   if ellipsis==undefined
-    return [norm 'list!'].concat(for e in exp then convert(e, env))
+    return norm([norm 'list!'].concat(for e in exp then convert(e, env)))
   else
     concated = false # tell call! whether it need to be transformed to fn.apply(obj, ...)
     concating = false
@@ -113,8 +111,7 @@ exports.convertArgumentList = convertArgumentList = (exp, env) ->
       else result = exp01; concating = true; concated = true
     else result = piece = [norm 'list!', convert(exp[0], env)]
     for e in exp[1...]
-      ee = entity e
-      if ee and ee[0]=='x...'
+      if e and e[0].value=='x...'
         e1 = convert(e[1], env)
         if e1 and e1[0]=='list!'
           if concating then result = norm ['call!', ['attribute!', result, 'concat'], [e1]]; piece = e1; concating = false

@@ -97,23 +97,24 @@ tokenFnMap =
   'directCBlockComment!': (exp) -> exp[1].value
   'var': (exp) ->
     trace 'tokenize var: '+str(exp)
-    result = ['var ']
+    result = ['var']
     assigns = []
+    meetFirst = false
     for e in exp[1...]
-      if e not instanceof Array then result.push e
+      if e not instanceof Array
+        if meetFirst then result.push ','
+        else meetFirst = true
+        result.push e
       else assigns.push e
     if not assigns.length then return result
-    if result.length>1 then result.push ', '
-    if assigns.length>1 then result.push indentToken(4)
-    t = tokenize(assigns[0])
-    result.push t
-    if t.function then result.function = true
-    for e in assigns[1...]
-      result.push ', '; result.push line
+    result.push indentToken(4)
+    for e in assigns
+      if meetFirst then result.push ','; result.push line
+      else meetFirst = true
       t = tokenize(e)
       if t.function then result.push line
       result.push t
-    if assigns.length>1 then result.push undentToken(4)
+    result.push undentToken(4)
     result
   'begin!': (exp) ->
     trace 'tokenize begin!:', str(exp)
@@ -121,9 +122,9 @@ tokenFnMap =
     e1 = ''
     for e in exp[1...]
       assert(e, 'unexpected undefined while textizing '+str(exp))
-      if e1[0]=='var'
-        if e[0]=='var' then e1.push e[1]
-        else if e[0]=='=' and (ee1=e[1].value) and (typeof ee1 == 'string') and ee1==e1[e1.length-1].value then e1.pop(); e1.push e
+      if e1 and e1[0].value=='var'
+        if e[0] and e[0].value=='var' then e1.push e[1]
+        else if e[0] and e[0].value=='=' and (ee1=e[1].value) and (typeof ee1 == 'string') and ee1==e1[e1.length-1].value then e1.pop(); e1.push e
         else exps.push e; e1 = e
       else exps.push e; e1 = e
     if e=='' or e==undefinedExp then exps.pop()
@@ -173,7 +174,7 @@ tokenFnMap =
 
   'with!': (exp) -> compound('with ', paren(tokenize(exp[1])), block(tokenize(exp[2])))
 
-tokenize = (exp) ->
+exports.tokenize = tokenize = (exp) ->
   trace('tokenize: ', str(exp))
   switch exp.kind
     when SYMBOL, VALUE then exp.value

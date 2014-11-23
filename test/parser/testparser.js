@@ -8,7 +8,7 @@ _ref1 = require(lib + 'utils'), constant = _ref1.constant, isArray = _ref1.isArr
 
 Parser = require(lib + 'parser').Parser;
 
-ndescribe("parse: ", function() {
+describe("parse: ", function() {
   describe("clause: ", function() {
     var parse;
     parse = function(text) {
@@ -856,7 +856,7 @@ ndescribe("parse: ", function() {
       var parser, x;
       parser = new Parser();
       x = parser.parse(head + text, parser.module, 0);
-      return str(x[3]);
+      return str(x.value[3]);
     };
     describe("misc: ", function() {
       it('should parse 1', function() {

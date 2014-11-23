@@ -15,14 +15,14 @@ parseClause = (text) ->
 
 # below is compile without metaConvert
 # if comment the definiton below ,will use "compile" required from util, which is a full compile funciton
-compile = (text) ->
+compile = noOptCompile = (text) ->
   exp = parse(text)
   exp = exp[3][1] # cut wrap layer: module!, moduleBody!
   env = taiji.initEnv(taiji.builtins, taiji.rootModule, {})
   exp = nonMetaCompileExpNoOptimize exp, env
   exp
 
-describe "compiler basic: ",  ->
+ndescribe "compiler basic: ",  ->
   describe "compile number: ",  ->
     it "compile 1", ->
       expect(compile('1')).to.have.string "1"
@@ -45,7 +45,10 @@ describe "compiler basic: ",  ->
       it "compile '''a\"'\\n'''", ->
         expect(parseClause('"""a\\"\'\\n"""')).to.equal '[string! "a\\\\"\'\\\\n"]'
         expect(compile('"""a\\"\'\\n"""')).to.have.string '"a\\\\"\'\\\\n"'
-      it """compile "a(1)" """, ->
+      it """noOptCompile "a(1)" """, ->
+        expect(parseClause('"a(1)"')).to.equal '[string! "a" [() 1]]'
+        expect(noOptCompile('"a(1)"')).to.have.string '"a" + 1'
+      xit """compile "a(1)" """, ->
         expect(parseClause('"a(1)"')).to.equal '[string! "a" [() 1]]'
         expect(compile('"a(1)"')).to.have.string "\"a(1)\""
       it """compile "a[1]" """, ->
@@ -73,7 +76,7 @@ describe "compiler basic: ",  ->
       it "compile 'a\"\\\"\n\'\\n'", ->
         expect(compile("'a\"\\\"\n\\'\\n\n'")).to.have.string "\"a\"\\\"\\n'\\n\\n\""
 
-  ndescribe "parenthesis: ",  ->
+  describe "parenthesis: ",  ->
     it 'should compile ()', ->
       expect(compile('()')).to.have.string ''
     it 'should compile (a)', ->
@@ -81,7 +84,7 @@ describe "compiler basic: ",  ->
     it 'should compile (a,b)', ->
       expect(compile('var a, b; (a,b)')).to.have.string 'var a, b;\n[a, b]'
 
-  ndescribe "@ as this", ->
+  describe "@ as this", ->
     it 'should compile @', ->
       expect(compile('@')).to.have.string 'this'
     it 'should compile @a', ->
@@ -89,7 +92,7 @@ describe "compiler basic: ",  ->
     it 'should compile @ a', ->
       expect(compile('var a; @ a')).to.have.string "var a;\nthis(a)"
 
-  ndescribe ":: as prototype: ", ->
+  describe ":: as prototype: ", ->
     it 'should compile @:: ', ->
       expect(compile('@::')).to.have.string "this.prototype"
     it 'should compile a:: ', ->
@@ -99,9 +102,9 @@ describe "compiler basic: ",  ->
     it 'should compile ::a', ->
       expect(compile('::a')).to.have.string "this.prototype.a"
 
-  ndescribe "quote expression:", ->
+  describe "quote expression:", ->
     describe "quote expression:", ->
-      it 'should compile ~ a.b', ->
+      iit 'should compile ~ a.b', ->
         expect(compile('~ a.b')).to.have.string "[\"attribute!\",\"a\",\"b\"]"
       it 'should compile ~ print a b', ->
         expect(compile('~ print a b')).to.have.string "[\"print\",\"a\",\"b\"]"

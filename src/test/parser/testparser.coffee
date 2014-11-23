@@ -4,7 +4,7 @@ lib = '../../lib/'
 {constant, isArray, str} = require lib+'utils'
 {Parser} = require lib+'parser'
 
-ndescribe "parse: ",  ->
+describe "parse: ",  ->
   describe "clause: ",  ->
     parse = (text) ->
       parser = new Parser()
@@ -585,7 +585,7 @@ ndescribe "parse: ",  ->
     parse = (text) ->
       parser = new Parser()
       x = parser.parse(head+text, parser.module, 0)
-      str x[3]
+      str x.value[3]
     describe "misc: ",  ->
       it 'should parse 1', ->
         expect(parse('1 ')).to.equal "[moduleBody! 1]"

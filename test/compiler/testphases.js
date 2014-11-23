@@ -1,10 +1,12 @@
-var LIST, SYMBOL, ShiftStatementInfo, SymbolLookupError, VALUE, constant, convert, expect, idescribe, iit, lib, metaConvert, ndescribe, nit, nonMetaCompileExpNoOptimize, norm, parse, str, strConvert, strMetaConvert, strNonOptCompile, taiji, trace, transform, transformExpression, _ref, _ref1, _ref2, _ref3;
+var LIST, SYMBOL, ShiftStatementInfo, SymbolLookupError, VALUE, constant, convert, expect, idescribe, iit, lib, metaConvert, ndescribe, nit, nonMetaCompileExpNoOptimize, norm, parse, str, strConvert, strMetaConvert, strNonOptCompile, taiji, tokenize, trace, transform, transformExpression, _ref, _ref1, _ref2, _ref3;
 
 _ref = require('../util'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, strConvert = _ref.strConvert, str = _ref.str, parse = _ref.parse;
 
 lib = '../../lib/';
 
 _ref1 = require(lib + 'compiler/transform'), transformExpression = _ref1.transformExpression, transform = _ref1.transform, ShiftStatementInfo = _ref1.ShiftStatementInfo;
+
+tokenize = require(lib + 'compiler/textize').tokenize;
 
 _ref2 = require(lib + 'utils'), constant = _ref2.constant, norm = _ref2.norm, trace = _ref2.trace;
 
@@ -65,9 +67,14 @@ ndescribe("test phases: ", function() {
         return expect(strConvert(['if', 1, [1], [2]])).to.equal("[if 1 [1] [2]]");
       });
     });
-    return describe("convert binary!", function() {
+    describe("convert binary!", function() {
       return it("convert ['binary!', '+', 1, 2]", function() {
         return expect(strConvert(['binary!', '+', 1, 2])).to.equal('[binary! + 1 2]');
+      });
+    });
+    return describe("convert clause", function() {
+      return it("convert ['@', 'a']", function() {
+        return expect(strConvert(['begin!', ['var', 'a'], ['@', 'a']])).to.equal("[begin! [var a] [call! [jsvar! this] [a]]]");
       });
     });
   });
@@ -136,7 +143,7 @@ ndescribe("test phases: ", function() {
       return expect(str(result[1])).to.equal("[binary! + t undefined]");
     });
   });
-  return describe("parse, convert and transform: ", function() {
+  describe("parse, convert and transform: ", function() {
     var parseTransform;
     parseTransform = function(text) {
       var env, exp;
@@ -167,6 +174,16 @@ ndescribe("test phases: ", function() {
     });
     return it("var a; a[1] = -> 1", function() {
       return expect(str(parseTransform("var a; a[1] = -> 1"))).to.equal("[begin! [var a] [var t] [= t [function [] [return 1]]] [= [index! a 1] t] t]");
+    });
+  });
+  return describe("tokenize: ", function() {
+    var token;
+    token = function(exp) {
+      exp = tokenize(norm(exp), env);
+      return str(exp);
+    };
+    return it("['begin!', ['var', 'a'], ['var', 'b']]", function() {
+      return expect(str(token(['begin!', ['var', 'a'], ['var', 'b']]))).to.equal("[var a , b]");
     });
   });
 });
