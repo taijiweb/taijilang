@@ -1,4 +1,4 @@
-var Parser, compile, expect, idescribe, iit, lib, matchRule, ndescribe, nit, noOptCompile, nonMetaCompileExpNoOptimize, parse, parseClause, str, taiji, _ref;
+var Parser, a, compile, expect, idescribe, iit, lib, matchRule, ndescribe, nit, noOptCompile, nonMetaCompileExpNoOptimize, parse, parseClause, str, taiji, x, _ref;
 
 _ref = require('../util'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, matchRule = _ref.matchRule, parse = _ref.parse, compile = _ref.compile;
 
@@ -12,8 +12,30 @@ taiji = require(lib + 'taiji');
 
 nonMetaCompileExpNoOptimize = require(lib + 'compiler').nonMetaCompileExpNoOptimize;
 
+console.log(1 instanceof Number);
+
+x = 1;
+
+x.x = 1;
+
+console.log(1 instanceof Object);
+
+console.log(new Number(1) instanceof Object);
+
+console.log(new Number(1) === 1);
+
+console.log(new Number(1) instanceof Number);
+
+console.log('a' instanceof String);
+
+a = 'a';
+
+a.x = 1;
+
+console.log('a' instanceof Object);
+
 parseClause = function(text) {
-  var parser, x;
+  var parser;
   parser = new Parser();
   x = parser.parse(text, matchRule(parser, parser.clause), 0);
   return str(x);

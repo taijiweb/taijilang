@@ -1,4 +1,22 @@
-
+11-24
+  todo: simplify
+    goal: meta compilation, handwriting parser, indent grammar, json intermediate representation
+    non goal:
+      speed
+      interpolate string, only "..."
+      only // comment
+      space and new line based priority, indent expression
+      hash block
+      optimization
+      general transform
+      compact var statement generation
+      customabiltiy, extensibility
+      source map
+      power part in the float
+      verbose error report and process
+      module head, bin directive
+      class
+      for (; ; ) then expr
 
 11-2 todo: record parent pointer, consistent tree expression, debug and test support
 11-8 todo: indent stack should may be back? benifit?
