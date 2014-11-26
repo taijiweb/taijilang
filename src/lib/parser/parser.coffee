@@ -1,10 +1,10 @@
-{str, hasOwnProperty, firstIdentifierCharSet, identifierCharSet, firstSymbolCharset, taijiIdentifierCharSet, constant, trace} = require '../utils'
+{str, hasOwnProperty, extend, letterCharSet, firstIdentifierCharSet, firstSymbolCharset, taijiIdentifierCharSet, constant, trace} = require '../utils'
 
 {NULL, NUMBER,  STRING,  IDENTIFIER, SYMBOL, REGEXP, PUNCTUATION
 PAREN, BRACKET, CURVE,  NEWLINE,  SPACES
 LINE_COMMENT, EOI, INDENT, UNDENT, HALF_DENT, SPACE_COMMENT, TAIL_COMMENT
 SPACE, RIGHT_DELIMITER, KEYWORD, CONJUNCTION, PREFIX, SUFFIX, BINARY
-COMPACT_CLAUSE_EXPRESSION
+COMPACT_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION
 } = constant
 
 {prefixOperatorDict, binaryOperatorDict} = require './operator'
@@ -47,6 +47,9 @@ exports.Parser = ->
   # global variable used by the syntax parser
   atStatementHead = true # whether is at head of statement
 
+  @cursor = -> cursor
+  @endOfInput = -> not text[cursor]
+
   eoi = {type:EOI, value:'', cursor: text.length, column: -1, lexIndent:-1, indent: -1} # line wait to be filled
   eoi.next = eoi  # eoi.next is always itself
 
@@ -69,6 +72,7 @@ exports.Parser = ->
       return setToken eoi
     else return token=tokenOnSymbolChar()
 
+  @token = -> token
   nullToken = -> {type:tokenType=NULL, value:'', cursor:cursor, stopCursor:cursor, line:lineno, column:cursor-lineStart}
   setToken = (tkn) -> token = tkn; tokenType = token.type; token
   skipTokenType = (type) -> if tokenType==INDENT then nextToken()
@@ -97,11 +101,12 @@ exports.Parser = ->
   for c of firstIdentifierCharSet then symbolStopChars[c] = true
   for c in '0123456789' then symbolStopChars[c] = true
 
-  tokenFnMap[':'] = tokenOnColonChar = ->
+  tokenFnMap[':'] = tokenFnMap['@'] = tokenFnMap['.'] = ->
     cur = cursor; column = cursor-lineStart; first = char; char = text[++cursor]
     while char==first then char = text[++cursor]
-    if cursor==cur+1 then tokenType = PUNCTUATION else tokenType = SYMBOL
-    token.next = {type:tokenType, kind:SYMBOL, value: text.slice(cur, cursor), atom:cursor-cur==2
+    value = text.slice(cur, cursor)
+    if value==':' then tokenType = PUNCTUATION else tokenType = SYMBOL
+    token.next = {type:tokenType, value:value, atom:cursor-cur==2
     cursor:cur, stopCursor:cursor, line: lineno, column:column}
 
   # token started with ' ' and '\t'
@@ -162,6 +167,53 @@ exports.Parser = ->
     c+(c2 or '')
 
   tokenOnNumberChar = ->
+    cur = cursor; base = 10; column = cursor-lineStart
+    if char=='0' and c2 = text[cursor+1]
+      if c2=='x' or c2=='X' then base = 16; baseStart = cursor += 2; char = text[cursor]
+      else char = text[++cursor]; meetDigit = true; baseStart = cursor
+    else meetDigit = true; baseStart = cursor
+    if base==16
+      while char
+        if  not('0'<=char<='9' or 'a'<=char<='f' or 'A'<=char<='F') then break
+        else char = text[++cursor]
+    if base==16
+      if char=='.' then lexError 'hexadecimal number followed by "."'
+      else if letterCharSet[char] then lexError 'hexadecimal number followed by g-z or G-Z'
+      if cursor==baseStart then cursor--; char = text[cursor]
+      return token.next = {type:tokenType=NUMBER, value:text[cur...cursor], atom:true
+      cursor:cur, stopCursor:cursor, line:lineno, column: column}
+    # base==10
+    while char
+      if '0'<=char<='9' then meetDigit = true; char = text[++cursor]
+      else break
+    # if not meetDigit then return symbol() # comment because in no matchToken solution
+    if not meetDigit then return
+    if char=='.'
+      meetDigit = false
+      char = text[++cursor]
+      while char
+        if char<'0' or '9'<char then break
+        else meetDigit = true; char = text[++cursor]
+    dotCursor = cursor-1
+    if not meetDigit and char!='e' and char!='E'
+      cursor = dotCursor; char = text[cursor]
+    else if char=='e' or char=='E'
+      char = text[++cursor]
+      if char=='+' or char=='-'
+        char = text[++cursor]
+        if not char or char<'0' or '9'<char
+          cursor = dotCursor; char = text[cursor]
+        else
+          while char
+            char = text[++cursor]
+            if  char<'0' or '9'<char then break
+      else if not char or char<'0' or '9'<char
+        cursor = dotCursor; char = text[cursor]
+      else while char
+          if  char<'0' or '9'<char then break
+          char = text[++cursor]
+    token.next = {type:tokenType=NUMBER, value:text[cur...cursor], atom:true
+    cursor:cur, stopCursor:cursor, line:lineno, column: column}
 
   isNewlineChar = (c) -> c== '\n' or c=='\r'
 
@@ -218,7 +270,7 @@ exports.Parser = ->
     # else if char=='"' # don't permit escape interpolated string
     else
       while char=text[++cursor]=='\\' then true
-      return token.next = {type:tokenType=SYMBOL, kind:SYMBOL, value:text[cur...cursor], cursor:cur, stopCursor:cursor
+      return token.next = {type:tokenType=SYMBOL, value:text[cur...cursor], cursor:cur, stopCursor:cursor
       line:lineno, column:cur-lineStart}
 
   tokenFnMap['/'] = tokenOnForwardSlashChar = ->
@@ -289,7 +341,7 @@ exports.Parser = ->
     if keywordHasOwnProperty(txt) then tokenType = KEYWORD; isAtom = false
     else if conjunctionHasOwnProperty(txt) then tokenType = CONJUNCTION; isAtom = false
     else tokenType = IDENTIFIER; isAtom = true
-    token.next = {type:tokenType, kind:SYMBOL, transformed:true, value:txt, atom:isAtom
+    token.next = {type:tokenType, value:txt, atom:isAtom
     cursor:cur, stopCursor: cursor,
     line: lineno, column: column}
 
@@ -299,54 +351,36 @@ exports.Parser = ->
 
   tokenFnMap[','] = tokenFnMap[';'] = ->
     cur = cursor; char = text[++cursor]
-    token.next = {type:tokenType=PUNCTUATION, kind:SYMBOL, value:',', line:lineno, cursor:cursor, stopCursor:cursor, column: cur-lineStart}
+    token.next = {type:tokenType=PUNCTUATION, value:',', line:lineno, cursor:cursor, stopCursor:cursor, column: cur-lineStart}
 
   tokenFnMap["'"] = tokenFnMap['"'] = tokenOnQuoteChar = ->
-    quote = char; char = text[++cursor]; column = cursor-lineStart
-    if char==quote
-      if text[cursor+1]==quote
+    cur = cursor; column = cursor-lineStart; quote = char; char = text[++cursor]
+    while char
+      if char==quote
         char = text[++cursor]
-        return token.next = {value:'""', type:tokenType=STRING, atom:true, cursor:cursor-2, line:lineno, column:column, atom:true}
-    else
-      cur = cursor-1; line = lineno; column = cur-lineStart
-      if cursor==indent+1 then indentInfo = {value:indent}
-      else indentInfo = {}
-      s = ''
-      # the left characters of the same line after '''
-      while char
-        if char==quote
-          char = text[++cursor]
-          return token.next = {type:tokenType=STRING, value: '"'+s+'"', atom:true, cursor:cur, stopCursor:cursor, line:line, stopLine:lineno, column:column}
-        else if char=='\\'
-          char = text[++cursor]
-          if isNewlineChar(char) then error 'unexpected new line while parsing string'
-          char = text[++cursor]
-        else if isNewlineChar(char) then error 'unexpected new line while parsing string'
-      parseError "expect \"'\", unexpected end of input while parsing interpolated string"
+        return token.next = {type:tokenType=STRING, value: text[cur...cursor], atom:true, cursor:cur, stopCursor:cursor, line:lineno, column:column}
+      else if char=='\\'
+        char = text[++cursor]
+        if isNewlineChar(char) then parseError 'unexpected new line while parsing string'
+        char = text[++cursor]
+      else if isNewlineChar(char) then parseError 'unexpected new line while parsing string'
+      else char = text[++cursor]
+    parseError "expect "+quote+", unexpected end of input while parsing interpolated string"
 
-  # for efficiency, in tokenOnLeftParenChar, tokenOnLeftBracketChar, tokenOnLeftCurveChar
-  # do not match next token while matching delimiter token (...), [...], {...}
-  tokenFnMap['('] = tokenOnLeftParenChar = ->
-    cur = cursor; line = lineno; column = cursor-lineStart; char = text[++cursor] # skip "("
+  tokenFnMap['('] = ->
+    cur = cursor; line = lineno; column = cursor-lineStart; char = text[++cursor]
     prev = token; matchToken()
     if tokenType==UNDENT then parseError 'unexpected undent while parsing parenethis "(...)"'
     ind = indent = lexIndent
     if tokenType==SPACE or tokenType==NEWLINE or tokenType==INDENT then nextToken()
-    if token.value==')'
-      return prev.next = token = extend ['()'], {type:tokenType=PAREN
-      atom:true, cursor:cur, stopCursor: cursor,
-      line:lineno, column:column, indent:lexIndent, empty:true, parameters:true}
-    exp = parser.operatorExpression()
-    if tokenType==UNDENT
-      if token.indent<ind then parseError 'expect ) indent equal to or more than ('
-      else nextToken()
+    if token.value==')' then exp = undefined
     else
-      skipSPACE()
-      if token.value!=')' then parseError 'expect )'
-    # To make interpolated string happy, we can not call nextToken() here
-    #else nextToken() # do not match token here, so token.next==undefined, and nextToken() will matchToken instead.
-    return prev.next = token = extend ['()', exp], {
-    type:tokenType=PAREN, cursor:cur, stopCursor:cursor
+      exp = parser.operatorExpression()
+      if tokenType==UNDENT
+        if token.indent<ind then parseError 'expect ) indent equal to or more than ('
+        else nextToken()
+      else skipSPACE(); if token.value!=')' then parseError 'expect )'
+    return prev.next = token = extend ['()', exp], {type:tokenType=PAREN, cursor:cur, stopCursor:cursor
     line:line, column:column, indent:lexIndent, atom:true, parameters:true}
 
   tokenFnMap['['] = tokenOnLeftBracketChar = ->
@@ -372,7 +406,7 @@ exports.Parser = ->
     prev = token; matchToken()
     skipSPACE()
     if token.value=='}' and tkn=nextToken()
-      return prev.next = token = extend ['{}'],  {kind:LIST, atom:true, cursor:cur, stopCursor:cursor
+      return prev.next = token = extend ['{}'],  {atom:true, cursor:cur, stopCursor:cursor
       line:line, column:column, indent:lexIndent, next:tkn}
     body = parser.block() or parser.lineBlock()
     if tokenType==UNDENT and token.indent<ind then nextToken()
@@ -396,7 +430,7 @@ exports.Parser = ->
     # hasOwnProperty.call is necessary in order to avoid error while builtin attribute of object is defined prefix operator
     tokenText = token.value
     if not hasOwnProperty.call(prefixOperatorDict, tokenText) or  not (op=prefixOperatorDict[tokenText]) then return
-    if (mode==COMPACT_CLAUSE_EXPRESSION or mode==SPACE_CLAUSE_EXPRESSION) and op.definition then return
+    if mode==COMPACT_CLAUSE_EXPRESSION and op.definition then return
     opToken = token; nextToken()
     if tokenType==INDENT or tokenType==NEWLINE or tokenType==UNDENT
       if mode==COMPACT_CLAUSE_EXPRESSION then token = opToken; tokenType = opToken.type; return
@@ -404,25 +438,33 @@ exports.Parser = ->
     else if tokenType==RIGHT_DELIMITER
       if mode!=COMPACT_CLAUSE_EXPRESSION then error 'unexpected '+token.value
       else opToken.atom = true; return opToken
-    {value:opToken.value, kind:SYMBOL, transformed:true, start:opToken, stop:token, priority:op.priority+priInc}
+    {value:opToken.value, start:opToken, stop:token, priority:op.priority}
 
-  @binaryOperator = (mode) ->
+  @binaryOperator = (mode, dent) ->
     start = token
-    if tokenType==SPACE
-      if mode== COMPACT_CLAUSE_EXPRESSION then return
-      else nextToken()
-    if tokenType!=IDENTIFIER and tokenType!=SYMBOL
-      if mode==COMPACT_CLAUSE_EXPRESSION then return
-      else if tokenType==RIGHT_DELIMITER then error 'unexpected '+token.value
-      else if tokenType==EOI then error 'unexpected end of input'
-      else if tokenType==UNDENT and indent<dent then 'wrong undent'
-
-    if not hasOwnProperty.call(binaryOperatorDict, opValue)
-      start[binaryOperatorMemoIndex+mode] = {}
-      token = start; tokenType = token.type;  return
-    op = binaryOperatorDict[opValue]
-
-    {value:opValue, priority:op.priority, rightAssoc:rightAssoc, assign:op.assign}
+    switch tokenType
+      when PAREN then return  {value:'concat()', priority: 200, start:token}
+      when BRACKET then return {value:'concat[]', priority: 200, start:token}
+      when SPACE
+        if mode== COMPACT_CLAUSE_EXPRESSION then return
+        else
+          nextToken()
+          if tokenType==INDENT or tokenType==NEWLINE then nextToken()
+      when INDENT then (if mode== COMPACT_CLAUSE_EXPRESSION then return else nextToken())
+      when NEWLINE then (if mode== COMPACT_CLAUSE_EXPRESSION then return else nextToken())
+      when UNDENT
+        if mode== COMPACT_CLAUSE_EXPRESSION then return
+        else if indent<dent then parseError 'wrong indent' else nextToken()
+      when PUNCTUATION
+        if mode== COMPACT_CLAUSE_EXPRESSION then return
+        else if (tokenValue=token.value)==',' then nextToken(); return {value:tokenValue, priority:5}
+        else return
+    if tokenType!=IDENTIFIER and tokenType!=SYMBOL then return
+    tokenValue = token.value
+    if not hasOwnProperty.call(binaryOperatorDict, tokenValue) then setToken(start);  return
+    op = binaryOperatorDict[tokenValue]
+    nextToken()
+    {value:tokenValue, priority:op.priority, rightAssoc:op.rightAssoc, assign:op.assign}
 
   @prefixExpression = (mode, priority) ->
     start = token
@@ -463,7 +505,7 @@ exports.Parser = ->
   @operatorExpression = operatorExpression = -> parser.expression(OPERATOR_EXPRESSION, 0, true)
 
   # compact expression as clause item.
-  @compactClauseExpression = -> parser.expression(COMPACT_CLAUSE_EXPRESSION, 600, true)
+  @compactClauseExpression = -> parser.expression(COMPACT_CLAUSE_EXPRESSION, 0, true)
 
   expectThen = (isHeadStatement, clauseIndent) ->
     skipSPACE()
@@ -596,6 +638,7 @@ exports.Parser = ->
     if not (fn=leadWordClauseMap[start.value]) then token = start; tokenType = token.type;  return
     fn(start, parser.clause())
 
+  symbol2clause = {}
   for key, fn of leadWordClauseMap then symbol2clause[key] = leadTokenClause(fn)
 
   @definitionSymbolBody = definitionSymbolBody = ->
@@ -727,16 +770,15 @@ exports.Parser = ->
     if tokenType!=EOI then parseError 'expect end of input, but meet "'+text.slice(cursor)+'"'
     begin(body)
 
-  @parse = (data, root, cur) ->
+  @init = (data,cur) ->
     text = data; textLength = text.length
     cursor = cur; char = text[cursor]; lineno = 1; lineStart = 0
     token = nullToken; atStatementHead = true
-    root()
+
+  @parse = (data, root, cur) -> parser.init(data, cur); root()
 
   parseError = (message, tkn) ->
     tkn = tkn or token; cur = token.cursor
     throw cur+'('+tkn.line+':'+tkn.column+'): '+message+': '+text[tkn.cursor...tkn.stopCursor]
 
   return
-
-exports.Parser.name = 'Parser'

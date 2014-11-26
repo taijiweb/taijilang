@@ -1,4 +1,4 @@
-{norm, constant, str, trace, convertIdentifier, begin, return_, error, isArray, error, extend, splitSpace, undefinedExp, addPrelude} = require '../utils'
+{constant, str, trace, convertIdentifier, begin, return_, error, isArray, error, extend, splitSpace, undefinedExp, addPrelude} = require '../utils'
 {VALUE, SYMBOL, LIST} = constant
 
 {compileError} = require '../compiler/helper'
@@ -42,19 +42,19 @@ declareVar = (fn) -> (exp, env) ->
         if env.hasLocal(e.value) then error 'repeat declaring variable: '+str(e)
         v = env.set(eValue, e); fn(v) # when convert [const v], fn(v) will set v.const = true
         if v.const then error 'const need to be initialized to a value'
-        result.push norm ['var', v]
+        result.push ['var', v]
       when LIST
         e0 = e[0]
         if e0.kind==SYMBOL
           if e0.value=='metaConvertVar!'
-            result.push norm [norm('var'), e]
+            result.push [('var'), e]
           else if e0.value=='='
             e1 = e[1]
             if e1.kind!=SYMBOL
               error 'illegal variable name in variable initialization: '+str(e1)
             if env.hasLocal(e1Value=e1.value) then error 'repeat declaring variable: '+str(e1)
-            v = env.newVar(e1Value); fn(v);  result.push(norm(['var', v]))
-            result.push(norm ['=', v, convert(e[2], env)])
+            v = env.newVar(e1Value); fn(v);  result.push((['var', v]))
+            result.push(['=', v, convert(e[2], env)])
             # [var [a = a+1]] ,right a will be evaluated in old env
             env.set(e1Value, e1);
         else compileError e, 'wrong form of var initialization'
@@ -68,8 +68,8 @@ exports['newvar!'] = (exp, env) -> '"'+env.newVar((x=exp[1].value).slice(1, x.le
 
 # obj.slice(start, stop)
 makeSlice = (obj, start, stop) ->
-  if stop==undefined then norm ['call!', ['attribute!', '__slice', 'call'], [obj, start]]
-  else norm ['call!', ['attribute!', '__slice', 'call'], [obj, start, stop]]
+  if stop==undefined then ['call!', ['attribute!', '__slice', 'call'], [obj, start]]
+  else ['call!', ['attribute!', '__slice', 'call'], [obj, start, stop]]
 
 convertAssign = (exp, env) ->
   left = exp[1]
@@ -81,12 +81,12 @@ convertAssign = (exp, env) ->
       if left.outer
         env.set(leftValue, left=env.newVar(leftValue))
         left.const = true # create const by default
-        norm ['begin!', ['var', left], ['=', left, convert(exp[2], env)], left]
-      else norm ['=', left, convert(exp[2], env)]
+        ['begin!', ['var', left], ['=', left, convert(exp[2], env)], left]
+      else ['=', left, convert(exp[2], env)]
     else
       env.set(leftValue, left=env.newVar(leftValue))
       left.const = true # create const by default
-      norm ['begin!', ['var', left], ['=', left, convert(exp[2], env)], left]
+      ['begin!', ['var', left], ['=', left, convert(exp[2], env)], left]
   # left is assignable expression list
   else if left[0]=='list!'
     # right is already list in the compilation time
@@ -98,7 +98,7 @@ convertAssign = (exp, env) ->
         else error 'can not have multiple ellipsis item in the left side of assign'
     if ellipsis==undefined
       right = exp[2]
-      # no exp... is met in the left side, just do the normal list assign
+      # no exp... is met in the left side, just do the al list assign
       if right[0]=='list!'
         if left.length>1
           result = []
@@ -108,11 +108,11 @@ convertAssign = (exp, env) ->
       else
         if left.length>1
           result = []
-          result.push norm ['var', v=env.ssaVar('lst')]
-          result.push norm ['=', v, convert(right, env)]
-          for e, i in left[1...] then result.push convertAssign(e,  norm(['direct!', ['index!', v, i]]), env)
+          result.push ['var', v=env.ssaVar('lst')]
+          result.push ['=', v, convert(right, env)]
+          for e, i in left[1...] then result.push convertAssign(e,  (['direct!', ['index!', v, i]]), env)
           return begin(result)
-        else return convertAssign(left[1], norm(['index!', right, 0]), env)
+        else return convertAssign(left[1], (['index!', right, 0]), env)
     else
       result = []; leftLength = left.length
       if right[0]=='list!'
@@ -135,29 +135,29 @@ convertAssign = (exp, env) ->
             else result.push convertAssign(e, right[n++], env)
       else # left have ellipsis and right is not list
         # see the implementation of ellipsis parameter list
-        result.push norm ['var', v=env.ssaVar('lst')]
-        result.push norm ['=', v, convert(right, env)]
+        result.push ['var', v=env.ssaVar('lst')]
+        result.push ['=', v, convert(right, env)]
         if ellipsis==leftLength-1
           for e, i in left
             if i==0 then continue #[list! ...]
-            else if i<ellipsis then result.push convertAssign(e,  norm(['direct!', ['index!', v, i-1]]), env)
-            else result.push norm  ['=', e, ['?:', ['binary!', '>=', ['attribute!', v, 'length'], leftLength-1], makeSlice(v, i-1), []]]
+            else if i<ellipsis then result.push convertAssign(e,  (['direct!', ['index!', v, i-1]]), env)
+            else result.push ['=', e, ['?:', ['binary!', '>=', ['attribute!', v, 'length'], leftLength-1], makeSlice(v, i-1), []]]
         else
-          result.push norm ['var', _i=env.newVar('i')]
+          result.push ['var', _i=env.newVar('i')]
           for e, i in left
             if i==0 then continue #[list! ...]
-            else if i<ellipsis then result.push convertAssign(e,  norm(['direct!', ['index!', v, i-1]]), env)
+            else if i<ellipsis then result.push convertAssign(e,  (['direct!', ['index!', v, i-1]]), env)
             else if i==ellipsis
-              result.push norm  ['=', e, ['?:', ['binary!', '>=', ['attribute!', v, 'length'], leftLength-1], makeSlice(v, i, ['=', _i,  ['binary!', '-', ['attribute!', v, 'length'], leftLength-i-1]]), ['comma!', [['=', _i,ellipsis-1], []]]]]
-            else result.push norm  ['=', e, ['index!', v, ['suffix!', '++', _i]]]
+              result.push ['=', e, ['?:', ['binary!', '>=', ['attribute!', v, 'length'], leftLength-1], makeSlice(v, i, ['=', _i,  ['binary!', '-', ['attribute!', v, 'length'], leftLength-i-1]]), ['comma!', [['=', _i,ellipsis-1], []]]]]
+            else result.push ['=', e, ['index!', v, ['suffix!', '++', _i]]]
       begin(result)
   # left is not variable, is a assignable expression instead
   # ['@@' varName] is included by this case, see below: exports['@@'] = (exp, env) ->
   else
     # we should convert the right side at first
-    norm [exp[0], convert(left, env), convert(exp[2], env)]
+    [exp[0], convert(left, env), convert(exp[2], env)]
 
-# normal assign in object language
+# al assign in object language
 exports['='] = (exp, env) -> convertAssign(exp, env)
 
 # {a, b, c } = x
@@ -169,17 +169,17 @@ exports['hashAssign!'] = (exp, env) ->
     if exp2.kind!=SYMBOL
       # need saved in a temporary varibale, so as to avoid duplicate evaluation
       vObj = env.newVar('obj')
-      result.push norm  ['direct!', ['var', vObj]]
+      result.push ['direct!', ['var', vObj]]
       env.set(vObj.symbol, vObj)
       result.push ['=', vObj, exp1]
     else vObj = exp2
-    for x in exp1 then result.push norm  ['=', x, ['attribute!', vObj, x]]
+    for x in exp1 then result.push ['=', x, ['attribute!', vObj, x]]
     convert(begin(result), env)
-  else convert(norm(['=', exp1[0], ['attribute!', exp2, exp1[0]]]), env)
+  else convert((['=', exp1[0], ['attribute!', exp2, exp1[0]]]), env)
 
 # meta assign, macro assign
-exports['#='] = (exp, env) -> ['##', convert([norm('='), exp[1], exp[2]], env)]
-exports['#/'] = (exp, env) -> ['#/', convert([norm('='), exp[1], exp[2]], env)]
+exports['#='] = (exp, env) -> ['##', convert([('='), exp[1], exp[2]], env)]
+exports['#/'] = (exp, env) -> ['#/', convert([('='), exp[1], exp[2]], env)]
 
 exports['@@'] = (exp, env) ->
   name = exp[1].value
@@ -222,8 +222,8 @@ exports['letm!'] = (exp, env) ->
   for x in exp[1]
     x0 = x[0].value
     scope[x0] = var1 = env.newVar(x0)
-    result.push [norm('var'), var1]
-    result.push [norm('='), var1, x[1]]
+    result.push [('var'), var1]
+    result.push [('='), var1, x[1]]
   result.push convert(exp[1], newEnv)
   result = begin(result)
   result
@@ -231,8 +231,8 @@ exports['letm!'] = (exp, env) ->
 exports['letrec!'] = (exp, env) ->
   newEnv = env.extend(scope={})
   result = []
-  for x in exp[1] then scope[x0=x[0].value] = var1 = newEnv.newVar(x0); result.push [norm('var'), var1]
-  for x in exp[1] then result.push [norm('='), var1, convert(x[2], newEnv)]
+  for x in exp[1] then scope[x0=x[0].value] = var1 = newEnv.newVar(x0); result.push [('var'), var1]
+  for x in exp[1] then result.push [('='), var1, convert(x[2], newEnv)]
   result.push convert(exp[1], newEnv)
   result = begin(result)
   result.env = newEnv
@@ -257,8 +257,8 @@ exports['list!'] = (exp, env) -> convertArgumentList(exp[1...], env)
 
 exports['if'] = (exp, env) ->
   if exp[3]!=undefined
-    [norm('if'), convert(exp[1], env), convert(exp[2], env), convert(exp[3], env)]
-  else [norm('if'), convert(exp[1], env), convert(exp[2], env), undefinedExp]
+    [('if'), convert(exp[1], env), convert(exp[2], env), convert(exp[3], env)]
+  else [('if'), convert(exp[1], env), convert(exp[2], env), undefinedExp]
 
 exports['switch!'] = (exp, env) ->
   assert false, 'todo: rewrite switch'
@@ -274,17 +274,17 @@ idConvert = (keyword) -> (exp, env) -> [keyword, exp[1]]
 do -> for word in splitSpace 'break continue' then exports[word] = idConvert(word)
 
 exports['lineComment!'] = (exp, env) ->  ''
-exports['directLineComment!'] = (exp, env) -> [norm('directLineComment!'), exp[1]]
+exports['directLineComment!'] = (exp, env) -> [('directLineComment!'), exp[1]]
 exports['codeBlockComment!'] = (exp, env) -> ''
-exports['directCBlockComment!'] = (exp, env) -> [norm('directCBlockComment!'), exp[1]]
+exports['directCBlockComment!'] = (exp, env) -> [('directCBlockComment!'), exp[1]]
 
 exports['direct!'] = (exp, env) -> exp[1]
-exports['quote!'] = (exp, env) -> norm [norm('quote!'), exp[1]]
-exports['~'] = (exp, env) -> norm [norm('quote!'), exp[1]]
+exports['quote!'] = (exp, env) -> [('quote!'), exp[1]]
+exports['~'] = (exp, env) -> [('quote!'), exp[1]]
 
 exports['call!'] = (exp, env) -> convert([exp[1]].concat(exp[2]), env)
 
-exports['label!'] = (exp, env) -> [norm('label!'), convertIdentifier(exp[1]), convert(exp[2], env)]
+exports['label!'] = (exp, env) -> [('label!'), convertIdentifier(exp[1]), convert(exp[2], env)]
 
 argumentsLength = ['attribute!', 'arguments', 'length']
 
@@ -293,16 +293,16 @@ convertParametersWithEllipsis = (exp, ellipsis, env) ->
   if ellipsis==paramsLength-1
     for param, i in exp
       result.push ['var', param]
-      if i!=ellipsis then  result.push norm ['=', param, ['index!', 'arguments', i]]
-      else result.push norm ['=', param, ['?:', ['>=', argumentsLength, paramsLength], makeSlice('arguments', i), []]]
+      if i!=ellipsis then  result.push ['=', param, ['index!', 'arguments', i]]
+      else result.push ['=', param, ['?:', ['>=', argumentsLength, paramsLength], makeSlice('arguments', i), []]]
   else
-    result.push [norm('var'), _i=env.newVar('i')]
+    result.push [('var'), _i=env.newVar('i')]
     for param, i in exp
       result.push ['var', param]
-      if i<ellipsis then result.push norm ['=', param, ['index!', 'arguments', i]]
+      if i<ellipsis then result.push ['=', param, ['index!', 'arguments', i]]
       else if i==ellipsis
-        result.push norm ['=', param, ['?:', ['>=', argumentsLength, paramsLength], makeSlice('arguments', i, ['=', _i,  ['-', argumentsLength, paramsLength-i-1]]), ['binary,', ['=', _i,ellipsis], []]]]
-      else result.push norm ['=', param, ['index!', 'arguments', ['x++', _i]]]
+        result.push ['=', param, ['?:', ['>=', argumentsLength, paramsLength], makeSlice('arguments', i, ['=', _i,  ['-', argumentsLength, paramsLength-i-1]]), ['binary,', ['=', _i,ellipsis], []]]]
+      else result.push ['=', param, ['index!', 'arguments', ['x++', _i]]]
   result
 
 convertDefinition =  (exp, env, mode) ->
@@ -346,9 +346,9 @@ convertDefinition =  (exp, env, mode) ->
   body.push exp2
   if mode[0]=='|' then body =  convert(begin(body), newEnv)
   else body =  return_(convert(begin(body), newEnv))
-  functionExp = norm ['function', params, body]
+  functionExp = ['function', params, body]
   functionExp.env = newEnv
-  if mode=='=>' or mode=='|=>' then norm  ['begin!', ['var', _this], ['=', _this, 'this'], functionExp]
+  if mode=='=>' or mode=='|=>' then ['begin!', ['var', _this], ['=', _this, 'this'], functionExp]
   else functionExp
 
 for sym in '-> |-> => |=>'.split(' ') then do (sym=sym) ->
@@ -363,14 +363,14 @@ quasiquote = (exp, env, level) ->
   if not isArray(exp1) then return JSON.stringify entity(exp1)
   else if not exp1.length then return []
   if (head=entity exp1[0])=='unquote!' or head=='unquote-splice' then return convert(exp1[1], env, level-1)
-  else if head=='quasiquote!' then return norm ['list!', '"quasiquote!"', quasiquote(exp1[1], env, level+1)]
+  else if head=='quasiquote!' then return ['list!', '"quasiquote!"', quasiquote(exp1[1], env, level+1)]
   result = ['list!']
   meetSplice = false
   for e in exp1
     if isArray(e) and e.length
       head = entity(e[0])
       if head=='unquote-splice' and level==0
-        result = norm ['call!', ['attribute!', result, 'concat'], [convert(e[1], env)]]
+        result = ['call!', ['attribute!', result, 'concat'], [convert(e[1], env)]]
         meetSplice = true
       else if not meetSplice
         if head=='unquote-splice'
@@ -378,21 +378,21 @@ quasiquote = (exp, env, level) ->
         else if head=='unquote!'
           if level==0 then result.push convert(e[1], env)
           else result.push ['unquote!', quasiquote(e[1], env, level-1)]
-        else if head=='quasiquote!' then result.push norm ['list!',  '"quasiquote!"', quasiquote(e[1], env, level+1)]
+        else if head=='quasiquote!' then result.push ['list!',  '"quasiquote!"', quasiquote(e[1], env, level+1)]
         else result.push quasiquote([e], env, level)
       else
         if head=='unquote-splice'
           item = [['list!', quasiquote(e[1], env, level-1)]]
         else
           if head=='unquote!'
-            if level==0 then item = norm [['list!', convert(e[1], env)]]
-            else item = norm [['list!', ['"unquote!"', quasiquote(e[1], env, level-1)]]]
-          else if head=='quasiquote!' then item = norm [['list!', ['quasiquote!', quasiquote(e[1], env, level+1)]]]
-          else item = norm [['list!', [quasiquote(e, env, level)]]]
-        result = norm ['call!', ['attribute', result, 'concat'], item]
+            if level==0 then item = [['list!', convert(e[1], env)]]
+            else item = [['list!', ['"unquote!"', quasiquote(e[1], env, level-1)]]]
+          else if head=='quasiquote!' then item = [['list!', ['quasiquote!', quasiquote(e[1], env, level+1)]]]
+          else item = [['list!', [quasiquote(e, env, level)]]]
+        result = ['call!', ['attribute', result, 'concat'], item]
     else
       if not meetSplice then result.push JSON.stringify entity e
-      else result = norm ['call!', ['attribute!', result, 'concat'], [['list!', JSON.stringify entity e]]]
+      else result = ['call!', ['attribute!', result, 'concat'], [['list!', JSON.stringify entity e]]]
   result
 
 exports['eval!'] = (exp, env) ->
@@ -405,9 +405,9 @@ exports['eval!'] = (exp, env) ->
     if exp1[0]=='"'
       exp = (parser=new Parser).parse(exp1[1...exp1.length-1], parser.moduleBody, 0, env)
       objCode = compileExp(exp.body, env.extend({}))
-      norm ['call!',  'eval', [objCode]]
-    else norm ['call!', 'eval', exp1]
-  else norm ['call!', 'eval', [nonMetaCompileExp(exp1, env)]]
+      ['call!',  'eval', [objCode]]
+    else ['call!', 'eval', exp1]
+  else ['call!', 'eval', [nonMetaCompileExp(exp1, env)]]
 
 exports['metaEval!'] = (exp, env) -> eval nonMetaCompileExp(exp[1], env)
 
@@ -422,7 +422,7 @@ exports['#call!'] = (exp, env) -> ['#call', convert(exp[1], env), convert(exp[2]
 #  convert(['attribute!', '__$taiji_$_$parser__', exp[1]], env)
 
 exports['%x'] = (exp, env) ->
-  convert(norm(['attribute!', '__$taiji_$_$parser__', exp[1]]), env)
+  convert((['attribute!', '__$taiji_$_$parser__', exp[1]]), env)
 
 # dynamic syntax, extend the parser on the fly
 # the head of exp[1] will be convert to attribute of __$taiji_$_$parser__
@@ -437,7 +437,7 @@ convertParserAttribute = (exp) ->
     exp
   else if typeof exp == 'object'
     if typeof exp.value=='string' and exp[1]!='"'
-      result = norm ['attribute!', '__$taiji_$_$parser__', exp.value]
+      result = ['attribute!', '__$taiji_$_$parser__', exp.value]
       extend result, exp
     else exp
   else exp
@@ -453,7 +453,7 @@ convertParserExpression = (exp) ->
     exp
   else if typeof exp == 'object'
     if typeof exp.value=='string' and exp[1]!='"'
-      result = norm ['attribute!', '__$taiji_$_$parser__', exp.value]
+      result = ['attribute!', '__$taiji_$_$parser__', exp.value]
       extend result, exp
     else exp
   else exp
@@ -463,17 +463,17 @@ exports['prefix!'] = (exp, env, compiler) -> prefixConverters[exp[1].value](exp,
 exports.prefixConverters = prefixConverters = {}
 
 prefixConverters['@'] = (exp, env) ->
-  norm ['attribute!', 'this', exp[2]]
+  ['attribute!', 'this', exp[2]]
 
 prefixConverters['::'] = (exp, env) ->
-  norm ['attribute!', ['attribute!', 'this', 'prototype'], exp[2]]
+  ['attribute!', ['attribute!', 'this', 'prototype'], exp[2]]
 
 exports['suffix!'] = (exp, env, compiler) -> suffixConverters[exp[1].value](exp, env)
 
 exports.suffixConverters = suffixConverters = {}
 
 suffixConverters['::'] = (exp, env) ->
-  norm ['attribute!', convert(exp[2], env), 'prototype']
+  ['attribute!', convert(exp[2], env), 'prototype']
 
 exports['binary!'] = (exp, env, compiler) -> binaryConverters[exp[1].value](exp, env)
 
@@ -485,14 +485,14 @@ binaryConverters['concat[]'] = (exp, env, compiler) ->
   subscript = exp[3].value[1]
   if subscript.length==0 or subscript.length>1
     compileError exp, 'wrong subscript: '
-  norm ['index!', convert(exp[2], env), convert(subscript[0], env)]
+  ['index!', convert(exp[2], env), convert(subscript[0], env)]
 
 ## todo: a(1), a(1, 2), need to be refined.
 binaryConverters['concat()'] = (exp, env, compiler) ->
-  norm ['call!', convert(exp[2], env), convert(exp[3], env)]
+  ['call!', convert(exp[2], env), convert(exp[3], env)]
 
 binaryConverters['::'] = (exp, env, compiler) ->
-  norm ['attribute!', ['attribute!', convert(exp[2], env), 'prototype'], exp[3]]
+  ['attribute!', ['attribute!', convert(exp[2], env), 'prototype'], exp[3]]
 
 exports['{}'] = (exp, env) -> convert exp[1], env
 
@@ -507,14 +507,14 @@ commaList = (exp) ->
 
 binaryConverters[','] = (exp, env) ->
   result = for e in commaList(exp) then convert(e, env)
-  result.unshift norm 'list!'
-  norm result
+  result.unshift 'list!'
+  result
 
 exports['()'] = (exp, env) ->
   if exp[1] then convert exp[1], env
-  else norm ['list!']
+  else ['list!']
 
 exports['[]'] = (exp, env) ->
   items = for e in exp[1] then convert e, env
-  items.unshift norm 'list!'
+  items.unshift 'list!'
   {value:items, kind:LIST}

@@ -29,13 +29,7 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 ###
 
-# This file contains the common helper functions that we'd like to share among
-# the **Lexer**, **Rewriter**, and the **Nodes**. Merge objects, flatten
-# arrays, count characters, that sort of thing.
-#
-
-# expression mode should start from 0, because memoIndex+mode based on this
-OPERATOR_EXPRESSION = 0; COMPACT_CLAUSE_EXPRESSION = 1;  SPACE_CLAUSE_EXPRESSION = 2; INDENT_EXPRESSION = 3; HASH_KEY_EXPRESSION = 4
+OPERATOR_EXPRESSION = 0; COMPACT_CLAUSE_EXPRESSION = 1
 
 NULL=0; NUMBER=1;  STRING=2;  IDENTIFIER=3; SYMBOL=4; REGEXP=5;  HEAD_SPACES=6; CONCAT_LINE=7; PUNCTUATION=8; FUNCTION=9
 BRACKET=10; PAREN=11; DATA_BRACKET=12; CURVE=13; INDENT_EXPRESSION=14
@@ -46,12 +40,9 @@ INDENT=27; UNDENT=28; HALF_DENT=29; EOI=30; C_BLOCK_COMMENT = 31; SPACE_COMMENT 
 SPACE = 34; HASH = 35; RIGHT_DELIMITER = 36; KEYWORD = 37; CONJUNCTION = 38
 CODE_BLOCK_COMMENT_LEAD_SYMBOL = 39
 PREFIX =40; SUFFIX= 41; BINARY = 42
-VALUE = 43; LIST = 44; COMMAND = 45
-
-# SYMBOL, VALUE, LIST, COMMAND: the kind of expression
 
 exports.constant = {
-  OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION, INDENT_EXPRESSION, HASH_KEY_EXPRESSION
+  OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION
 
   NULL, NUMBER, STRING, IDENTIFIER, SYMBOL, REGEXP, HEAD_SPACES, CONCAT_LINE, PUNCTUATION, FUNCTION,
   BRACKET, PAREN, DATA_BRACKET, CURVE, INDENT_EXPRESSION
@@ -62,7 +53,6 @@ exports.constant = {
   SPACE, HASH, RIGHT_DELIMITER, KEYWORD, CONJUNCTION
   CODE_BLOCK_COMMENT_LEAD_SYMBOL
   PREFIX, SUFFIX, BINARY
-  VALUE, LIST, COMMAND
 }
 
 fs = require('fs')
@@ -121,34 +111,6 @@ exports.firstSymbolCharset = charset(firstSymbolChars)
 # is head a operator for meta expression?
 isMetaOperation = isMetaOperation = (head) -> (head[0]=='#' and head[1]!='-') or head=='include!' or head=='import!' or head=='export!'
 
-# set exp.kind attribute, recursively if exp is array
-# normalize expression for compilation, used in multiple phases
-# todo: this should be compile time function in taijilang bootstrap compilation program, so it can be optimized greatly.
-# to make "analyzed", "transformed", "optimized" being true here, we can avoid switch branch in the following phases.
-exports.norm = norm = (exp) ->
-  # trace('norm: ', str(exp))
-  assert exp!=undefined, 'norm(exp) meet undefined'
-  if exp.kind then return exp
-  if exp instanceof Array then {value:(for e in exp then norm(e)), kind:LIST}
-  else if typeof exp == 'string'
-    if exp[0]=='"' then {value:exp, kind:VALUE}
-    else
-      if isMetaOperation(exp) then {value:exp, kind:SYMBOL, meta:true}
-      else {value:exp, kind:SYMBOL}
-  else if typeof exp =='object' then exp.kind = SYMBOL; exp
-  else {value:exp, kind:VALUE}
-
-# todo: because this the core feature of taiji language, a safer method should be used to avoid redefinition by mistake
-exports.QUOTE = {value:'~', kind:SYMBOL}
-exports.QUASIQUOTE = {value:'`', kind:SYMBOL}
-exports.UNQUOTE = {value:'^', kind:SYMBOL}
-exports.UNQUOTE_SPLICE = {value:'^&', kind:SYMBOL}
-
-exports.__TJ__QUOTE = {value:'__tj~', kind:SYMBOL}
-exports.__TJ__QUASIQUOTE = {value:'__tj`', kind:SYMBOL}
-exports.__TJ__UNQUOTE = {value:'__tj^', kind:SYMBOL}
-exports.__TJ__UNQUOTE_SPLICE = {value:'__tj^&', kind:SYMBOL}
-
 exports.str = str = (item) ->
   if isArray(item) then '['+(str(x) for x in item).join(' ')+']'
   else if typeof item =='object'
@@ -158,34 +120,10 @@ exports.str = str = (item) ->
   else if item==null then 'null'
   else item.toString()
 
-exports.stringifyQuote = stringifyQuote = (item) ->
-  kind = item.kind
-  switch kind
-    when SYMBOL, VALUE
-      result = {value:item.value, kind:kind}
-    when LIST
-      value = for e in item.value then stringifyQuote(e)
-      result = {value:value, kind:kind}
-    else trace2 'wrong kind: '+kind+': '+str(item)
-  if item.type then result.type = item.type
-  if item.cursor then result.cursor = item.cursor
-  if item.stopCursor then result.stopCursor = item.stopCursor
-  if item.line then result.line = item.line
-  if item.column then result.column = item.column
-  if (start=item.start) and start!=item
-    start = extend {}, start
-    delete start['value']
-    result.start = start
-  if (stop=item.stop) and stop!=item
-    stop = extend {}, stop
-    delete stop['value']
-    result.stop = stop
-  JSON.stringify(result)
-
 exports.assert = assert = (value, message) ->
-    if not value
-      trace2('assert:', message or 'assert failed')
-      throw new Error message or 'assert failed'
+  if not value
+    trace2('assert:', message or 'assert failed')
+    throw new Error message or 'assert failed'
 
 exports.isArray = isArray = (exp) -> Object::toString.call(exp) == '[object Array]'
 
@@ -246,32 +184,26 @@ exports.kindSymbol = (e) -> {value:e, kind:SYMBOL}
 # return value:
 # undefined: meet return, throw, break, continue
 # value, symbol: meet value or symbol
-# LIST: meet list, this depends constant LIST != 0
+# true: meet list
 addBeginItem = (result, exp) ->
-  switch exp.kind
-    when VALUE, SYMBOL then return exp
-    when LIST
-      expValue = exp.value
-      exp0Value = expValue[0].value
-      if exp0Value=='begin!'
-        for e in expValue[1...]
-          last = addBeginItem(result, e)
-          if not last then return
-        return last
-      else if exp0Value=='return' or exp0Value=='throw' or exp0Value=='break' or exp0Value=='continue'
-        result.push(exp); return
-      else result.push exp; return LIST
-    else
-      trace('addBeginItem: wrong kind: '+str(exp))
-      throw 'addBeginItem: wrong kind: '+str(exp)
+  if exp not instanceof Array then return exp
+  exp0 = exp[0]
+  if exp0=='begin!'
+    for e in exp[1...]
+      last = addBeginItem(result, e)
+      if not last then return
+    return last
+  else if exp0=='return' or exp0=='throw' or exp0=='break' or exp0=='continue'
+    result.push(exp); return
+  else result.push exp; return true
 
 exports.begin = begin = (exp) ->
     result = []
     for e in exp
       last = addBeginItem(result, e)
       if not last then break
-    if last and last!=LIST then result.push last
-    if result.length>1 then result.unshift norm('begin!'); return norm(result)
+    if last and last!=true then result.push last
+    if result.length>1 then result.unshift 'begin!'; return (result)
     else if result.length==1 then return result[0]
     else return undefinedExp
 
@@ -299,13 +231,13 @@ returnFnMap =
 
 exports.return_ = return_ = (exp) ->
   if not exp then return exp
-  if not exp.push then return [norm('return'), exp]
+  if not exp.push then return [('return'), exp]
   if fn=returnFnMap[exp[0]] then return fn(exp)
-  [norm('return'), exp]
+  [('return'), exp]
 
-exports.pushExp = (lst, v) -> norm ['call!', ['attribute!', lst, 'push'], [v]]
-exports.notExp = (exp) -> norm ['prefix!', '!', exp]
-exports.undefinedExp = undefinedExp = norm 'undefined'
+exports.pushExp = (lst, v) ->  ['call!', ['attribute!', lst, 'push'], [v]]
+exports.notExp = (exp) ->  ['prefix!', '!', exp]
+exports.undefinedExp = undefinedExp =  'undefined'
 exports.commentPlaceholder = {} # used as the second part of transformExpression of comment
 
 exports.isUndefinedExp = -> (exp) -> exp==undefinedExp

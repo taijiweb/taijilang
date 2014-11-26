@@ -3,7 +3,7 @@ path = require 'path'
 {compileError, symbolLookupError} = require './helper'
 
 {evaljs, isArray, extend, str, formatTaijiJson, wrapInfo1, extendSyntaxInfo, entity, pushExp, undefinedExp, begin,
-__TJ__QUOTE, constant, norm, trace} = require '../utils'
+__TJ__QUOTE, constant, trace} = require '../utils'
 
 {NUMBER, STRING, IDENTIFIER, SYMBOL, REGEXP, HEAD_SPACES, CONCAT_LINE, PUNCT, FUNCTION,
 BRACKET, PAREN, DATA_BRACKET, CURVE, INDENT_EXPRESSION
@@ -35,7 +35,7 @@ getStackTrace = ->
   obj.stack
 
 madeConcat = (head, tail) ->
-  if tail.concated then result = norm ['call!', ['attribute!', ['list', head], 'concat'], [tail]]
+  if tail.concated then result =  ['call!', ['attribute!', ['list', head], 'concat'], [tail]]
   else tail.shift(); result = [head].concat tail
   result.convertToList = true
   result
@@ -44,13 +44,13 @@ madeCall = (head, tail, env) ->
   if tail.concated
     if head instanceof Array and ((head0=head[0].value)=='attribute!' or head0=='index!')
       head1 = head[1]
-      if head1.kind==SYMBOL then norm ['call!', ['attribute!', head, 'apply'], [head, tail]]
+      if head1.kind==SYMBOL then  ['call!', ['attribute!', head, 'apply'], [head, tail]]
       else
-        result = norm ['begin!', ['var', obj=env.ssaVar('obj')], ['=', obj, head1]]
-        result.push norm ['call!', ['attribute!', [head0, obj, head[1]], 'apply'], [obj, tail]]
+        result =  ['begin!', ['var', obj=env.ssaVar('obj')], ['=', obj, head1]]
+        result.push  ['call!', ['attribute!', [head0, obj, head[1]], 'apply'], [obj, tail]]
         result
-    else norm ['call!', ['attribute!', head, 'apply'], ['null', tail]]
-  else tail.shift(); norm ['call!', head, tail]
+    else  ['call!', ['attribute!', head, 'apply'], ['null', tail]]
+  else tail.shift();  ['call!', head, tail]
 
 exports.convert = convert = (exp, env) ->
 #  tmp = 1
@@ -102,7 +102,7 @@ exports.convertArgumentList = convertArgumentList = (exp, env) ->
   for item, i in exp
     if item and item[0].value=='x...' then ellipsis = i; break
   if ellipsis==undefined
-    return norm([norm 'list!'].concat(for e in exp then convert(e, env)))
+    return (['list!'].concat(for e in exp then convert(e, env)))
   else
     concated = false # tell call! whether it need to be transformed to fn.apply(obj, ...)
     concating = false
@@ -110,26 +110,26 @@ exports.convertArgumentList = convertArgumentList = (exp, env) ->
       exp01 = exp[0][1]
       if exp01 and exp01[0]=='list!' then result = piece = convert(exp01, env)
       else result = exp01; concating = true; concated = true
-    else result = piece = [norm 'list!', convert(exp[0], env)]
+    else result = piece = ['list!', convert(exp[0], env)]
     for e in exp[1...]
       if e and e[0].value=='x...'
         e1 = convert(e[1], env)
         if e1 and e1[0]=='list!'
-          if concating then result = norm ['call!', ['attribute!', result, 'concat'], [e1]]; piece = e1; concating = false
+          if concating then result =  ['call!', ['attribute!', result, 'concat'], [e1]]; piece = e1; concating = false
           else piece.push.apply piece, e1[1...]
         else
           ee1 = entity(e1)
           # todo use __slice.call(arguments)
-          if ee1=='arguments' or (ee1) and ee1[1]=='arguments' then e1 = norm ['call!', ['attribute!', [], 'slice'], [e1]]
-          result = norm ['call!', ['attribute!', result, 'concat'], [e1]]; concating = true; concated = true
+          if ee1=='arguments' or (ee1) and ee1[1]=='arguments' then e1 =  ['call!', ['attribute!', [], 'slice'], [e1]]
+          result =  ['call!', ['attribute!', result, 'concat'], [e1]]; concating = true; concated = true
       else
         e = convert e, env
-        if concating then result = norm ['call!', ['attribute!', result, 'concat'], (piece=[['list!', e]])]; concating = false
+        if concating then result =  ['call!', ['attribute!', result, 'concat'], (piece=[['list!', e]])]; concating = false
         else piece.push  e
     result.concated = concated
     result
 
-$atMetaExpList = (index) -> norm ['index!', ['jsvar!', '__tjExp'], index]
+$atMetaExpList = (index) ->  ['index!', ['jsvar!', '__tjExp'], index]
 
 TaijiModule = require '../module'
 parser = new Parser
@@ -143,14 +143,14 @@ preprocessMetaConvertFnMap =
   'include': metaInclude
 
   'if': (exp, metaExpList, env) ->
-    norm ['if', metaTransform(exp[1], metaExpList, env),
+     ['if', metaTransform(exp[1], metaExpList, env),
      metaConvert(exp[2], metaExpList, env),
      metaConvert(exp[3], metaExpList, env)]
 
   # todo: # while, doWhile!, let, etc is not tested still
   'while': (exp, metaExpList, env) ->
-    resultExpList = norm ['metaConvertVar!', 'whileResult']
-    norm ['begin!',
+    resultExpList =  ['metaConvertVar!', 'whileResult']
+    ['begin!',
      ['var', resultExpList],
      ['=', resultExpList, []],
      ['while', metaTransform(exp[1], metaExpList, env) # while test:exp[1] body,
@@ -159,8 +159,8 @@ preprocessMetaConvertFnMap =
 
   #['doWhile!', body, condition]
   'doWhile!': (exp, metaExpList, env) ->
-    resultExpList = norm ['metaConvertVar!', 'whileResult']
-    norm ['begin!',
+    resultExpList =  ['metaConvertVar!', 'whileResult']
+    ['begin!',
      ['var', resultExpList],
      ['=', resultExpList, []],
      ['doWhile!',
@@ -171,8 +171,8 @@ preprocessMetaConvertFnMap =
   # doUntil! is parsed to doWhile!
 
   'cFor!': (exp, metaExpList, env) ->
-    resultExpList = norm ['metaConvertVar!', 'whileResult']
-    norm ['begin!',
+    resultExpList =  ['metaConvertVar!', 'whileResult']
+    ['begin!',
      ['var', resultExpList],
      ['=', resultExpList, []],
      ['cFor!',
@@ -184,8 +184,8 @@ preprocessMetaConvertFnMap =
      resultExpList]
 
   'forIn!': (exp, metaExpList, env) ->
-    resultExpList = norm ['metaConvertVar!', 'whileResult']
-    norm ['begin!',
+    resultExpList =  ['metaConvertVar!', 'whileResult']
+    ['begin!',
      ['var', resultExpList],
      ['=', resultExpList, []],
      ['forIn!',
@@ -196,8 +196,8 @@ preprocessMetaConvertFnMap =
      resultExpList]
 
   'forOf!': (exp, metaExpList, env) ->
-    resultExpList = norm ['metaConvertVar!', 'whileResult']
-    norm ['begin!',
+    resultExpList =  ['metaConvertVar!', 'whileResult']
+    ['begin!',
      ['var', resultExpList],
      ['=', resultExpList, []],
      ['forOf!',
@@ -208,8 +208,8 @@ preprocessMetaConvertFnMap =
      resultExpList]
 
   'forIn!!': (exp, metaExpList, env) ->
-    resultExpList = norm ['metaConvertVar!', 'whileResult']
-    norm ['begin!',
+    resultExpList =  ['metaConvertVar!', 'whileResult']
+    ['begin!',
      ['var', resultExpList],
      ['=', resultExpList, []],
      ['forIn!!',
@@ -221,8 +221,8 @@ preprocessMetaConvertFnMap =
      resultExpList]
 
   'forOf!': (exp, metaExpList, env) ->
-    resultExpList = norm ['metaConvertVar!', 'whileResult']
-    norm ['begin!',
+    resultExpList =  ['metaConvertVar!', 'whileResult']
+    ['begin!',
      ['var', resultExpList],
      ['=', resultExpList, []],
      ['forOf!!',
@@ -234,13 +234,13 @@ preprocessMetaConvertFnMap =
      resultExpList]
 
   'let': (exp, metaExpList, env) ->
-    [norm 'let',
+    ['let',
      metaTransform(exp[1], metaExpList, env) #bindings is in meta level
      metaConvert(exp[2], metaExpList, env)]
   # {do ... where binding} is parsed to let binding body
 
   'letrec!': (exp, metaExpList, env) ->
-    [norm 'letrec!',
+    ['letrec!',
      metaTransform(exp[1], metaExpList, env) #bindings is in meta level
      metaConvert(exp[2], metaExpList, env)]
 
@@ -249,11 +249,11 @@ preprocessMetaConvertFnMap =
 
   # todo add more construct here ...
 
-taijiExports = norm ['jsvar!', 'exports']
+taijiExports =  ['jsvar!', 'exports']
 
 # use index! so taiji identifier like undefined? will not be illegal in javascript
 # if use 'attribute!' then "exports.undefined?" will be illegel javascript code
-exportsIndex = (name) -> norm ['index!', taijiExports , '"'+entity(name)+'"']
+exportsIndex = (name) ->  ['index!', taijiExports , '"'+entity(name)+'"']
 
 
 # does exp contains any meta operations?
@@ -279,7 +279,7 @@ parseModule = (modulePath, env, parseMethod) ->
   [exp.body, newEnv]
 
 wrapModuleFunctionCall = (exp, moduleVar) ->
-  norm ['=', moduleVar, ['call!', ['|->', [], begin([['=', taijiExports, ['hash!']], exp, ['return', taijiExports]])], []]]
+   ['=', moduleVar, ['call!', ['|->', [], begin([['=', taijiExports, ['hash!']], exp, ['return', taijiExports]])], []]]
 
 wrapMetaObjectFunctionCall = (exp, metaExpList, env, metaModuleAlias, objectModuleAlias) ->
   # the object function wrapper should be metaConverted,
@@ -289,16 +289,16 @@ wrapMetaObjectFunctionCall = (exp, metaExpList, env, metaModuleAlias, objectModu
     objectModuleVar = objectModuleAlias
     objectModuleInMetaLevel = metaConvert(wrapModuleFunctionCall(exp, objectModuleVar), metaExpList, env)
   else
-    objectModuleVar = norm ['metaConvertVar!', 'module']
-    objectModuleInMetaLevel = metaConvert(norm ['begin!', ['var', objectModuleVar], wrapModuleFunctionCall(exp, objectModuleVar)], metaExpList, env)
+    objectModuleVar =  ['metaConvertVar!', 'module']
+    objectModuleInMetaLevel = metaConvert( ['begin!', ['var', objectModuleVar], wrapModuleFunctionCall(exp, objectModuleVar)], metaExpList, env)
   # all of part of the generated expression by below action is prepared meta level expression as they are.
   # so metaTransform need not be called
   if metaModuleAlias
     metaModuleVar = metaModuleAlias
     wrapModuleFunctionCall(exp, metaModuleVar)
   else
-    metaModuleVar = norm ['metaConvertVar!', 'module']
-    norm ['begin!', ['var', metaModuleVar], wrapModuleFunctionCall(objectModuleInMetaLevel, metaModuleVar)]
+    metaModuleVar =  ['metaConvertVar!', 'module']
+    ['begin!', ['var', metaModuleVar], wrapModuleFunctionCall(objectModuleInMetaLevel, metaModuleVar)]
 
 metaConvertExport = (exp, metaExpList, env) ->
   result = []
@@ -313,15 +313,15 @@ metaConvertExport = (exp, metaExpList, env) ->
   begin(result)
 
 includeModuleFunctionCall = (exp, metaExpList, env, runtimeModuleAlias, metaModuleAlias) ->
-  runtimeBody = norm ['metaConvertVar!', 'runtimeBody']
-  runtimeFunctionCall = metaConvert(norm ['begin!',
+  runtimeBody =  ['metaConvertVar!', 'runtimeBody']
+  runtimeFunctionCall = metaConvert( ['begin!',
    ['var', runtimeModuleAlias],
    ['=', runtimeModuleAlias, ['call!', ['->', [], ['begin!',
       ['=',  'exports',['hash!']],
       exp,
       'exports']], []]]], metaExpList, env)
   # meta level expression
-  begin norm [
+  begin  [
    ['var', runtimeBody],
    ['var', metaModuleAlias],
    ['=', metaModuleAlias, ['call!', ['->', [], ['begin!',
@@ -336,10 +336,10 @@ includeModuleFunctionCall = (exp, metaExpList, env, runtimeModuleAlias, metaModu
 metaConvertImport = (exp, metaExpList, env) ->
   [cmd, filePath, parseMethod, runtimeModuleAlias, metaModuleAlias, importItemList, metaImportItemList] = exp
   [exp, newEnv] = parseModule entity(filePath), env, parseMethod
-  if not metaModuleAlias then metaModuleAlias = norm ['metaConvertVar!', 'module']
-  if not runtimeModuleAlias then runtimeModuleAlias = norm ['metaConvertVar!', 'module']
+  if not metaModuleAlias then metaModuleAlias =  ['metaConvertVar!', 'module']
+  if not runtimeModuleAlias then runtimeModuleAlias =  ['metaConvertVar!', 'module']
   fnCall = includeModuleFunctionCall(exp, metaExpList, env, runtimeModuleAlias, metaModuleAlias)
-  moduleFnCall = norm ['metaConvertVar!', 'moduleFnCall']
+  moduleFnCall =  ['metaConvertVar!', 'moduleFnCall']
   metaBegin = metaConvert('begin!', metaExpList, env)
   compileTimeAssignList = []; runtimeAssignList = []
   for [name, asName] in metaImportItemList
@@ -348,7 +348,7 @@ metaConvertImport = (exp, metaExpList, env) ->
   for [name, asName] in importItemList
     runtimeAssignList.push ['=', asName, ['index!', runtimeModuleAlias, '"'+entity(name)+'"']]
   runtimeAssignList = metaConvert(begin(runtimeAssignList), metaExpList, env)
-  norm ['begin!'
+  ['begin!'
    ['var', moduleFnCall]
    ['=', moduleFnCall, fnCall],
    compileTimeAssignList,
@@ -469,7 +469,7 @@ exports.metaCompile = metaCompile = (exp, metaExpList, env) ->
   # todo: remove the parameter "env" from metaCompile, metaConvert and metaTransform ...
   env.metaIndex = 0 #todo: Instead of member of env, metaIndex may become a global variable
   exp = metaConvert exp, metaExpList, env
-  code = nonMetaCompileExp(norm(['=', ['attribute!', 'module', 'exports'], ['->', ['__tjExp'], ['return', exp]]]), env)
+  code = nonMetaCompileExp((['=', ['attribute!', 'module', 'exports'], ['->', ['__tjExp'], ['return', exp]]]), env)
 
 # metaConvert expression to meta level and compile to javascript function code
 # evaluate the function with the object expression pieces list as argument

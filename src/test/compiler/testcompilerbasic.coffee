@@ -8,20 +8,6 @@ lib = '../../lib/'
 taiji = require lib+'taiji'
 {nonMetaCompileExpNoOptimize} = require lib+'compiler'
 
-console.log 1 instanceof Number
-x = 1
-x.x = 1
-console.log 1 instanceof Object
-
-console.log new Number(1) instanceof Object
-console.log  new Number(1)==1
-console.log new Number(1) instanceof Number
-
-console.log 'a' instanceof String
-a = 'a'
-a.x = 1
-console.log 'a' instanceof Object
-
 parseClause = (text) ->
   parser = new Parser()
   x = parser.parse(text, matchRule(parser, parser.clause), 0)
@@ -36,7 +22,7 @@ compile = noOptCompile = (text) ->
   exp = nonMetaCompileExpNoOptimize exp, env
   exp
 
-describe "compiler basic: ",  ->
+ndescribe "compiler basic: ",  ->
   describe "compile number: ",  ->
     it "compile 1", ->
       expect(compile('1')).to.have.string "1"

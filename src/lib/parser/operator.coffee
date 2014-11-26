@@ -104,7 +104,7 @@ exports.binaryOperatorDict =
 
   '#': {priority: 200} # meta call operator
 
-  #'.': {priority: 200}  # attribute, become customed parser.binaryAttributeOperator
+  '.': {priority: 200}  # attribute, become customed parser.binaryAttributeOperator
   # '&/': {priority:200} # index
 
   #'|||=': {priority:20, rightAssoc: true, assign:true}
@@ -115,7 +115,7 @@ exports.binaryOperatorDict =
 #: #=: meta assign, assign meta value or macro to variable
 exports.assignOperators = ('= += -= *= /= %= <<= >>= >>>= &= |= ^= &&= ||= #= #/=').split(' ') # #&=
 do -> for op in exports.assignOperators
-  exports.binaryOperatorDict[op] = {priority:20, rightAssoc: true, assign:true}
+  exports.binaryOperatorDict[op] = {priority:20, rightAssoc:true, assign:true}
 
 # this function is refactored out and is deprecated.
 # grammatical element expression will do more thing and be more extendable and customable.

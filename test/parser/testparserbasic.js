@@ -1,4 +1,4 @@
-var BLOCK_COMMENT, COMPACT_CLAUSE_EXPRESSION, EOI, HALF_DENT, IDENTIFIER, INDENT, NEWLINE, NUMBER, OPERATOR_EXPRESSION, PAREN, PAREN_OPERATOR_EXPRESSION, Parser, SPACE, SPACE_CLAUSE_EXPRESSION, UNDENT, constant, expect, idescribe, iit, isArray, lib, matchRule, ndescribe, nit, str, _ref, _ref1;
+var BLOCK_COMMENT, COMPACT_CLAUSE_EXPRESSION, EOI, HALF_DENT, IDENTIFIER, INDENT, NEWLINE, NUMBER, OPERATOR_EXPRESSION, PAREN, PAREN_OPERATOR_EXPRESSION, Parser, SPACE, SYMBOL, UNDENT, constant, expect, idescribe, iit, isArray, lib, matchRule, ndescribe, nit, str, _ref, _ref1;
 
 _ref = require('../util'), expect = _ref.expect, ndescribe = _ref.ndescribe, idescribe = _ref.idescribe, iit = _ref.iit, nit = _ref.nit, matchRule = _ref.matchRule;
 
@@ -8,9 +8,9 @@ _ref1 = require(lib + 'utils'), constant = _ref1.constant, isArray = _ref1.isArr
 
 Parser = require(lib + 'parser/parser').Parser;
 
-IDENTIFIER = constant.IDENTIFIER, NUMBER = constant.NUMBER, NEWLINE = constant.NEWLINE, INDENT = constant.INDENT, UNDENT = constant.UNDENT, HALF_DENT = constant.HALF_DENT, PAREN = constant.PAREN, BLOCK_COMMENT = constant.BLOCK_COMMENT, EOI = constant.EOI, SPACE = constant.SPACE, PAREN_OPERATOR_EXPRESSION = constant.PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION = constant.COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION = constant.SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION = constant.OPERATOR_EXPRESSION;
+IDENTIFIER = constant.IDENTIFIER, NUMBER = constant.NUMBER, SYMBOL = constant.SYMBOL, NEWLINE = constant.NEWLINE, INDENT = constant.INDENT, UNDENT = constant.UNDENT, HALF_DENT = constant.HALF_DENT, PAREN = constant.PAREN, BLOCK_COMMENT = constant.BLOCK_COMMENT, EOI = constant.EOI, SPACE = constant.SPACE, PAREN_OPERATOR_EXPRESSION = constant.PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION = constant.COMPACT_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION = constant.OPERATOR_EXPRESSION;
 
-ndescribe("parser basic: ", function() {
+describe("parser basic: ", function() {
   describe("matchToken: ", function() {
     var parse, parser;
     parser = new Parser();
@@ -21,64 +21,64 @@ ndescribe("parser basic: ", function() {
     describe("parse number: ", function() {
       describe("is number: ", function() {
         it("parse 1", function() {
-          return expect(parse('1').value).to.equal(1);
+          return expect(parse('1').value).to.equal('1');
         });
         it("parse 01", function() {
-          return expect(parse('01').value).to.equal(1);
+          return expect(parse('01').value).to.equal('01');
         });
         it("parse 0x01", function() {
-          return expect(parse('0x01').value).to.equal(1);
+          return expect(parse('0x01').value).to.equal('0x01');
         });
         it("parse 0xa", function() {
-          return expect(parse('0xa').value).to.equal(10);
+          return expect(parse('0xa').value).to.equal('0xa');
         });
         it("parse 1.", function() {
-          expect(parse('1.').value).to.equal(1);
+          expect(parse('1.').value).to.equal('1');
           expect(parser.cursor()).to.equal(1);
           return expect(parser.endOfInput()).to.equal(false);
         });
         it("parse 1.e0", function() {
-          return expect(parse('1.e0').value).to.equal(1);
+          return expect(parse('1.e0').value).to.equal("1.e0");
         });
         it("parse 1.0e023", function() {
           var x;
           x = parse('1.0e023');
-          return expect(x.value).to.equal(1.0e23);
+          return expect(x.value).to.equal('1.0e023');
         });
         it("parse 1.0e-23", function() {
-          return expect(parse('1.0e-23').value).to.equal(1.0e-23);
+          return expect(parse('1.0e-23').value).to.equal('1.0e-23');
         });
         it("parse 1.e-23", function() {
           var x;
           x = parse('1.e-23');
-          return expect(x.value).to.equal(1.0e-23);
+          return expect(x.value).to.equal('1.e-23');
         });
         it("parse 1.0e+023", function() {
-          return expect(parse('1.0e+23').value).to.equal(1.0e+23);
+          return expect(parse('1.0e+23').value).to.equal('1.0e+23');
         });
         it("parse 1.e23", function() {
-          return expect(parse('1.e23').value).to.equal(1.0e23);
+          return expect(parse('1.e23').value).to.equal('1.e23');
         });
         it("parse 1e23", function() {
-          return expect(parse('1e23').value).to.equal(1.0e23);
+          return expect(parse('1e23').value).to.equal('1e23');
         });
         it("parse 1e023", function() {
-          return expect(parse('1e023').value).to.equal(1.0e23);
+          return expect(parse('1e023').value).to.equal('1e023');
         });
         it("parse 1.e", function() {
-          return expect(parse('1.e').value).to.equal(1);
+          return expect(parse('1.e').value).to.equal('1');
         });
         it("parse 1.ea", function() {
-          return expect(parse('1.ea').value).to.equal(1);
+          return expect(parse('1.ea').value).to.equal('1');
         });
         it("parse 1.e+", function() {
-          return expect(parse('1.e+').value).to.equal(1);
+          return expect(parse('1.e+').value).to.equal('1');
         });
         it("parse 1.e-", function() {
-          return expect(parse('1.e-').value).to.equal(1);
+          return expect(parse('1.e-').value).to.equal('1');
         });
         return it("parse 1.e*", function() {
-          return expect(parse('1.e*').value).to.equal(1);
+          return expect(parse('1.e*').value).to.equal('1');
         });
       });
       return describe("is not number: ", function() {
@@ -129,113 +129,82 @@ ndescribe("parser basic: ", function() {
         return expect(parser.token().type).to.not.equal(IDENTIFIER);
       });
     });
-    ndescribe("parse taijiIdentifier: ", function() {
+    describe("parse taijiIdentifier: ", function() {
       it("parse a", function() {
-        return expect(parse('a')).to.equal('a');
+        return expect(str(parse('a'))).to.equal('a');
       });
       it("parse ?", function() {
-        return expect(parse('?')).to.equal(void 0);
+        expect(str(parse('?'))).to.equal('?');
+        return expect(parser.token().type).to.equal(SYMBOL);
       });
       it("parse #", function() {
-        return expect(parse('#')).to.equal(void 0);
+        expect(str(parse('#'))).to.equal('#');
+        return expect(parser.token().type).to.equal(SYMBOL);
       });
       it("parse !ds", function() {
-        return expect(parse('!ds')).to.equal(void 0);
+        expect(str(parse('!ds'))).to.equal('!');
+        return expect(parser.token().type).to.equal(SYMBOL);
       });
       it("parse a!", function() {
-        return expect(parse('a!')).to.equal('a!');
+        expect(str(parse('a!'))).to.equal('a!');
+        return expect(parser.token().type).to.equal(IDENTIFIER);
       });
       it("parse a!#", function() {
-        return expect(parse('a!#')).to.equal('a!');
+        return expect(str(parse('a!#'))).to.equal('a!');
       });
       it("parse $a", function() {
-        return expect(parse('$a')).to.equal('$a');
+        return expect(str(parse('$a'))).to.equal('$a');
       });
       it("parse $a_", function() {
-        return expect(parse('$a_')).to.equal('$a_');
+        return expect(str(parse('$a_'))).to.equal('$a_');
       });
       it("parse $a_1", function() {
-        return expect(parse('$a_1')).to.equal('$a_1');
+        return expect(str(parse('$a_1'))).to.equal('$a_1');
       });
       it("parse _1", function() {
-        return expect(parse('_1')).to.equal('_1');
+        return expect(str(parse('_1'))).to.equal('_1');
       });
       return it("parse _a1", function() {
-        return expect(parse('_a1')).to.equal('_a1');
+        return expect(str(parse('_a1'))).to.equal('_a1');
       });
     });
-    describe("parse escaped string symbol:", function() {
+    ndescribe("parse escaped string symbol:", function() {
       return it("parse \\'x...'", function() {
         return expect(str(parse("\\'x...'"))).to.equal("\"x...\"");
       });
     });
-    describe("parse interpolate string: ", function() {
+    describe("parse string: ", function() {
       it("parse a", function() {
-        return expect(str(parse('"a"'))).to.equal('[string! "a"]');
-      });
-      it("parse $a", function() {
-        return expect(str(parse('"$a"'))).to.equal("[string! a]");
-      });
-      it("parse $a:", function() {
-        return expect(str(parse('"$a:"'))).to.equal("[string! \"a:\" a]");
-      });
-      it("parse $a\\:", function() {
-        return expect(str(parse('"$a\\:"'))).to.equal("[string! a \"\\:\"]");
-      });
-      it("parse $", function() {
-        return expect(str(parse('"$"'))).to.equal("[string! \"$\"]");
+        return expect(str(parse('"a"'))).to.equal('"a"');
       });
       it("parse a\\b", function() {
-        return expect(str(parse('"a\\b"'))).to.equal('[string! "a\\b"]');
+        return expect(str(parse('"a\\b"'))).to.equal('"a\\b"');
       });
-      it("parse '''a\"'\\n'''", function() {
-        return expect(str(parse('"""a\\"\'\\n"""'))).to.equal("[string! \"a\\\\\"'\\\\n\"]");
-      });
-      it("parse \"a(1)\" ", function() {
-        return expect(str(parse('"a(1)"'))).to.equal("[string! \"a\" [() 1]]");
-      });
-      it("parse \"a[1]\" ", function() {
-        return expect(str(parse('"a[1]"'))).to.equal("[string! \"a\" [[] [1]]]");
-      });
-      return it("str parse \"a[1] = $a[1]\" ", function() {
-        return expect(str(parse('"a[1] = $a[1]"'))).to.equal("[string! \"a\" [[] [1]] \" = \" [index! a [[] [1]]]]");
-      });
-    });
-    describe("parse raw string without interpolation: ", function() {
-      it("parse '''a\\b'''", function() {
-        return expect(str(parse("'''a\\b'''"))).to.equal('"a\\\\b"');
-      });
-      it("parse '''\\\na\\b'''", function() {
-        return expect(str(parse("'''\\\na\\b'''"))).to.equal('"a\\\\b"');
-      });
-      it("parse '''a\\b\ncd'''", function() {
-        return expect(str(parse("'''a\\b\ncd'''"))).to.equal("\"a\\\\b\\ncd\"");
-      });
-      it("parse '''a\\b\n\rcd'''", function() {
-        return expect(str(parse("'''a\\b\n\rcd'''"))).to.equal("\"a\\\\b\\n\\rcd\"");
-      });
-      return it("parse '''a\"'\\n'''", function() {
-        return expect(str(parse("'''a\"'\\n'''"))).to.equal("\"a\"'\\\\n\"");
-      });
-    });
-    describe("parse escape string without interpolation: ", function() {
       it("parse 'a\\b'", function() {
-        return expect(str(parse("'a\\b'"))).to.equal('"a\\b"');
+        return expect(str(parse("'a\\b'"))).to.equal("'a\\b'");
       });
       it("parse 'a\\b\ncd'", function() {
-        return expect(str(parse("'a\\b\ncd'"))).to.equal('"a\\b\\ncd"');
+        return expect(function() {
+          return parse("'a\\b\ncd'");
+        }).to["throw"](/unexpected new line while parsing string/);
       });
       it("parse 'a\\b\\\ncd'", function() {
-        return expect(str(parse("'a\\b\\\ncd'"))).to.equal('"a\\bcd"');
+        return expect(function() {
+          return parse("'a\\b\\\ncd'");
+        }).to["throw"](/unexpected new line while parsing string/);
       });
       it("parse 'a\"\\\"\'\\n'", function() {
-        return expect(str(parse("'a\"\\\"\\'\\n'"))).to.equal('"a\"\\\"\'\\n"');
+        return expect(str(parse("'a\"\\\"\\'\\n'"))).to.equal('\'a"\\"\\\'\\n\'');
       });
       it("parse 'a\"\\\"\\'\\n\n'", function() {
-        return expect(str(parse("'a\"\\\"\\'\\n\n'"))).to.equal('"a\"\\\"\'\\n\\n"');
+        return expect(function() {
+          return parse("'a\"\\\"\\'\\n\n'");
+        }).to["throw"](/unexpected new line while parsing string/);
       });
       return it("parse 'a\"\\\"\n\'\\n'", function() {
-        return expect(str(parse("'a\"\\\"\n\\'\\n\n'"))).to.equal('"a\"\\\"\\n\'\\n\\n"');
+        return expect(function() {
+          return parse("'a\"\\\"\n\\'\\n\n'");
+        }).to["throw"](/unexpected new line while parsing string/);
       });
     });
     describe("parse regexp: ", function() {
@@ -279,7 +248,7 @@ ndescribe("parser basic: ", function() {
         return expect(str(parse('123.5'))).to.equal('123.5');
       });
       it("parse 123.5e4", function() {
-        return expect(str(parse('123.5e4'))).to.equal("1235000");
+        return expect(str(parse('123.5e4'))).to.equal("123.5e4");
       });
       it("parse @@@", function() {
         return expect(str(parse('@@@'))).to.equal('@@@');
@@ -309,7 +278,7 @@ ndescribe("parser basic: ", function() {
         return expect(str(parse("\\/("))).to.equal('\\/');
       });
       return it("parse */*multiply*/", function() {
-        return expect(str(parse('*/*multiply*/'))).to.equal('*');
+        return expect(str(parse('*/*multiply*/'))).to.equal("*/*");
       });
     });
   });
@@ -324,8 +293,6 @@ ndescribe("parser basic: ", function() {
       x = parser.parse(text, matchRule(parser, prefixOperator), 0);
       if (x) {
         return x.value;
-      } else {
-
       }
     };
     it('should parse ++1', function() {
@@ -344,34 +311,10 @@ ndescribe("parser basic: ", function() {
       return expect(parse('+a')).to.equal('+');
     });
     it('should parse +/**/a', function() {
-      return expect(parse('+/**/a')).to.equal('+');
+      return expect(parse('+/**/a')).to.equal(void 0);
     });
     return it('should parse +/**/)', function() {
-      return expect(parse('+/**/)')).to.equal('+');
-    });
-  });
-  describe("suffixOperator: ", function() {
-    var parse;
-    parse = function(text) {
-      var parser, x;
-      parser = new Parser();
-      x = parser.parse(text, (function() {
-        parser.matchToken();
-        return parser.suffixOperator(OPERATOR_EXPRESSION, {
-          value: 0
-        }, 0);
-      }), 0);
-      if (x) {
-        return x.value;
-      } else {
-
-      }
-    };
-    it('should parse ++', function() {
-      return expect(parse('++')).to.equal('++');
-    });
-    return it('should parse .++', function() {
-      return expect(parse('.++')).to.equal(void 0);
+      return expect(parse('+/**/)')).to.equal(void 0);
     });
   });
   describe("binaryOperator: ", function() {
@@ -398,99 +341,38 @@ ndescribe("parser basic: ", function() {
     it('should parse +1', function() {
       return expect(parse('+1')).to.equal('+');
     });
-    return it('should parse and', function() {
+    it('should parse and', function() {
       return expect(parse(' and 1')).to.equal('and');
     });
-  });
-  describe("compact clause binaryOperator: ", function() {
-    var parse;
-    parse = function(text) {
-      var parser, root, x;
-      parser = new Parser();
-      root = function() {
-        parser.matchToken();
-        return parser.binaryOperator(COMPACT_CLAUSE_EXPRESSION, {
-          value: 0
-        }, 0, true);
-      };
-      x = parser.parse(text, root, 0);
-      if (x) {
-        return x.value;
-      } else {
+    describe("compact clause binaryOperator: ", function() {
+      parse = function(text) {
+        var parser, root, x;
+        parser = new Parser();
+        root = function() {
+          parser.matchToken();
+          return parser.binaryOperator(COMPACT_CLAUSE_EXPRESSION);
+        };
+        x = parser.parse(text, root, 0);
+        if (x) {
+          return x.value;
+        } else {
 
-      }
-    };
-    it('should parse ==1', function() {
-      return expect(parse('==1')).to.equal('==');
-    });
-    it('should parse +1', function() {
-      return expect(parse('+1')).to.equal('+');
-    });
-    it('should parse + 1', function() {
-      return expect(parse(' + 1')).to.equal(void 0);
-    });
-    return it('should parse and 1', function() {
-      return expect(parse(' and 1')).to.equal(void 0);
-    });
-  });
-  describe("space clause binaryOperator: ", function() {
-    var parse;
-    parse = function(text) {
-      var parser, root, x;
-      parser = new Parser();
-      root = function() {
-        parser.matchToken();
-        return parser.binaryOperator(SPACE_CLAUSE_EXPRESSION, {
-          value: 0
-        }, 0, true);
+        }
       };
-      x = parser.parse(text, root, 0);
-      if (x) {
-        return x.value;
-      } else {
-
-      }
-    };
-    it('should parse ==1', function() {
-      return expect(parse('==1')).to.equal('==');
-    });
-    it('should parse +1', function() {
-      return expect(parse('+1')).to.equal('+');
-    });
-    it('should parse + 1', function() {
-      return expect(parse(' + 1')).to.equal('+');
-    });
-    it('should parse and 1', function() {
-      return expect(parse(' and 1')).to.equal('and');
+      it('should parse ==1', function() {
+        return expect(parse('==1')).to.equal('==');
+      });
+      it('should parse +1', function() {
+        return expect(parse('+1')).to.equal('+');
+      });
+      it('should parse + 1', function() {
+        return expect(parse(' + 1')).to.equal(void 0);
+      });
+      return it('should parse and 1', function() {
+        return expect(parse(' and 1')).to.equal(void 0);
+      });
     });
     return describe("space and comment: ", function() {
-      it("parse inline space comment", function() {
-        var parser, x;
-        parser = new Parser();
-        parser.init('123   /*sfadl*/', 0);
-        parser.matchToken();
-        parser.matchToken();
-        x = parser.token();
-        return expect(x.value).to.equal('   /*sfadl*/');
-      });
-      it("parse multiple line space comment", function() {
-        var parser, x;
-        parser = new Parser();
-        parser.init('123   /*sfadl*/ \n // line comment \n something', 0);
-        parser.matchToken();
-        parser.matchToken();
-        x = parser.token();
-        return expect(x.value).to.equal("   /*sfadl*/ \n ");
-      });
-      it("parse multiple line space comment 2", function() {
-        var parser, x;
-        parser = new Parser();
-        parser.init('123   /*sfadl*/ \n// line comment \n// line comment 2\n something', 0);
-        parser.matchToken();
-        parser.matchToken();
-        x = parser.token();
-        return expect(x.value).to.equal("   /*sfadl*/ \n");
-      });
       it("parse multiple line space comment 3", function() {
         var parser, x;
         parser = new Parser();
@@ -500,7 +382,7 @@ ndescribe("parser basic: ", function() {
         x = parser.token();
         return expect(x.value).to.equal("   // line comment // line comment 2\n");
       });
-      it("parse multiple line space comment 4", function() {
+      return it("parse multiple line space comment 4", function() {
         var parser, x;
         parser = new Parser();
         parser.init('123   // line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  something', 0);
@@ -512,14 +394,6 @@ ndescribe("parser basic: ", function() {
         x = parser.token();
         return expect(x.value).to.equal("// line comment 2\n");
       });
-      return it("parse c style block comment leads more space lines", function() {
-        var parser, x;
-        parser = new Parser();
-        parser.init('/*fdsafdsa*/// line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  something', 0);
-        parser.matchToken();
-        x = parser.token();
-        return expect(x.value).to.equal("/*fdsafdsa*/// line comment \n");
-      });
     });
   });
   describe("compact clause expression:", function() {
@@ -529,62 +403,60 @@ ndescribe("parser basic: ", function() {
       parser = new Parser();
       return x = parser.parse(text, matchRule(parser, parser.compactClauseExpression), 0);
     };
-    it('should parse a', function() {
-      return expect(str(parse('a'))).to.equal("a");
+    describe("group1:", function() {
+      it('should parse a', function() {
+        return expect(str(parse('a'))).to.equal("a");
+      });
+      it('should parse a.b', function() {
+        return expect(str(parse('a.b'))).to.equal("[binary! . a b]");
+      });
+      it('should parse a.b.c', function() {
+        return expect(str(parse('a.b.c'))).to.equal("[binary! . [binary! . a b] c]");
+      });
+      it('should parse a(b)', function() {
+        return expect(str(parse('a(b)'))).to.equal("[binary! concat() a [() b]]");
+      });
+      it('should parse a()', function() {
+        return expect(str(parse('a()'))).to.equal("[binary! concat() a [()]]");
+      });
+      it('should parse a::b ', function() {
+        return expect(str(parse('a::b'))).to.equal("[binary! :: a b]");
+      });
+      return it('should parse ^1', function() {
+        return expect(str(parse('^1'))).to.equal("[prefix! ^ 1]");
+      });
     });
-    it('should parse a.b', function() {
-      return expect(str(parse('a.b'))).to.equal("[binary! . a b]");
-    });
-    it('should parse a.b.c', function() {
-      return expect(str(parse('a.b.c'))).to.equal("[binary! . [binary! . a b] c]");
-    });
-    nit('should parse a&/b', function() {
-      return expect(str(parse('a&/b'))).to.equal('[index! a b]');
-    });
-    nit('should parse a&/b&/c', function() {
-      return expect(str(parse('a&/b&/c'))).to.equal('[index! [index! a b] c]');
-    });
-    it('should parse a(b)', function() {
-      return expect(str(parse('a(b)'))).to.equal("[binary! concat() a [() b]]");
-    });
-    it('should parse a()', function() {
-      return expect(str(parse('a()'))).to.equal("[binary! concat() a [()]]");
-    });
-    it('should parse a::b ', function() {
-      return expect(str(parse('a::b'))).to.equal("[binary! :: a b]");
-    });
-    it('should parse ^1', function() {
-      return expect(str(parse('^1'))).to.equal("[prefix! ^ 1]");
-    });
-    it('should parse `.^1', function() {
-      return expect(str(parse('`.^1'))).to.equal("[prefix! ` [prefix! ^ 1]]");
-    });
-    it('should parse (a)', function() {
-      return expect(str(parse('(a)'))).to.equal("[() a]");
-    });
-    it('should parse Object.prototype.toString', function() {
-      return expect(str(parse('Object.prototype.toString'))).to.equal("[binary! . [binary! . Object prototype] toString]");
-    });
-    it('should parse Object.prototype.toString.call', function() {
-      return expect(str(parse('Object.prototype.toString.call'))).to.equal("[binary! . [binary! . [binary! . Object prototype] toString] call]");
-    });
-    it('should parse x.toString.call', function() {
-      return expect(str(parse('x.toString.call'))).to.equal("[binary! . [binary! . x toString] call]");
-    });
-    it('should parse toString.call', function() {
-      return expect(str(parse('toString.call'))).to.equal("[binary! . toString call]");
-    });
-    it("parse 1,/-h\b|-r\b|-v\b|-b\b/", function() {
-      return expect(str(parse('1,/-h\b|-r\b|-v\b|-b\b/'))).to.equal('1');
-    });
-    it("parse 1+./!1/.test('1')", function() {
-      return expect(str(parse("1+./!1/.test('1')"))).to.equal("[binary! + 1 [binary! concat() [binary! . [regexp! /1/] test] [() \"1\"]]]");
-    });
-    it("parse x=./!1/", function() {
-      return expect(str(parse('x=./!1/'))).to.equal("[binary! = x [regexp! /1/]]");
-    });
-    return it("parse x=./!1/g", function() {
-      return expect(str(parse('x=./!1/g'))).to.equal("[binary! = x [regexp! /1/g]]");
+    return describe("group2:", function() {
+      it('should parse `.^1', function() {
+        return expect(str(parse('`(^1)'))).to.equal("[prefix! ` [() [prefix! ^ 1]]]");
+      });
+      it('should parse (a)', function() {
+        return expect(str(parse('(a)'))).to.equal("[() a]");
+      });
+      it('should parse Object.prototype.toString', function() {
+        return expect(str(parse('Object.prototype.toString'))).to.equal("[binary! . [binary! . Object prototype] toString]");
+      });
+      it('should parse Object.prototype.toString.call', function() {
+        return expect(str(parse('Object.prototype.toString.call'))).to.equal("[binary! . [binary! . [binary! . Object prototype] toString] call]");
+      });
+      it('should parse x.toString.call', function() {
+        return expect(str(parse('x.toString.call'))).to.equal("[binary! . [binary! . x toString] call]");
+      });
+      it('should parse toString.call', function() {
+        return expect(str(parse('toString.call'))).to.equal("[binary! . toString call]");
+      });
+      it("parse 1,/-h\b|-r\b|-v\b|-b\b/", function() {
+        return expect(str(parse('1,/-h\b|-r\b|-v\b|-b\b/'))).to.equal('1');
+      });
+      it("parse 1+/!1/.test('1')", function() {
+        return expect(str(parse("1+/!1/.test('1')"))).to.equal("[binary! + 1 [binary! concat() [binary! . [regexp! /1/] test] [() '1']]]");
+      });
+      it("parse x=/!1/", function() {
+        return expect(str(parse('x=/!1/'))).to.equal("[binary! = x [regexp! /1/]]");
+      });
+      return it("parse x=/!1/g", function() {
+        return expect(str(parse('x=/!1/g'))).to.equal("[binary! = x [regexp! /1/g]]");
+      });
     });
   });
   describe("parenthesis: ", function() {
@@ -607,7 +479,7 @@ ndescribe("parser basic: ", function() {
       expect(x.type).to.equal(PAREN);
       return expect(str(x)).to.equal("[() a]");
     });
-    return it('should parse (a,b)', function() {
+    return iit('should parse (a,b)', function() {
       var x;
       x = parse('(a,b)');
       expect(x.type).to.equal(PAREN);
