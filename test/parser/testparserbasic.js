@@ -341,59 +341,60 @@ describe("parser basic: ", function() {
     it('should parse +1', function() {
       return expect(parse('+1')).to.equal('+');
     });
-    it('should parse and', function() {
+    return it('should parse and', function() {
       return expect(parse(' and 1')).to.equal('and');
     });
-    describe("compact clause binaryOperator: ", function() {
-      parse = function(text) {
-        var parser, root, x;
-        parser = new Parser();
-        root = function() {
-          parser.matchToken();
-          return parser.binaryOperator(COMPACT_CLAUSE_EXPRESSION);
-        };
-        x = parser.parse(text, root, 0);
-        if (x) {
-          return x.value;
-        } else {
-
-        }
+  });
+  describe("compact clause binaryOperator: ", function() {
+    var parse;
+    parse = function(text) {
+      var parser, root, x;
+      parser = new Parser();
+      root = function() {
+        parser.matchToken();
+        return parser.binaryOperator(COMPACT_CLAUSE_EXPRESSION);
       };
-      it('should parse ==1', function() {
-        return expect(parse('==1')).to.equal('==');
-      });
-      it('should parse +1', function() {
-        return expect(parse('+1')).to.equal('+');
-      });
-      it('should parse + 1', function() {
-        return expect(parse(' + 1')).to.equal(void 0);
-      });
-      return it('should parse and 1', function() {
-        return expect(parse(' and 1')).to.equal(void 0);
-      });
+      x = parser.parse(text, root, 0);
+      if (x) {
+        return x.value;
+      } else {
+
+      }
+    };
+    it('should parse ==1', function() {
+      return expect(parse('==1')).to.equal('==');
     });
-    return describe("space and comment: ", function() {
-      it("parse multiple line space comment 3", function() {
-        var parser, x;
-        parser = new Parser();
-        parser.init('123   // line comment // line comment 2\n/*fds;j*/ something', 0);
-        parser.matchToken();
-        parser.matchToken();
-        x = parser.token();
-        return expect(x.value).to.equal("   // line comment // line comment 2\n");
-      });
-      return it("parse multiple line space comment 4", function() {
-        var parser, x;
-        parser = new Parser();
-        parser.init('123   // line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  something', 0);
-        parser.matchToken();
-        parser.matchToken();
-        x = parser.token();
-        expect(x.value).to.equal("   // line comment \n");
-        parser.matchToken();
-        x = parser.token();
-        return expect(x.value).to.equal("// line comment 2\n");
-      });
+    it('should parse +1', function() {
+      return expect(parse('+1')).to.equal('+');
+    });
+    it('should parse + 1', function() {
+      return expect(parse(' + 1')).to.equal(void 0);
+    });
+    return it('should parse  and 1', function() {
+      return expect(parse(' and 1')).to.equal(void 0);
+    });
+  });
+  describe("space and comment: ", function() {
+    it("parse multiple line space comment 3", function() {
+      var parser, x;
+      parser = new Parser();
+      parser.init('123   // line comment // line comment 2\n/*fds;j*/ something', 0);
+      parser.matchToken();
+      parser.matchToken();
+      x = parser.token();
+      return expect(x.value).to.equal("   // line comment // line comment 2\n");
+    });
+    return it("parse multiple line space comment 4", function() {
+      var parser, x;
+      parser = new Parser();
+      parser.init('123   // line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  something', 0);
+      parser.matchToken();
+      parser.matchToken();
+      x = parser.token();
+      expect(x.value).to.equal("   // line comment \n");
+      parser.matchToken();
+      x = parser.token();
+      return expect(x.value).to.equal("// line comment 2\n");
     });
   });
   describe("compact clause expression:", function() {
@@ -427,7 +428,7 @@ describe("parser basic: ", function() {
       });
     });
     return describe("group2:", function() {
-      it('should parse `.^1', function() {
+      it('should parse `(^1)', function() {
         return expect(str(parse('`(^1)'))).to.equal("[prefix! ` [() [prefix! ^ 1]]]");
       });
       it('should parse (a)', function() {
@@ -479,57 +480,11 @@ describe("parser basic: ", function() {
       expect(x.type).to.equal(PAREN);
       return expect(str(x)).to.equal("[() a]");
     });
-    return iit('should parse (a,b)', function() {
+    return it('should parse (a,b)', function() {
       var x;
       x = parse('(a,b)');
       expect(x.type).to.equal(PAREN);
       return expect(str(x)).to.equal("[() [binary! , a b]]");
-    });
-  });
-  describe("space clause expression:", function() {
-    var parse;
-    parse = function(text) {
-      var parser, x;
-      parser = new Parser();
-      return x = parser.parse(text, matchRule(parser, parser.spaceClauseExpression), 0);
-    };
-    return it('should parse require.extensions[".tj"] = ->', function() {
-      return expect(str(parse('require.extensions[".tj"] = ->'))).to.equal("[binary! concat[] [binary! . require extensions] [[] [[string! \".tj\"]]]]");
-    });
-  });
-  describe("@ as this", function() {
-    var parse;
-    parse = function(text) {
-      var parser, x;
-      parser = new Parser();
-      return x = parser.parse(text, matchRule(parser, parser.operatorExpression), 0);
-    };
-    it('should parse @', function() {
-      return expect(str(parse('@'))).to.equal('@');
-    });
-    it('should parse @a', function() {
-      return expect(str(parse('@a'))).to.equal("[prefix! @ a]");
-    });
-    return it('should parse @ a', function() {
-      return expect(str(parse('@ a'))).to.equal('@');
-    });
-  });
-  ndescribe("definition parameter", function() {
-    var parse;
-    parse = function(text) {
-      var parser, x;
-      parser = new Parser();
-      x = parser.parse(text, matchRule(parser, parser.parameterList), 0);
-      return x;
-    };
-    it('should parse (a)', function() {
-      return expect(str(parse('(a)'))).to.equal("[a]");
-    });
-    it('should parse (a, b)', function() {
-      return expect(str(parse('(a, b)'))).to.equal("[a b]");
-    });
-    return it('should parse (a..., b)', function() {
-      return expect(str(parse('(a..., b)'))).to.equal("[[x... a] b]");
     });
   });
   describe("definition", function() {
@@ -559,16 +514,11 @@ describe("parser basic: ", function() {
       it('should parse @a', function() {
         return expect(str(parse('@a'))).to.equal("[prefix! @ a]");
       });
-      return it('should parse @ a', function() {
+      it('should parse @ a', function() {
         return expect(str(parse('@ a'))).to.equal('[@ a]');
       });
-    });
-    describe("expression clause", function() {
-      it('should parse 1\n2', function() {
+      return it('should parse 1\n2', function() {
         return expect(str(parse('1\n2'))).to.equal('1');
-      });
-      return it('should parse 1 + 2', function() {
-        return expect(str(parse('1 + 2'))).to.equal("[binary! + 1 2]");
       });
     });
     describe("caller expression clause", function() {
@@ -581,17 +531,9 @@ describe("parser basic: ", function() {
         return expect(str(parse('print 1 2'))).to.equal("[print 1 2]");
       });
     });
-    describe("colon clause: ", function() {
-      return it('should parse print: 1 + 2, 3', function() {
-        return expect(str(parse('print: 1 + 2, 3'))).to.equal("[print [binary! + 1 2] 3]");
-      });
-    });
     describe(":: as prototype", function() {
       it('should parse @:: ', function() {
-        return expect(str(parse('@::'))).to.equal("[suffix! :: @]");
-      });
-      it('should parse a:: ', function() {
-        return expect(str(parse('a::'))).to.equal("[suffix! :: a]");
+        return expect(str(parse('@::'))).to.equal("[prefix! @ ::]");
       });
       it('should parse a::b ', function() {
         return expect(str(parse('a::b'))).to.equal("[binary! :: a b]");
@@ -624,8 +566,8 @@ describe("parser basic: ", function() {
       it('should parse ^ print a b', function() {
         return expect(str(parse('^ print a b'))).to.equal("[^ [print a b]]");
       });
-      return it('should parse `.^1', function() {
-        return expect(str(parse('`.^1'))).to.equal("[prefix! ` [prefix! ^ 1]]");
+      return it('should parse `(^1)', function() {
+        return expect(str(parse('`(^1)'))).to.equal("[prefix! ` [() [prefix! ^ 1]]]");
       });
     });
     return describe("unquote-splice expression", function() {
@@ -646,127 +588,30 @@ describe("parser basic: ", function() {
       });
     });
   });
-  describe("hash: ", function() {
-    describe("hash item: ", function() {
-      var parse;
-      parse = function(text) {
-        var parser, x;
-        parser = new Parser();
-        return x = parser.parse(text, matchRule(parser, parser.hashItem), 0);
-      };
-      it('should parse 1:2', function() {
-        return expect(str(parse('1:2'))).to.equal('[jshashitem! 1 2]');
-      });
-      it('should parse a:2', function() {
-        return expect(str(parse('a:2'))).to.equal('[jshashitem! a 2]');
-      });
-      return it('should parse a->2', function() {
-        return expect(str(parse('a->2'))).to.equal('[pyhashitem! a 2]');
-      });
-    });
-    return describe("hash expression: ", function() {
-      var parse;
-      parse = function(text) {
-        var parser, x;
-        parser = new Parser();
-        return x = parser.parse(text, parser.matchToken, 0);
-      };
-      it('should parse {. 1:2 }', function() {
-        return expect(str(parse('{. 1:2 }'))).to.equal('[hash! [jshashitem! 1 2]]');
-      });
-      it('should parse {.1:2; 3:4}', function() {
-        return expect(str(parse('{.1:2; 3:4}'))).to.equal('[hash! [jshashitem! 1 2] [jshashitem! 3 4]]');
-      });
-      it('should parse {.1:2; 3:abs\n    5}', function() {
-        return expect(str(parse('{. 1:2; 3:abs\n    5}'))).to.equal("[hash! [jshashitem! 1 2] [jshashitem! 3 [abs 5]]]");
-      });
-      it('should parse {. 1:2; 3:4;\n 5:6}', function() {
-        return expect(str(parse('{. 1:2; 3:4;\n 5:6}'))).to.equal('[hash! [jshashitem! 1 2] [jshashitem! 3 4] [jshashitem! 5 6]]');
-      });
-      it('should parse {. 1:2; 3:\n 5:6\n}', function() {
-        return expect(str(parse('{. 1:2; 3:\n 5:6\n}'))).to.equal('[hash! [jshashitem! 1 2] [jshashitem! 3 [hash! [jshashitem! 5 6]]]]');
-      });
-      return it('should parse {. 1:2; 3:\n 5:6;a->8\n}', function() {
-        return expect(str(parse('{. 1:2; 3:\n 5:6;a->8\n}'))).to.equal("[hash! [jshashitem! 1 2] [jshashitem! 3 [hash! [jshashitem! 5 6] [pyhashitem! a 8]]]]");
-      });
-    });
-  });
-  describe("line comment block", function() {
+  return describe("line comment block", function() {
     var parse;
     parse = function(text) {
       var parser, x;
       parser = new Parser();
-      return x = parser.parse(text, parser.moduleBody, 0);
+      return x = parser.parse(text, parser.module, 0);
     };
     it('should parse // line comment\n 1', function() {
-      return expect(str(parse('// line comment\n 1'))).to.equal("[moduleBody! 1]");
-    });
-    nit('should parse /// line comment\n 1', function() {
-      return expect(str(parse('/// line comment\n 1'))).to.equal("[begin! [directLineComment! /// line comment] 1]");
+      return expect(str(parse('// line comment\n 1'))).to.equal("1");
     });
     it('should parse // line comment block\n 1 2', function() {
-      return expect(str(parse('// line comment block\n 1 2'))).to.equal("[moduleBody! [1 2]]");
+      return expect(str(parse('// line comment block\n 1 2'))).to.equal("[1 2]");
     });
     it('should parse // line comment block\n 1 2, 3 4', function() {
-      return expect(str(parse('// line comment block\n 1 2, 3 4'))).to.equal("[moduleBody! [begin! [1 2] [3 4]]]");
+      return expect(str(parse('// line comment block\n 1 2, 3 4'))).to.equal("[begin! [1 2] [3 4]]");
     });
     it('should parse // line comment block\n 1 2, 3 4\n 5 6, 7 8', function() {
-      return expect(str(parse('// line comment block\n 1 2; 3 4\n 5 6; 7 8'))).to.equal("[moduleBody! [begin! [1 2] [3 4] [5 6] [7 8]]]");
+      return expect(str(parse('// line comment block\n 1 2; 3 4\n 5 6; 7 8'))).to.equal("[begin! [1 2] [3 4] [5 6] [7 8]]");
     });
     it('should parse // \n 1 2, 3 4\n // \n  5 6, 7 8', function() {
-      return expect(str(parse('// \n 1 2, 3 4\n // \n  5 6, 7 8'))).to.equal("[moduleBody! [begin! [1 2] [3 4] [5 6] [7 8]]]");
+      return expect(str(parse('// \n 1 2, 3 4\n // \n  5 6, 7 8'))).to.equal("[begin! [1 2] [3 4] [5 6] [7 8]]");
     });
     return it('should parse // \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12', function() {
-      return expect(str(parse('// \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12'))).to.equal("[moduleBody! [begin! [1 2] [3 4] [5 6] [7 8] [9 10] [11 12]]]");
-    });
-  });
-  describe("block comment ", function() {
-    var parse;
-    parse = function(text) {
-      var parser, x;
-      parser = new Parser();
-      return x = parser.parse(text, matchRule(parser, parser.line), 0);
-    };
-    it('should parse /. some comment', function() {
-      var x;
-      x = parse('/. some comment');
-      return expect(str(x)).to.equal("undefined");
-    });
-    return it('should parse /. some \n  embedded \n  comment', function() {
-      var x;
-      x = parse('/. some \n  embedded \n  comment');
-      return expect(str(x)).to.equal("undefined");
-    });
-  });
-  return describe("module header", function() {
-    var parse;
-    parse = function(text) {
-      var parser, x;
-      parser = new Parser();
-      return x = parser.parse(text, parser.moduleHeader, 0);
-    };
-    it('should parse taiji language 0.1', function() {
-      var x;
-      x = parse('taiji language 0.1');
-      expect(x.version).to.deep.equal({
-        main: '0',
-        minor: '1'
-      });
-      return expect(x.value).to.equal('taiji language 0.1');
-    });
-    it('taiji language 3.1\n1 should throw', function() {
-      return expect(function() {
-        return parse('taiji language 3.1\n1');
-      }).to["throw"](/taiji 0.1 can not process taiji language/);
-    });
-    return it('should parse taiji language 0.1\n1', function() {
-      var x;
-      x = parse('taiji language 0.1\n header comment \n1');
-      expect(x.version).to.deep.equal({
-        main: "0",
-        minor: "1"
-      });
-      return expect(x.value).to.equal("taiji language 0.1\n header comment \n");
+      return expect(str(parse('// \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12'))).to.equal("[begin! [1 2] [3 4] [5 6] [7 8] [9 10] [11 12]]");
     });
   });
 });

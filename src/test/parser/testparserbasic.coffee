@@ -229,42 +229,42 @@ describe "parser basic: ",  ->
     it 'should parse and', ->
       expect(parse(' and 1')).to.equal 'and'
 
-    describe "compact clause binaryOperator: ",  ->
-      parse = (text) ->
-        parser = new Parser()
-        root = ->
-          parser.matchToken()
-          parser.binaryOperator(COMPACT_CLAUSE_EXPRESSION)
-        x = parser.parse(text, root, 0)
-        if x then x.value
-        else return
-      it 'should parse ==1', ->
-        expect(parse('==1')).to.equal '=='
-      it 'should parse +1', ->
-        expect(parse('+1')).to.equal '+'
-      it 'should parse + 1', ->
-        expect(parse(' + 1')).to.equal undefined
-      it 'should parse and 1', ->
-        expect(parse(' and 1')).to.equal undefined
+  describe "compact clause binaryOperator: ",  ->
+    parse = (text) ->
+      parser = new Parser()
+      root = ->
+        parser.matchToken()
+        parser.binaryOperator(COMPACT_CLAUSE_EXPRESSION)
+      x = parser.parse(text, root, 0)
+      if x then x.value
+      else return
+    it 'should parse ==1', ->
+      expect(parse('==1')).to.equal '=='
+    it 'should parse +1', ->
+      expect(parse('+1')).to.equal '+'
+    it 'should parse + 1', ->
+      expect(parse(' + 1')).to.equal undefined
+    it 'should parse  and 1', ->
+      expect(parse(' and 1')).to.equal undefined
 
-    describe "space and comment: ",  ->
-      it "parse multiple line space comment 3", ->
-        parser = new Parser()
-        parser.init('123   // line comment // line comment 2\n/*fds;j*/ something', 0)
-        parser.matchToken()
-        parser.matchToken()
-        x = parser.token()
-        expect(x.value).to.equal "   // line comment // line comment 2\n"
-      it "parse multiple line space comment 4", ->
-        parser = new Parser()
-        parser.init('123   // line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  something', 0)
-        parser.matchToken()
-        parser.matchToken()
-        x = parser.token()
-        expect(x.value).to.equal "   // line comment \n"
-        parser.matchToken()
-        x = parser.token()
-        expect(x.value).to.equal "// line comment 2\n"
+  describe "space and comment: ",  ->
+    it "parse multiple line space comment 3", ->
+      parser = new Parser()
+      parser.init('123   // line comment // line comment 2\n/*fds;j*/ something', 0)
+      parser.matchToken()
+      parser.matchToken()
+      x = parser.token()
+      expect(x.value).to.equal "   // line comment // line comment 2\n"
+    it "parse multiple line space comment 4", ->
+      parser = new Parser()
+      parser.init('123   // line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  something', 0)
+      parser.matchToken()
+      parser.matchToken()
+      x = parser.token()
+      expect(x.value).to.equal "   // line comment \n"
+      parser.matchToken()
+      x = parser.token()
+      expect(x.value).to.equal "// line comment 2\n"
 
   describe "compact clause expression:", ->
     parse = (text) ->
@@ -287,7 +287,7 @@ describe "parser basic: ",  ->
       it 'should parse ^1', ->
         expect(str parse('^1')).to.equal "[prefix! ^ 1]"
     describe "group2:", ->
-      it 'should parse `.^1', ->
+      it 'should parse `(^1)', ->
         expect(str parse('`(^1)')).to.equal "[prefix! ` [() [prefix! ^ 1]]]"
       # gotcha: prefixOperator['toString'] == Object.toString function!!!
       it 'should parse (a)', ->
@@ -347,32 +347,20 @@ describe "parser basic: ",  ->
         expect(str parse('@a')).to.equal "[prefix! @ a]"
       it 'should parse @ a', ->
         expect(str parse('@ a')).to.equal '[@ a]'
-
-    describe "expression clause", ->
       it 'should parse 1\n2', ->
         expect(str parse('1\n2')).to.equal '1'
-      it 'should parse 1 + 2', ->
-        expect(str parse('1 + 2')).to.equal "[binary! + 1 2]"
 
     describe "caller expression clause", ->
       it 'should parse print 1', ->
         expect(str parse('print 1\n2')).to.equal "[print 1]"
-#      it 'should parse  if! x==0 0 even(x-1)\n even = (x) -> if! x==0 1 odd(x-1) \nthen odd(3)', ->
-#        expect(str parse('if! x==0 0 even(x-1)\n even = (x) -> if! x==0 1 odd(x-1) \nthen odd(3)')).to.equal "undefined"
 
     describe "sequence clause", ->
       it 'should parse print 1 2', ->
         expect(str parse('print 1 2')).to.equal "[print 1 2]"
 
-    describe "colon clause: ", ->
-      it 'should parse print: 1 + 2, 3', ->
-        expect(str parse('print: 1 + 2, 3')).to.equal "[print [binary! + 1 2] 3]"
-
     describe ":: as prototype", ->
       it 'should parse @:: ', ->
-        expect(str parse('@::')).to.equal "[suffix! :: @]"
-      it 'should parse a:: ', ->
-        expect(str parse('a::')).to.equal "[suffix! :: a]"
+        expect(str parse('@::')).to.equal "[prefix! @ ::]"
       it 'should parse a::b ', ->
         expect(str parse('a::b')).to.equal "[binary! :: a b]"
       it 'should parse ::a', ->
@@ -395,8 +383,8 @@ describe "parser basic: ",  ->
         expect(str parse('^ a.b')).to.equal "[^ [binary! . a b]]"
       it 'should parse ^ print a b', ->
         expect(str parse('^ print a b')).to.equal "[^ [print a b]]"
-      it 'should parse `.^1', ->
-        expect(str parse('`.^1')).to.equal  "[prefix! ` [prefix! ^ 1]]"
+      it 'should parse `(^1)', ->
+        expect(str parse('`(^1)')).to.equal  "[prefix! ` [() [prefix! ^ 1]]]"
 
     describe "unquote-splice expression", ->
       it 'should parse ^& a.b', ->
@@ -410,76 +398,21 @@ describe "parser basic: ",  ->
       it 'should parse ^print a b', ->
         expect(str parse('^print a b')).to.equal "[[prefix! ^ print] a b]"
 
-  describe "hash: ",  ->
-    describe "hash item: ",  ->
-      parse = (text) ->
-        parser = new Parser()
-        x = parser.parse(text, matchRule(parser, parser.hashItem), 0)
-      it 'should parse 1:2', ->
-        expect(str parse('1:2')).to.equal '[jshashitem! 1 2]'
-      it 'should parse a:2', ->
-        expect(str parse('a:2')).to.equal '[jshashitem! a 2]'
-      it 'should parse a->2', ->
-        expect(str parse('a->2')).to.equal '[pyhashitem! a 2]'
-
-    describe "hash expression: ",  ->
-      parse = (text) ->
-        parser = new Parser()
-        x = parser.parse(text, parser.matchToken, 0)
-      it 'should parse {. 1:2 }', ->
-        expect(str parse('{. 1:2 }')).to.equal '[hash! [jshashitem! 1 2]]'
-      it 'should parse {.1:2; 3:4}', ->
-        expect(str parse('{.1:2; 3:4}')).to.equal '[hash! [jshashitem! 1 2] [jshashitem! 3 4]]'
-      it 'should parse {.1:2; 3:abs\n    5}', ->
-        expect(str parse('{. 1:2; 3:abs\n    5}')).to.equal "[hash! [jshashitem! 1 2] [jshashitem! 3 [abs 5]]]"
-      it 'should parse {. 1:2; 3:4;\n 5:6}', ->
-        expect(str parse('{. 1:2; 3:4;\n 5:6}')).to.equal '[hash! [jshashitem! 1 2] [jshashitem! 3 4] [jshashitem! 5 6]]'
-      it 'should parse {. 1:2; 3:\n 5:6\n}', ->
-        expect(str parse('{. 1:2; 3:\n 5:6\n}')).to.equal '[hash! [jshashitem! 1 2] [jshashitem! 3 [hash! [jshashitem! 5 6]]]]'
-      it 'should parse {. 1:2; 3:\n 5:6;a->8\n}', ->
-        expect(str parse('{. 1:2; 3:\n 5:6;a->8\n}')).to.equal "[hash! [jshashitem! 1 2] [jshashitem! 3 [hash! [jshashitem! 5 6] [pyhashitem! a 8]]]]"
-
   describe  "line comment block",  ->
     parse = (text) ->
       parser = new Parser()
-      x = parser.parse(text, parser.moduleBody, 0)
+      x = parser.parse(text, parser.module, 0)
     it 'should parse // line comment\n 1', ->
-      expect(str parse('// line comment\n 1')).to.equal "[moduleBody! 1]"
-    nit 'should parse /// line comment\n 1', ->
-      expect(str parse('/// line comment\n 1')).to.equal "[begin! [directLineComment! /// line comment] 1]"
+      expect(str parse('// line comment\n 1')).to.equal "1"
     it 'should parse // line comment block\n 1 2', ->
-      expect(str parse('// line comment block\n 1 2')).to.equal "[moduleBody! [1 2]]"
+      expect(str parse('// line comment block\n 1 2')).to.equal "[1 2]"
     it 'should parse // line comment block\n 1 2, 3 4', ->
-      expect(str parse('// line comment block\n 1 2, 3 4')).to.equal "[moduleBody! [begin! [1 2] [3 4]]]"
+      expect(str parse('// line comment block\n 1 2, 3 4')).to.equal "[begin! [1 2] [3 4]]"
     it 'should parse // line comment block\n 1 2, 3 4\n 5 6, 7 8', ->
-      expect(str parse('// line comment block\n 1 2; 3 4\n 5 6; 7 8')).to.equal "[moduleBody! [begin! [1 2] [3 4] [5 6] [7 8]]]"
+      expect(str parse('// line comment block\n 1 2; 3 4\n 5 6; 7 8')).to.equal "[begin! [1 2] [3 4] [5 6] [7 8]]"
     it 'should parse // \n 1 2, 3 4\n // \n  5 6, 7 8', ->
-      expect(str parse('// \n 1 2, 3 4\n // \n  5 6, 7 8')).to.equal "[moduleBody! [begin! [1 2] [3 4] [5 6] [7 8]]]"
+      expect(str parse('// \n 1 2, 3 4\n // \n  5 6, 7 8')).to.equal "[begin! [1 2] [3 4] [5 6] [7 8]]"
     it 'should parse // \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12', ->
-      expect(str parse('// \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12')).to.equal "[moduleBody! [begin! [1 2] [3 4] [5 6] [7 8] [9 10] [11 12]]]"
+      expect(str parse('// \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12')).to.equal "[begin! [1 2] [3 4] [5 6] [7 8] [9 10] [11 12]]"
 
-  describe  "block comment ",  ->
-    parse = (text) ->
-      parser = new Parser()
-      x = parser.parse(text, matchRule(parser, parser.line), 0)
-    it 'should parse /. some comment', ->
-      x = parse('/. some comment')
-      expect(str x).to.equal "undefined"
-    it 'should parse /. some \n  embedded \n  comment', ->
-      x = parse('/. some \n  embedded \n  comment')
-      expect(str x).to.equal "undefined"
 
-  describe  "module header",  ->
-    parse = (text) ->
-      parser = new Parser()
-      x = parser.parse(text, parser.moduleHeader, 0)
-    it 'should parse taiji language 0.1', ->
-      x = parse('taiji language 0.1')
-      expect(x.version).to.deep.equal {main: '0', minor:'1'}
-      expect(x.value).to.equal 'taiji language 0.1'
-    it 'taiji language 3.1\n1 should throw', ->
-      expect(-> parse('taiji language 3.1\n1')).to.throw /taiji 0.1 can not process taiji language/
-    it 'should parse taiji language 0.1\n1', ->
-      x = parse('taiji language 0.1\n header comment \n1')
-      expect(x.version).to.deep.equal {main: "0", minor:"1"}
-      expect(x.value).to.equal "taiji language 0.1\n header comment \n"

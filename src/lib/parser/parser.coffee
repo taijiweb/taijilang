@@ -74,7 +74,10 @@ exports.Parser = ->
 
   @token = -> token
   nullToken = -> {type:tokenType=NULL, value:'', cursor:cursor, stopCursor:cursor, line:lineno, column:cursor-lineStart}
-  setToken = (tkn) -> token = tkn; tokenType = token.type; token
+  setToken = (tkn) ->
+    token = tkn; tokenType = token.type
+    if tokenType==NEWLINE or tokenType==INDENT or tokenType==UNDENT  then atStatementHead = true;
+    token
   skipTokenType = (type) -> if tokenType==INDENT then nextToken()
   skipSPACE = -> (if tokenType==SPACE then nextToken()); token
   nextNonspaceToken = -> nextToken(); skipSPACE(); token
@@ -106,8 +109,10 @@ exports.Parser = ->
     while char==first then char = text[++cursor]
     value = text.slice(cur, cursor)
     if value==':' then tokenType = PUNCTUATION else tokenType = SYMBOL
-    token.next = {type:tokenType, value:value, atom:cursor-cur==2
+    token.next = token = {type:tokenType, value:value, atom:cursor-cur==2
     cursor:cur, stopCursor:cursor, line: lineno, column:column}
+    if tokenType==SYMBOL then token.atom = true
+    return token
 
   # token started with ' ' and '\t'
   tokenFnMap[' '] = tokenFnMap['\t'] = ->
@@ -373,14 +378,15 @@ exports.Parser = ->
     if tokenType==UNDENT then parseError 'unexpected undent while parsing parenethis "(...)"'
     ind = indent = lexIndent
     if tokenType==SPACE or tokenType==NEWLINE or tokenType==INDENT then nextToken()
-    if token.value==')' then exp = undefined
+    if token.value==')' then exp = ['()']
     else
       exp = parser.operatorExpression()
       if tokenType==UNDENT
         if token.indent<ind then parseError 'expect ) indent equal to or more than ('
         else nextToken()
       else skipSPACE(); if token.value!=')' then parseError 'expect )'
-    return prev.next = token = extend ['()', exp], {type:tokenType=PAREN, cursor:cur, stopCursor:cursor
+      exp = ['()', exp]
+    return prev.next = token = extend exp, {type:tokenType=PAREN, cursor:cur, stopCursor:cursor
     line:line, column:column, indent:lexIndent, atom:true, parameters:true}
 
   tokenFnMap['['] = tokenOnLeftBracketChar = ->
@@ -610,7 +616,7 @@ exports.Parser = ->
         ['try', test, catchVar, begin(catch_)]
       else ['try', begin(test), catchVar, begin(catch_), begin(final)]
 
-  @sequenceClause = ->
+  @sequence = ->
     clause = []
     while 1
       skipSPACE(); tkn = token
@@ -620,6 +626,8 @@ exports.Parser = ->
       else break
     if not clause.length then return
     clause
+
+  makeClause = (items) -> if items.length==1 then items[0] else items
 
   leadWordClauseMap = {}
 
@@ -655,7 +663,7 @@ exports.Parser = ->
 
   @clause = ->
     trace("clause: "+nextPiece())
-    skipSPACE(); start = token
+    skipSPACE()
     switch tokenType
       when KEYWORD
         isStatementHead = atStatementHead
@@ -663,51 +671,44 @@ exports.Parser = ->
         return keyword2statement[token.value](isStatementHead)
       when SYMBOL
         if (fn=symbol2clause[token.value]) and (result = fn()) then return result
+      when PUNCTUATION then error 'unexpected '+token.value
       when NEWLINE, UNDENT, RIGHT_DELIMITER, CONJUNCTION, EOI then return
 
-    if clause = parser.sequenceClause() then clause.value.unshift head
-    else clause = head
+    items = parser.sequence()
 
     if (op=binaryOperatorDict[token.value]) and op.definition
       definition = definitionSymbolBody()
-      if clause.parameters
-        definition.value[1] = clause; clause = definition; definition.start = start
-      else if (clauseValue=clause.value) instanceof Array and clauseValue.length>1
-          params = clauseValue[clauseValue.length-1]
-          if params.parameters
-            clauseValue.pop()
-            definition[1] = params
-            definition.start = params.start
-          clauseValue.push definition
-      else clause = {value:[clause, definition]}
-      return clause
+      if not items then return definition
+      last = items[(itemsLength=items.length)-1].parameters
+      if last.parameter
+        definition[1] = last
+        if itemsLength==1 then return definition
+        items[clauseLength-1] = defintion
+        return makeClause(items)
 
-    if (value=token.value)==',' then nextToken(); clause
+    if (value=token.value)==',' then nextToken(); return makeClause(items)
 
     else if value==':'
       nextToken()
       if tokenType==INDENT then clauses = parser.block()
       else clauses = parser.clauses()
       if clauses.length==0 then parseError 'expected arguments list after ":"'
-      # notice the different between only indent
-      clauses.unshift clause
-      return clauses
+      clauses.unshift makeClause(items)
+      clauses
 
-    else if token.value=='#' and nextToken()
-      if tokenType==SPACE then clauses = parser.clauses(); return ['#', clause, clauses]
-      else if tokenType==INDENT then clauses = parser.block(); return ['#', clause, clauses]
+    else if value=='#' and nextToken()
+      if tokenType==INDENT then clauses = parser.block(); return ['#', makeClause(items), clauses]
+      else clauses = parser.clauses(); return ['#', makeClause(items), clauses]
 
     else if tokenType==INDENT
       tkn = token; nextToken()
-      if tokenType==CONJUNCTION then setToken(tkn); atStatementHead = true; return clause
+      if tokenType==CONJUNCTION then setToken(tkn); return items
       else
-        token = tkn; tokenType = token.type;  atStatementHead = true
-        # head clause with indented block
-        blk = parser.block()
-        if (clauseValue=clause.value) instanceof Array then clauseValue.push.apply clauseValue, blk; clause.stop = token; return clause
-        else blk.unshift clause; return {value:blk}
+        setToken(tkn); blk = parser.block()
+        items.push.apply items, blk
+        return items
 
-    else clause
+    else makeClause(items)
 
   @clauses = ->
     result = []; tkn = token
