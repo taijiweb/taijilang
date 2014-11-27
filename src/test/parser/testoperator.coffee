@@ -1,4 +1,4 @@
-{expect, ndescribe, iit, nit, matchRule} = require '../util'
+{expect, ndescribe, idescribe, iit, nit, matchRule} = require '../util'
 
 lib = '../../lib/'
 {constant, isArray, str} = require lib+'utils'
@@ -7,7 +7,7 @@ lib = '../../lib/'
 {IDENTIFIER, NUMBER, NEWLINE, INDENT, UNDENT, HALF_DENT, PAREN, BLOCK_COMMENT, EOI, SPACE
 PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION} = constant
 
-ndescribe "parse operator expression: ", ->
+describe "parse operator expression: ", ->
   parse = (text) ->
     parser = new Parser()
     x = parser.parse(text, matchRule(parser, parser.operatorExpression), 0)
@@ -17,9 +17,9 @@ ndescribe "parse operator expression: ", ->
     it "parse a", ->
       expect(str parse('a')).to.deep.equal 'a'
     it "parse 'a'", ->
-      expect(str parse("'a'")).to.deep.equal "\"a\""
+      expect(str parse("'a'")).to.deep.equal "'a'"
     it 'parse "a"', ->
-      expect(str parse('"a"')).to.deep.equal "[string! \"a\"]"
+      expect(str parse('"a"')).to.deep.equal "\"a\""
 
   describe "prefix: ",  ->
     it 'should parse +1', ->
@@ -39,30 +39,30 @@ ndescribe "parse operator expression: ", ->
     it "parse 1+2", ->
       expect(str parse('1+2')).to.deep.equal '[binary! + 1 2]'
 
-    it "parse 1+.!2", ->
-      expect(str parse('1+.!2')).to.deep.equal "[binary! + 1 [prefix! ! 2]]"
+    it "parse 1+(!2)", ->
+      expect(str parse('1+(!2)')).to.deep.equal "[binary! + 1 [() [prefix! ! 2]]]"
 
     it "parse 1 + 2", ->
       expect(str parse('1 + 2')).to.deep.equal '[binary! + 1 2]'
 
     it "parse 1+ 2", ->
-      expect(-> parse('1+ 2')).to.throw /unexpected spaces or new lines after binary operator/
+      expect(str parse('1+ 2')).to.equal '[binary! + 1 2]'
 
     it "parse 1+ 2*3", ->
-      expect(-> parse('1+ 2*3')).to.throw /unexpected spaces or new lines after binary operator/
+      expect(str parse('1+ 2*3')).to.equal '[binary! + 1 [binary! * 2 3]]'
 
     it "parse (1, 2)", ->
       expect(str parse('(1, 2)')).to.deep.equal "[() [binary! , 1 2]]"
     it "parse (1, 2+3)", ->
       expect(str parse('(1, 2+3)')).to.deep.equal "[() [binary! , 1 [binary! + 2 3]]]"
     it "parse (1,2 + 3)", ->
-      expect(str parse('(1,2 + 3)')).to.deep.equal "[() [binary! + [binary! , 1 2] 3]]"
+      expect(str parse('(1,2 + 3)')).to.deep.equal "[() [binary! , 1 [binary! + 2 3]]]"
 
     it "parse (1 +2)", ->
-      expect(-> parse('(1 +2)')).to.throw /should have spaces at its right side/
+      expect(str parse('(1 +2)')).to.equal '[() [binary! + 1 2]]'
 
     it "parse 1+2 * 3", ->
-      expect(str parse('1+2 * 3')).to.deep.equal '[binary! * [binary! + 1 2] 3]'
+      expect(str parse('1+2 * 3')).to.deep.equal "[binary! + 1 [binary! * 2 3]]"
 
     it "parse 1 + 2*3", ->
       expect(str parse('1 + 2*3')).to.deep.equal '[binary! + 1 [binary! * 2 3]]'
@@ -80,10 +80,13 @@ ndescribe "parse operator expression: ", ->
       expect(str parse('1*2+3+4*5+6')).to.deep.equal "[binary! + [binary! + [binary! + [binary! * 1 2] 3] [binary! * 4 5]] 6]"
 
     it "parse 1 + 2+3", ->
-      expect(str parse('1 + 2+3')).to.deep.equal "[binary! + 1 [binary! + 2 3]]"
+      expect(str parse('1 + 2+3')).to.deep.equal "[binary! + [binary! + 1 2] 3]"
 
     it "parse 1+2*3", ->
       expect(str parse('1+2*3')).to.deep.equal '[binary! + 1 [binary! * 2 3]]'
+
+    it "parse 1/2", ->
+      expect(str parse('1/2')).to.deep.equal "[binary! / 1 2]"
 
     it "parse 1+2/3", ->
       expect(str parse('1+2/3')).to.deep.equal '[binary! + 1 [binary! / 2 3]]'
@@ -102,37 +105,37 @@ ndescribe "parse operator expression: ", ->
 
   describe "multi lines expression: ", ->
     it "parse 1+2\n*3", ->
-      expect(str parse('1+2\n*3')).to.deep.equal '[binary! * [binary! + 1 2] 3]'
+      expect(str parse('1+2\n*3')).to.deep.equal "[binary! + 1 [binary! * 2 3]]"
 
     it "parse 1+2\n* 3", ->
-      expect(str parse('1+2\n* 3')).to.deep.equal '[binary! * [binary! + 1 2] 3]'
+      expect(str parse('1+2\n* 3')).to.deep.equal "[binary! + 1 [binary! * 2 3]]"
 
     it "parse 1+2\n+4\n*3", ->
-      expect(str parse('1+2\n+4\n*3')).to.deep.equal '[binary! * [binary! + [binary! + 1 2] 4] 3]'
+      expect(str parse('1+2\n+4\n*3')).to.deep.equal "[binary! + [binary! + 1 2] [binary! * 4 3]]"
 
     it "parse 1+2\n+4*3", ->
-      expect(str parse('1+2\n+4\n*3')).to.deep.equal '[binary! * [binary! + [binary! + 1 2] 4] 3]'
+      expect(str parse('1+2\n+4\n*3')).to.deep.equal "[binary! + [binary! + 1 2] [binary! * 4 3]]"
 
     it "parse 1+2\n+4\n*3\n/6", ->
-      expect(str parse('1+2\n+4\n*3\n/6')).to.deep.equal '[binary! / [binary! * [binary! + [binary! + 1 2] 4] 3] 6]'
+      expect(str parse('1+2\n+4\n*3\n/6')).to.deep.equal "[binary! + [binary! + 1 2] [binary! / [binary! * 4 3] 6]]"
 
     it "parse 1+2\n+4\n*3\n&6", ->
-      expect(str parse('1+2\n+4\n*3\n&6')).to.deep.equal "[binary! & [binary! * [binary! + [binary! + 1 2] 4] 3] 6]"
+      expect(str parse('1+2\n+4\n*3\n&6')).to.deep.equal "[binary! & [binary! + [binary! + 1 2] [binary! * 4 3]] 6]"
 
     it "parse 1+2\n+4\n*.!3\n&6+8*(9-3)", ->
-      expect(str parse('1+2\n+4\n*.!3\n&6+8*(9-3)')).to.deep.equal "[binary! & [binary! * [binary! + [binary! + 1 2] 4] [prefix! ! 3]] [binary! + 6 [binary! * 8 [() [binary! - 9 3]]]]]"
+      expect(str parse('1+2\n+4\n*(!3)\n&6+8*(9-3)')).to.deep.equal "[binary! & [binary! + [binary! + 1 2] [binary! * 4 [() [prefix! ! 3]]]] [binary! + 6 [binary! * 8 [() [binary! - 9 3]]]]]"
 
     it "parse 1+2\n+4\n/5\n*3==7", ->
-      expect(str parse('1+2\n+4\n/5\n*3==7')).to.deep.equal "[binary! * [binary! / [binary! + [binary! + 1 2] 4] 5] [binary! == 3 7]]"
+      expect(str parse('1+2\n+4\n/5\n*3==7')).to.deep.equal "[binary! == [binary! + [binary! + 1 2] [binary! * [binary! / 4 5] 3]] 7]"
 
     it "parse 1+2\n+4\n*5\n*3==7", ->
-      expect(str parse('1+2\n+4\n*5\n*3==7')).to.deep.equal "[binary! * [binary! * [binary! + [binary! + 1 2] 4] 5] [binary! == 3 7]]"
+      expect(str parse('1+2\n+4\n*5\n*3==7')).to.deep.equal "[binary! == [binary! + [binary! + 1 2] [binary! * [binary! * 4 5] 3]] 7]"
 
     it "parse 1/\n2", ->
-      expect(-> parse('1/\n2')).to.throw /unexpected new line/
+      expect( str parse('1/\n2')).to.equal '[binary! / 1 2]'
 
     it "parse 1+2\n+4/\n*5\n*3==7", ->
-      expect(-> parse('1+2\n+4/\n*5\n*3==7')).to.throw /unexpected new line/
+      expect(str parse('1+2\n+4/\n*5\n*3==7')).to.equal '[binary! + [binary! + 1 2] 4]'
 
   describe "indent expression: ", ->
     it "parse 1\n *3", ->
@@ -145,16 +148,16 @@ ndescribe "parse operator expression: ", ->
       expect(str parse('1\n *3\n/ 5')).to.deep.equal "[binary! / [binary! * 1 3] 5]"
 
     it "parse 1+2\n* 3+6", ->
-      expect(str parse('1+2\n* 3+6')).to.deep.equal '[binary! * [binary! + 1 2] [binary! + 3 6]]'
+      expect(str parse('1+2\n* 3+6')).to.deep.equal "[binary! + [binary! + 1 [binary! * 2 3]] 6]"
 
     it "parse 1+2\n * 3", ->
-      expect(str parse('1+2\n * 3')).to.deep.equal "[binary! * [binary! + 1 2] 3]"
+      expect(str parse('1+2\n * 3')).to.deep.equal "[binary! + 1 [binary! * 2 3]]"
 
     it "parse 1+2\n * 3+6", ->
-      expect(str parse('1+2\n * 3+6')).to.deep.equal "[binary! * [binary! + 1 2] [binary! + 3 6]]"
+      expect(str parse('1+2\n * 3+6')).to.deep.equal "[binary! + [binary! + 1 [binary! * 2 3]] 6]"
 
     it "parse 1+2\n * 3+6\n + 5+8", ->
-      expect(str parse('1+2\n * 3+6\n + 5+8')).to.deep.equal "[binary! * [binary! + 1 2] [binary! + [binary! + 3 6] [binary! + 5 8]]]"
+      expect(str parse('1+2\n * 3+6\n + 5+8')).to.deep.equal "[binary! + [binary! + [binary! + [binary! + 1 [binary! * 2 3]] 6] 5] 8]"
 
   describe "attribute!, index!: ", ->
     it "parse a.b", ->

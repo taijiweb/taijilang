@@ -247,8 +247,7 @@ exports.Parser = ->
     if firstIdentifierCharSet[char]
       tkn = tokenOnIdentifierChar()
       tkn.type = tokenType = IDENTIFIER
-      tkn.escaped = true; tkn.cursor = cur
-      tkn.atom = true
+      tkn.escaped = true; tkn.cursor = cur; tkn.atom = true
       return token.next = tkn
     else if firstSymbolCharset[char]
       tkn = tokenOnSymbolChar()
@@ -265,20 +264,18 @@ exports.Parser = ->
         # do not escape '''...'''
         char = text[++cursor]
         return token.next = {type:tokenType=SYMBOL, value:'\\', cursor:cur, stopCursor:cursor
-        line:lineno, column:cur-lineStart, indent:lexIndent
-        next:tkn}
+        line:lineno, column:cur-lineStart, indent:lexIndent, next:tkn}
       else
         for c in text[cur+2...tkn.stopCursor]
           if c=='\n' or c=='\r' then parseError 'unexpected new line characters in escaped string'
         tkn.escaped = true; tkn.cursor = cur; tkn.atom = true
         return token.next = tkn
-    # else if char=='"' # don't permit escape interpolated string
     else
       while char=text[++cursor]=='\\' then true
       return token.next = {type:tokenType=SYMBOL, value:text[cur...cursor], cursor:cur, stopCursor:cursor
       line:lineno, column:cur-lineStart}
 
-  tokenFnMap['/'] = tokenOnForwardSlashChar = ->
+  tokenFnMap['/'] = ->
     cur = cursor; column = cursor-lineStart; char = text[++cursor]; line = lineno; indent = lexIndent
     # // start a line comment
     if char=='/' # // leading line comment
@@ -291,18 +288,12 @@ exports.Parser = ->
         else
           newLineAndEmptyLines()
           token.next = {type:tokenType, value: text[cur...cursor], cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
-      else
-        token.next = {type:tokenType=EOI, value: text[cur...cursor], cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
+      else token.next = {type:tokenType=EOI, value: text[cur...cursor], cursor:cur, stopCursor:cursor, line:line, column:column, indent:lexIndent}
     # /! start a regexp
     else if char=='!'
-      cur = cursor; cursor += 2; char = text[cursor]; column = cursor-lineStart
-      leftRegexp()
+      cur = cursor; cursor += 2; char = text[cursor]; column = cursor-lineStart; leftRegexp()
       return token.next = {type:tokenType=REGEXP, value:['regexp!', '/'+text[cur+1...cursor]], atom:true, cursor:cur, stopCursor:cursor, line:lineno, column: column}
-    else
-      # a symbol starts with "/"
-      char = text[++cursor]; prev = token; tokenOnSymbolChar(); value = "/"+token.value
-      token = {type:tokenType=SYMBOL, value:value, cursor:cur, stopCursor:cursor, line:line, column:column}
-      return prev.next = token
+    else prev = token; char = text[--cursor];  return prev.next = token = tokenOnSymbolChar()
 
   newLineAndEmptyLines = ->
     while 1
@@ -431,31 +422,31 @@ exports.Parser = ->
 
   for c in ')]}' then tokenFnMap[c] = tokenOnRightDelimiterChar
 
-  # prefix operator don't need to be compared to current global priority
   @prefixOperator = (mode) ->
-    # hasOwnProperty.call is necessary in order to avoid error while builtin attribute of object is defined prefix operator
     tokenText = token.value
-    if not hasOwnProperty.call(prefixOperatorDict, tokenText) or  not (op=prefixOperatorDict[tokenText]) then return
-    if mode==COMPACT_CLAUSE_EXPRESSION and op.definition then return
-    opToken = token; nextToken()
+    if not hasOwnProperty.call(prefixOperatorDict, tokenText) then return
+    op = prefixOperatorDict[tokenText]
+    if op.definition and mode==COMPACT_CLAUSE_EXPRESSION then return
+    opToken = token; nextNonspaceToken()
     if tokenType==INDENT or tokenType==NEWLINE or tokenType==UNDENT
       if mode==COMPACT_CLAUSE_EXPRESSION then token = opToken; tokenType = opToken.type; return
       else nextToken()
     else if tokenType==RIGHT_DELIMITER
       if mode!=COMPACT_CLAUSE_EXPRESSION then error 'unexpected '+token.value
       else opToken.atom = true; return opToken
-    {value:opToken.value, start:opToken, stop:token, priority:op.priority}
+    {value:opToken.value, priority:op.priority}
 
   @binaryOperator = (mode, dent) ->
     start = token
     switch tokenType
       when PAREN then return  {value:'concat()', priority: 200, start:token}
       when BRACKET then return {value:'concat[]', priority: 200, start:token}
-      when SPACE
-        if mode== COMPACT_CLAUSE_EXPRESSION then return
-        else
-          nextToken()
-          if tokenType==INDENT or tokenType==NEWLINE then nextToken()
+    if tokenType==SPACE
+      if mode== COMPACT_CLAUSE_EXPRESSION then return
+      else
+        nextToken()
+        if tokenType==INDENT or tokenType==NEWLINE then nextToken()
+    switch tokenType
       when INDENT then (if mode== COMPACT_CLAUSE_EXPRESSION then return else nextToken())
       when NEWLINE then (if mode== COMPACT_CLAUSE_EXPRESSION then return else nextToken())
       when UNDENT
@@ -463,54 +454,43 @@ exports.Parser = ->
         else if indent<dent then parseError 'wrong indent' else nextToken()
       when PUNCTUATION
         if mode== COMPACT_CLAUSE_EXPRESSION then return
-        else if (tokenValue=token.value)==',' then nextToken(); return {value:tokenValue, priority:5}
+        else if (tokenValue=token.value)==',' then nextNonspaceToken(); return {value:tokenValue, priority:5}
         else return
     if tokenType!=IDENTIFIER and tokenType!=SYMBOL then return
     tokenValue = token.value
     if not hasOwnProperty.call(binaryOperatorDict, tokenValue) then setToken(start);  return
     op = binaryOperatorDict[tokenValue]
-    nextToken()
+    if mode!= COMPACT_CLAUSE_EXPRESSION then nextNonspaceToken(); skipSomeType(NEWLINE, INDENT, UNDENT)
     {value:tokenValue, priority:op.priority, rightAssoc:op.rightAssoc, assign:op.assign}
 
   @prefixExpression = (mode, priority) ->
-    start = token
     # current global prority doesn't affect prefixOperator
+    start = token
     if op=parser.prefixOperator(mode)
       pri = if priority>op.priority then priority else op.priority
       x = parser.expression(mode, pri, true)
       if x
         return extend ['prefix!', op.value, x], {
-        expressionType:PREFIX, priority:op.priority, rightAssoc:op.rightAssoc, start:op.start, stop:(op.stop or op.start)}
-      else token = start; tokenType = token.type;  return
+        expressionType:PREFIX, priority:op.priority, rightAssoc:op.rightAssoc}
+      else setToken(start); return
 
   @expression = expression = (mode, priority, leftAssoc) ->
-    # add non digit prefix is necessary, else array will become sparse array
-    start = token
     if not x = parser.prefixExpression(mode, priority)
       if not token.atom then return
       else x = token; x.priority = 1000; nextToken()
-    # the priority and association of suffix operator does not affect the following expression
-    while 1
-      tkn2 = token
+    while tkn2 = token
       if (op=parser.binaryOperator(mode, x))
         if (opPri=op.priority)>priority  or (opPri==priority and not leftAssoc)
           # should assure that a right operand is here while parsing binary operator
-          y = expression(mode, opPri, not op.rightAssoc)
-          if y
+          if y = expression(mode, opPri, not op.rightAssoc)
             x = extend ['binary!', op.value, x, y], {
-            expressionType:BINARY, priority:op.priority, rightAssoc:op.rightAssoc
-            start:op.start, stop:(op.stop or op.start)}
-          else token = tkn2; tokenType = token.type;  break
-        else token = tkn2; tokenType = token.type;  break
+            expressionType:BINARY, priority:op.priority, rightAssoc:op.rightAssoc}
+            continue
+        setToken(tkn2);  break
       else break
     x
 
-  # the priority of operator vary from 0 to 300,
-  # if there is no space between them, then add 600, if there is spaces, then add 300.
-  # if meet newline, add 0.
-  @operatorExpression = operatorExpression = -> parser.expression(OPERATOR_EXPRESSION, 0, true)
-
-  # compact expression as clause item.
+  @operatorExpression = -> parser.expression(OPERATOR_EXPRESSION, 0, true)
   @compactClauseExpression = -> parser.expression(COMPACT_CLAUSE_EXPRESSION, 0, true)
 
   expectThen = (isHeadStatement, clauseIndent) ->
@@ -734,7 +714,7 @@ exports.Parser = ->
       tkn = token
     result
 
-  @block = (dent) -> skipTokenType INDENT; return parser.blockWithoutIndentHead(indent)
+  @block = -> skipTokenType INDENT; return parser.blockWithoutIndentHead(indent)
 
   # a block with out indent( the indent has been ate before).
   # stop until meet a undent (less indent than the intent of the start line)
@@ -764,10 +744,7 @@ exports.Parser = ->
 
   @module = ->
     nextToken(); body = []
-    while 1
-      if not x=parser.line() then break
-      skipTokenType NEWLINE
-      body.push.apply body, x
+    while x=parser.line() then skipTokenType NEWLINE; body.push.apply body, x
     if tokenType!=EOI then parseError 'expect end of input, but meet "'+text.slice(cursor)+'"'
     begin(body)
 

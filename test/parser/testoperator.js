@@ -1,6 +1,6 @@
-var BLOCK_COMMENT, COMPACT_CLAUSE_EXPRESSION, EOI, HALF_DENT, IDENTIFIER, INDENT, NEWLINE, NUMBER, OPERATOR_EXPRESSION, PAREN, PAREN_OPERATOR_EXPRESSION, Parser, SPACE, SPACE_CLAUSE_EXPRESSION, UNDENT, constant, expect, iit, isArray, lib, matchRule, ndescribe, nit, str, _ref, _ref1;
+var BLOCK_COMMENT, COMPACT_CLAUSE_EXPRESSION, EOI, HALF_DENT, IDENTIFIER, INDENT, NEWLINE, NUMBER, OPERATOR_EXPRESSION, PAREN, PAREN_OPERATOR_EXPRESSION, Parser, SPACE, SPACE_CLAUSE_EXPRESSION, UNDENT, constant, expect, idescribe, iit, isArray, lib, matchRule, ndescribe, nit, str, _ref, _ref1;
 
-_ref = require('../util'), expect = _ref.expect, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, matchRule = _ref.matchRule;
+_ref = require('../util'), expect = _ref.expect, ndescribe = _ref.ndescribe, idescribe = _ref.idescribe, iit = _ref.iit, nit = _ref.nit, matchRule = _ref.matchRule;
 
 lib = '../../lib/';
 
@@ -10,7 +10,7 @@ Parser = require(lib + 'parser').Parser;
 
 IDENTIFIER = constant.IDENTIFIER, NUMBER = constant.NUMBER, NEWLINE = constant.NEWLINE, INDENT = constant.INDENT, UNDENT = constant.UNDENT, HALF_DENT = constant.HALF_DENT, PAREN = constant.PAREN, BLOCK_COMMENT = constant.BLOCK_COMMENT, EOI = constant.EOI, SPACE = constant.SPACE, PAREN_OPERATOR_EXPRESSION = constant.PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION = constant.COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION = constant.SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION = constant.OPERATOR_EXPRESSION;
 
-ndescribe("parse operator expression: ", function() {
+describe("parse operator expression: ", function() {
   var parse;
   parse = function(text) {
     var parser, x;
@@ -25,10 +25,10 @@ ndescribe("parse operator expression: ", function() {
       return expect(str(parse('a'))).to.deep.equal('a');
     });
     it("parse 'a'", function() {
-      return expect(str(parse("'a'"))).to.deep.equal("\"a\"");
+      return expect(str(parse("'a'"))).to.deep.equal("'a'");
     });
     return it('parse "a"', function() {
-      return expect(str(parse('"a"'))).to.deep.equal("[string! \"a\"]");
+      return expect(str(parse('"a"'))).to.deep.equal("\"a\"");
     });
   });
   describe("prefix: ", function() {
@@ -55,21 +55,17 @@ ndescribe("parse operator expression: ", function() {
     it("parse 1+2", function() {
       return expect(str(parse('1+2'))).to.deep.equal('[binary! + 1 2]');
     });
-    it("parse 1+.!2", function() {
-      return expect(str(parse('1+.!2'))).to.deep.equal("[binary! + 1 [prefix! ! 2]]");
+    it("parse 1+(!2)", function() {
+      return expect(str(parse('1+(!2)'))).to.deep.equal("[binary! + 1 [() [prefix! ! 2]]]");
     });
     it("parse 1 + 2", function() {
       return expect(str(parse('1 + 2'))).to.deep.equal('[binary! + 1 2]');
     });
     it("parse 1+ 2", function() {
-      return expect(function() {
-        return parse('1+ 2');
-      }).to["throw"](/unexpected spaces or new lines after binary operator/);
+      return expect(str(parse('1+ 2'))).to.equal('[binary! + 1 2]');
     });
     it("parse 1+ 2*3", function() {
-      return expect(function() {
-        return parse('1+ 2*3');
-      }).to["throw"](/unexpected spaces or new lines after binary operator/);
+      return expect(str(parse('1+ 2*3'))).to.equal('[binary! + 1 [binary! * 2 3]]');
     });
     it("parse (1, 2)", function() {
       return expect(str(parse('(1, 2)'))).to.deep.equal("[() [binary! , 1 2]]");
@@ -78,15 +74,13 @@ ndescribe("parse operator expression: ", function() {
       return expect(str(parse('(1, 2+3)'))).to.deep.equal("[() [binary! , 1 [binary! + 2 3]]]");
     });
     it("parse (1,2 + 3)", function() {
-      return expect(str(parse('(1,2 + 3)'))).to.deep.equal("[() [binary! + [binary! , 1 2] 3]]");
+      return expect(str(parse('(1,2 + 3)'))).to.deep.equal("[() [binary! , 1 [binary! + 2 3]]]");
     });
     it("parse (1 +2)", function() {
-      return expect(function() {
-        return parse('(1 +2)');
-      }).to["throw"](/should have spaces at its right side/);
+      return expect(str(parse('(1 +2)'))).to.equal('[() [binary! + 1 2]]');
     });
     it("parse 1+2 * 3", function() {
-      return expect(str(parse('1+2 * 3'))).to.deep.equal('[binary! * [binary! + 1 2] 3]');
+      return expect(str(parse('1+2 * 3'))).to.deep.equal("[binary! + 1 [binary! * 2 3]]");
     });
     it("parse 1 + 2*3", function() {
       return expect(str(parse('1 + 2*3'))).to.deep.equal('[binary! + 1 [binary! * 2 3]]');
@@ -104,10 +98,13 @@ ndescribe("parse operator expression: ", function() {
       return expect(str(parse('1*2+3+4*5+6'))).to.deep.equal("[binary! + [binary! + [binary! + [binary! * 1 2] 3] [binary! * 4 5]] 6]");
     });
     it("parse 1 + 2+3", function() {
-      return expect(str(parse('1 + 2+3'))).to.deep.equal("[binary! + 1 [binary! + 2 3]]");
+      return expect(str(parse('1 + 2+3'))).to.deep.equal("[binary! + [binary! + 1 2] 3]");
     });
     it("parse 1+2*3", function() {
       return expect(str(parse('1+2*3'))).to.deep.equal('[binary! + 1 [binary! * 2 3]]');
+    });
+    it("parse 1/2", function() {
+      return expect(str(parse('1/2'))).to.deep.equal("[binary! / 1 2]");
     });
     it("parse 1+2/3", function() {
       return expect(str(parse('1+2/3'))).to.deep.equal('[binary! + 1 [binary! / 2 3]]');
@@ -127,41 +124,37 @@ ndescribe("parse operator expression: ", function() {
   });
   describe("multi lines expression: ", function() {
     it("parse 1+2\n*3", function() {
-      return expect(str(parse('1+2\n*3'))).to.deep.equal('[binary! * [binary! + 1 2] 3]');
+      return expect(str(parse('1+2\n*3'))).to.deep.equal("[binary! + 1 [binary! * 2 3]]");
     });
     it("parse 1+2\n* 3", function() {
-      return expect(str(parse('1+2\n* 3'))).to.deep.equal('[binary! * [binary! + 1 2] 3]');
+      return expect(str(parse('1+2\n* 3'))).to.deep.equal("[binary! + 1 [binary! * 2 3]]");
     });
     it("parse 1+2\n+4\n*3", function() {
-      return expect(str(parse('1+2\n+4\n*3'))).to.deep.equal('[binary! * [binary! + [binary! + 1 2] 4] 3]');
+      return expect(str(parse('1+2\n+4\n*3'))).to.deep.equal("[binary! + [binary! + 1 2] [binary! * 4 3]]");
     });
     it("parse 1+2\n+4*3", function() {
-      return expect(str(parse('1+2\n+4\n*3'))).to.deep.equal('[binary! * [binary! + [binary! + 1 2] 4] 3]');
+      return expect(str(parse('1+2\n+4\n*3'))).to.deep.equal("[binary! + [binary! + 1 2] [binary! * 4 3]]");
     });
     it("parse 1+2\n+4\n*3\n/6", function() {
-      return expect(str(parse('1+2\n+4\n*3\n/6'))).to.deep.equal('[binary! / [binary! * [binary! + [binary! + 1 2] 4] 3] 6]');
+      return expect(str(parse('1+2\n+4\n*3\n/6'))).to.deep.equal("[binary! + [binary! + 1 2] [binary! / [binary! * 4 3] 6]]");
     });
     it("parse 1+2\n+4\n*3\n&6", function() {
-      return expect(str(parse('1+2\n+4\n*3\n&6'))).to.deep.equal("[binary! & [binary! * [binary! + [binary! + 1 2] 4] 3] 6]");
+      return expect(str(parse('1+2\n+4\n*3\n&6'))).to.deep.equal("[binary! & [binary! + [binary! + 1 2] [binary! * 4 3]] 6]");
     });
     it("parse 1+2\n+4\n*.!3\n&6+8*(9-3)", function() {
-      return expect(str(parse('1+2\n+4\n*.!3\n&6+8*(9-3)'))).to.deep.equal("[binary! & [binary! * [binary! + [binary! + 1 2] 4] [prefix! ! 3]] [binary! + 6 [binary! * 8 [() [binary! - 9 3]]]]]");
+      return expect(str(parse('1+2\n+4\n*(!3)\n&6+8*(9-3)'))).to.deep.equal("[binary! & [binary! + [binary! + 1 2] [binary! * 4 [() [prefix! ! 3]]]] [binary! + 6 [binary! * 8 [() [binary! - 9 3]]]]]");
     });
     it("parse 1+2\n+4\n/5\n*3==7", function() {
-      return expect(str(parse('1+2\n+4\n/5\n*3==7'))).to.deep.equal("[binary! * [binary! / [binary! + [binary! + 1 2] 4] 5] [binary! == 3 7]]");
+      return expect(str(parse('1+2\n+4\n/5\n*3==7'))).to.deep.equal("[binary! == [binary! + [binary! + 1 2] [binary! * [binary! / 4 5] 3]] 7]");
     });
     it("parse 1+2\n+4\n*5\n*3==7", function() {
-      return expect(str(parse('1+2\n+4\n*5\n*3==7'))).to.deep.equal("[binary! * [binary! * [binary! + [binary! + 1 2] 4] 5] [binary! == 3 7]]");
+      return expect(str(parse('1+2\n+4\n*5\n*3==7'))).to.deep.equal("[binary! == [binary! + [binary! + 1 2] [binary! * [binary! * 4 5] 3]] 7]");
     });
     it("parse 1/\n2", function() {
-      return expect(function() {
-        return parse('1/\n2');
-      }).to["throw"](/unexpected new line/);
+      return expect(str(parse('1/\n2'))).to.equal('[binary! / 1 2]');
     });
     return it("parse 1+2\n+4/\n*5\n*3==7", function() {
-      return expect(function() {
-        return parse('1+2\n+4/\n*5\n*3==7');
-      }).to["throw"](/unexpected new line/);
+      return expect(str(parse('1+2\n+4/\n*5\n*3==7'))).to.equal('[binary! + [binary! + 1 2] 4]');
     });
   });
   describe("indent expression: ", function() {
@@ -175,16 +168,16 @@ ndescribe("parse operator expression: ", function() {
       return expect(str(parse('1\n *3\n/ 5'))).to.deep.equal("[binary! / [binary! * 1 3] 5]");
     });
     it("parse 1+2\n* 3+6", function() {
-      return expect(str(parse('1+2\n* 3+6'))).to.deep.equal('[binary! * [binary! + 1 2] [binary! + 3 6]]');
+      return expect(str(parse('1+2\n* 3+6'))).to.deep.equal("[binary! + [binary! + 1 [binary! * 2 3]] 6]");
     });
     it("parse 1+2\n * 3", function() {
-      return expect(str(parse('1+2\n * 3'))).to.deep.equal("[binary! * [binary! + 1 2] 3]");
+      return expect(str(parse('1+2\n * 3'))).to.deep.equal("[binary! + 1 [binary! * 2 3]]");
     });
     it("parse 1+2\n * 3+6", function() {
-      return expect(str(parse('1+2\n * 3+6'))).to.deep.equal("[binary! * [binary! + 1 2] [binary! + 3 6]]");
+      return expect(str(parse('1+2\n * 3+6'))).to.deep.equal("[binary! + [binary! + 1 [binary! * 2 3]] 6]");
     });
     return it("parse 1+2\n * 3+6\n + 5+8", function() {
-      return expect(str(parse('1+2\n * 3+6\n + 5+8'))).to.deep.equal("[binary! * [binary! + 1 2] [binary! + [binary! + 3 6] [binary! + 5 8]]]");
+      return expect(str(parse('1+2\n * 3+6\n + 5+8'))).to.deep.equal("[binary! + [binary! + [binary! + [binary! + 1 [binary! * 2 3]] 6] 5] 8]");
     });
   });
   describe("attribute!, index!: ", function() {

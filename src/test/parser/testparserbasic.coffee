@@ -7,7 +7,7 @@ lib = '../../lib/'
 {IDENTIFIER, NUMBER, SYMBOL, NEWLINE, INDENT, UNDENT, HALF_DENT, PAREN, BLOCK_COMMENT, EOI, SPACE
 PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION} = constant
 
-describe "parser basic: ",  ->
+ndescribe "parser basic: ",  ->
   describe "matchToken: ",  ->
     parser = new Parser()
     parse = (text) ->
@@ -414,5 +414,3 @@ describe "parser basic: ",  ->
       expect(str parse('// \n 1 2, 3 4\n // \n  5 6, 7 8')).to.equal "[begin! [1 2] [3 4] [5 6] [7 8]]"
     it 'should parse // \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12', ->
       expect(str parse('// \n 1 2, 3 4\n // \n  5 6, 7 8\n // \n  9 10, 11 12')).to.equal "[begin! [1 2] [3 4] [5 6] [7 8] [9 10] [11 12]]"
-
-
