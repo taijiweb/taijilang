@@ -17,9 +17,9 @@ exports.str = str
 {NEWLINE, INDENT, SPACE} = constant
 
 exports.matchRule = (parser, rule) -> ->
-  token = parser.matchToken()
-  if token.type==NEWLINE then parser.matchToken()
-  if token.type==SPACE then parser.matchToken()
+  token = parser.nextToken()
+  if token.type==NEWLINE then parser.nextToken()
+  if token.type==SPACE then parser.nextToken()
   rule()
 
 head = 'taiji language 0.1\n'

@@ -7,11 +7,11 @@ lib = '../../lib/'
 {IDENTIFIER, NUMBER, SYMBOL, NEWLINE, INDENT, UNDENT, HALF_DENT, PAREN, BLOCK_COMMENT, EOI, SPACE
 PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION} = constant
 
-ndescribe "parser basic: ",  ->
-  describe "matchToken: ",  ->
+describe "parser basic: ",  ->
+  describe "nextToken: ",  ->
     parser = new Parser()
     parse = (text) ->
-      x = parser.parse(text, parser.matchToken, 0)
+      x = parser.parse(text, parser.nextToken, 0)
 
     describe "parse number: ",  ->
       describe "is number: ",  ->
@@ -217,8 +217,8 @@ ndescribe "parser basic: ",  ->
     parse = (text) ->
       parser = new Parser()
       root = ->
-        parser.matchToken()
-        parser.binaryOperator(OPERATOR_EXPRESSION, {value:0}, 0, true)
+        parser.nextToken()
+        parser.binaryOperator(OPERATOR_EXPRESSION)
       x = parser.parse(text, root, 0)
       if x then x.value
       else return
@@ -233,7 +233,7 @@ ndescribe "parser basic: ",  ->
     parse = (text) ->
       parser = new Parser()
       root = ->
-        parser.matchToken()
+        parser.nextToken()
         parser.binaryOperator(COMPACT_CLAUSE_EXPRESSION)
       x = parser.parse(text, root, 0)
       if x then x.value
@@ -251,18 +251,18 @@ ndescribe "parser basic: ",  ->
     it "parse multiple line space comment 3", ->
       parser = new Parser()
       parser.init('123   // line comment // line comment 2\n/*fds;j*/ something', 0)
-      parser.matchToken()
-      parser.matchToken()
+      parser.nextToken()
+      parser.nextToken()
       x = parser.token()
       expect(x.value).to.equal "   // line comment // line comment 2\n"
     it "parse multiple line space comment 4", ->
       parser = new Parser()
       parser.init('123   // line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  something', 0)
-      parser.matchToken()
-      parser.matchToken()
+      parser.nextToken()
+      parser.nextToken()
       x = parser.token()
       expect(x.value).to.equal "   // line comment \n"
-      parser.matchToken()
+      parser.nextToken()
       x = parser.token()
       expect(x.value).to.equal "// line comment 2\n"
 
@@ -373,6 +373,8 @@ ndescribe "parser basic: ",  ->
         expect(str parse('~ print a b')).to.equal "[~ [print a b]]"
       it 'should parse ` print a b', ->
         expect(str parse('` print a b')).to.equal "[` [print a b]]"
+      it 'should parse min a \n b', ->
+        expect(str parse('min a \n b')).to.equal "[min a b]"
       it 'should parse ~ print : min a \n abs b', ->
         expect(str parse('~ print : min a \n abs b')).to.equal "[~ [print [min a [abs b]]]]"
       it 'should parse ` a.b', ->

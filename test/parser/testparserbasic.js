@@ -10,13 +10,13 @@ Parser = require(lib + 'parser/parser').Parser;
 
 IDENTIFIER = constant.IDENTIFIER, NUMBER = constant.NUMBER, SYMBOL = constant.SYMBOL, NEWLINE = constant.NEWLINE, INDENT = constant.INDENT, UNDENT = constant.UNDENT, HALF_DENT = constant.HALF_DENT, PAREN = constant.PAREN, BLOCK_COMMENT = constant.BLOCK_COMMENT, EOI = constant.EOI, SPACE = constant.SPACE, PAREN_OPERATOR_EXPRESSION = constant.PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION = constant.COMPACT_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION = constant.OPERATOR_EXPRESSION;
 
-ndescribe("parser basic: ", function() {
-  describe("matchToken: ", function() {
+describe("parser basic: ", function() {
+  describe("nextToken: ", function() {
     var parse, parser;
     parser = new Parser();
     parse = function(text) {
       var x;
-      return x = parser.parse(text, parser.matchToken, 0);
+      return x = parser.parse(text, parser.nextToken, 0);
     };
     describe("parse number: ", function() {
       describe("is number: ", function() {
@@ -323,10 +323,8 @@ ndescribe("parser basic: ", function() {
       var parser, root, x;
       parser = new Parser();
       root = function() {
-        parser.matchToken();
-        return parser.binaryOperator(OPERATOR_EXPRESSION, {
-          value: 0
-        }, 0, true);
+        parser.nextToken();
+        return parser.binaryOperator(OPERATOR_EXPRESSION);
       };
       x = parser.parse(text, root, 0);
       if (x) {
@@ -351,7 +349,7 @@ ndescribe("parser basic: ", function() {
       var parser, root, x;
       parser = new Parser();
       root = function() {
-        parser.matchToken();
+        parser.nextToken();
         return parser.binaryOperator(COMPACT_CLAUSE_EXPRESSION);
       };
       x = parser.parse(text, root, 0);
@@ -379,8 +377,8 @@ ndescribe("parser basic: ", function() {
       var parser, x;
       parser = new Parser();
       parser.init('123   // line comment // line comment 2\n/*fds;j*/ something', 0);
-      parser.matchToken();
-      parser.matchToken();
+      parser.nextToken();
+      parser.nextToken();
       x = parser.token();
       return expect(x.value).to.equal("   // line comment // line comment 2\n");
     });
@@ -388,11 +386,11 @@ ndescribe("parser basic: ", function() {
       var parser, x;
       parser = new Parser();
       parser.init('123   // line comment \n// line comment 2\n/*fds;j*/ /*asdf\nkljl*/\n  something', 0);
-      parser.matchToken();
-      parser.matchToken();
+      parser.nextToken();
+      parser.nextToken();
       x = parser.token();
       expect(x.value).to.equal("   // line comment \n");
-      parser.matchToken();
+      parser.nextToken();
       x = parser.token();
       return expect(x.value).to.equal("// line comment 2\n");
     });
@@ -551,6 +549,9 @@ ndescribe("parser basic: ", function() {
       });
       it('should parse ` print a b', function() {
         return expect(str(parse('` print a b'))).to.equal("[` [print a b]]");
+      });
+      it('should parse min a \n b', function() {
+        return expect(str(parse('min a \n b'))).to.equal("[min a b]");
       });
       it('should parse ~ print : min a \n abs b', function() {
         return expect(str(parse('~ print : min a \n abs b'))).to.equal("[~ [print [min a [abs b]]]]");

@@ -18,17 +18,17 @@ ndescribe("parse: ", function() {
       return str(x);
     };
     describe("normal clause: ", function() {
-      it('should parse 3+.#(1+1)', function() {
-        return expect(parse('3+.#(1+1)')).to.equal("[binary! + 3 [prefix! # [() [binary! + 1 1]]]]");
+      it('should parse 3+#(1+1)', function() {
+        return expect(parse('3+#(1+1)')).to.equal("[binary! + 3 [prefix! # [() [binary! + 1 1]]]]");
       });
       it('should parse 1', function() {
         return expect(parse('1 ')).to.equal("1");
       });
-      it('should parse y+.!1', function() {
-        return expect(parse('y+.!1')).to.equal("[binary! + y [prefix! ! 1]]");
+      it('should parse y+!1', function() {
+        return expect(parse('y+!1')).to.equal("[binary! + y [prefix! ! 1]]");
       });
-      it('should parse a.!=1', function() {
-        return expect(parse('a.!=1')).to.equal("[binary! != a 1]");
+      it('should parse a!=1', function() {
+        return expect(parse('a!=1')).to.equal("[binary! != a 1]");
       });
       it('should parse a!=1', function() {
         return expect(parse('a!=1')).to.equal("[binary! != a 1]");
@@ -79,10 +79,12 @@ ndescribe("parse: ", function() {
       it('should parse [[2]]', function() {
         return expect(parse("[[2]]")).to.equal("[[] [[[] [2]]]]");
       });
-      it('should parse [[[2] 3]]', function() {
+      return it('should parse [[[2] 3]]', function() {
         return expect(parse("[ [[2] 3] ]")).to.equal("[[] [[[] [[[[] [2]] 3]]]]]");
       });
-      it('should parse require.extensions[".tj"] = 1', function() {
+    });
+    describe("normal clause 2: ", function() {
+      iit('should parse require.extensions[".tj"] = 1', function() {
         return expect(parse('require.extensions[".tj"] = 1')).to.equal("[= [binary! concat[] [binary! . require extensions] [[] [[string! \".tj\"]]]] 1]");
       });
       it('should parse a = ->', function() {

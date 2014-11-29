@@ -29,12 +29,12 @@ NEWLINE = constant.NEWLINE, INDENT = constant.INDENT, SPACE = constant.SPACE;
 exports.matchRule = function(parser, rule) {
   return function() {
     var token;
-    token = parser.matchToken();
+    token = parser.nextToken();
     if (token.type === NEWLINE) {
-      parser.matchToken();
+      parser.nextToken();
     }
     if (token.type === SPACE) {
-      parser.matchToken();
+      parser.nextToken();
     }
     return rule();
   };

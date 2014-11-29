@@ -12,14 +12,14 @@ ndescribe "parse: ",  ->
       str x
 
     describe "normal clause: ",  ->
-      it 'should parse 3+.#(1+1)', ->
-        expect(parse('3+.#(1+1)')).to.equal "[binary! + 3 [prefix! # [() [binary! + 1 1]]]]"
+      it 'should parse 3+#(1+1)', ->
+        expect(parse('3+#(1+1)')).to.equal "[binary! + 3 [prefix! # [() [binary! + 1 1]]]]"
       it 'should parse 1', ->
         expect(parse('1 ')).to.equal "1"
-      it 'should parse y+.!1', ->
-        expect(parse('y+.!1')).to.equal "[binary! + y [prefix! ! 1]]"
-      it 'should parse a.!=1', ->
-        expect(parse('a.!=1')).to.equal "[binary! != a 1]"
+      it 'should parse y+!1', ->
+        expect(parse('y+!1')).to.equal "[binary! + y [prefix! ! 1]]"
+      it 'should parse a!=1', ->
+        expect(parse('a!=1')).to.equal "[binary! != a 1]"
       it 'should parse a!=1', ->
         expect(parse('a!=1')).to.equal "[binary! != a 1]"
       it 'should parse 1,2', ->
@@ -58,7 +58,8 @@ ndescribe "parse: ",  ->
         expect(parse("[[2]]")).to.equal "[[] [[[] [2]]]]"
       it 'should parse [[[2] 3]]', ->
         expect(parse("[ [[2] 3] ]")).to.equal "[[] [[[] [[[[] [2]] 3]]]]]"
-      it 'should parse require.extensions[".tj"] = 1', ->
+    describe "normal clause 2: ",  ->
+      iit 'should parse require.extensions[".tj"] = 1', ->
         expect(parse('require.extensions[".tj"] = 1')).to.equal "[= [binary! concat[] [binary! . require extensions] [[] [[string! \".tj\"]]]] 1]"
       it 'should parse a = ->', ->
         expect(parse('a = ->')).to.equal "[= a [-> [] undefined]]"
