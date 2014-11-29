@@ -1,4 +1,4 @@
-var INDENT, NEWLINE, Parser, SPACE, chai, constant, head, isArray, lib, realCode, str, taiji, _ref;
+var INDENT, NEWLINE, Parser, SPACE, chai, head, lib, realCode, str, taiji, _ref;
 
 chai = require("chai");
 
@@ -14,7 +14,7 @@ exports.nit = function() {};
 
 lib = '../lib/';
 
-_ref = require(lib + 'utils'), constant = _ref.constant, isArray = _ref.isArray, str = _ref.str;
+str = require(lib + 'utils').str;
 
 Parser = require(lib + 'parser').Parser;
 
@@ -24,7 +24,7 @@ realCode = require(lib + 'utils').realCode;
 
 exports.str = str;
 
-NEWLINE = constant.NEWLINE, INDENT = constant.INDENT, SPACE = constant.SPACE;
+_ref = require(lib + 'constant'), NEWLINE = _ref.NEWLINE, INDENT = _ref.INDENT, SPACE = _ref.SPACE;
 
 exports.matchRule = function(parser, rule) {
   return function() {

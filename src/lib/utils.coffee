@@ -1,60 +1,3 @@
-###
-  this file is based on coffeescript/src/helper.coffee(https://github.com/jashkenas/coffeescript)
-  Thanks to  Jeremy Ashkenas
-  Some stuffs is added or modified for taiji langauge.
-###
-###
-Copyright (c) 2009-2014 Jeremy Ashkenas
-Copyright (c) 2014-2015 Caoxingming
-
-Permission is hereby granted, free of charge, to any person
-obtaining a copy of this software and associated documentation
-files (the "Software"), to deal in the Software without
-restriction, including without limitation the rights to use,
-copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-OTHER DEALINGS IN THE SOFTWARE.
-###
-
-OPERATOR_EXPRESSION = 0; COMPACT_CLAUSE_EXPRESSION = 1
-
-NULL=0; NUMBER=1;  STRING=2;  IDENTIFIER=3; SYMBOL=4; REGEXP=5;  HEAD_SPACES=6; CONCAT_LINE=7; PUNCTUATION=8; FUNCTION=9
-BRACKET=10; PAREN=11; DATA_BRACKET=12; CURVE=13; INDENT_EXPRESSION=14
-NEWLINE=15;  SPACES=16; INLINE_COMMENT=17; SPACES_INLINE_COMMENT=18; LINE_COMMENT=19; BLOCK_COMMENT=20; CODE_BLOCK_COMMENT=21; CONCAT_LINE=22
-MODULE_HEADER=23; MODULE=24
-NON_INTERPOLATE_STRING=25; INTERPOLATE_STRING=26
-INDENT=27; UNDENT=28; HALF_DENT=29; EOI=30; C_BLOCK_COMMENT = 31; SPACE_COMMENT = 32; TAIL_COMMENT=33
-SPACE = 34; HASH = 35; RIGHT_DELIMITER = 36; KEYWORD = 37; CONJUNCTION = 38
-CODE_BLOCK_COMMENT_LEAD_SYMBOL = 39
-PREFIX =40; SUFFIX= 41; BINARY = 42
-
-exports.constant = {
-  OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION
-
-  NULL, NUMBER, STRING, IDENTIFIER, SYMBOL, REGEXP, HEAD_SPACES, CONCAT_LINE, PUNCTUATION, FUNCTION,
-  BRACKET, PAREN, DATA_BRACKET, CURVE, INDENT_EXPRESSION
-  NEWLINE, SPACES, INLINE_COMMENT, SPACES_INLINE_COMMENT, LINE_COMMENT, BLOCK_COMMENT, CODE_BLOCK_COMMENT, CONCAT_LINE
-  MODULE_HEADER, MODULE
-  NON_INTERPOLATE_STRING, INTERPOLATE_STRING
-  INDENT, UNDENT, HALF_DENT, EOI, C_BLOCK_COMMENT, SPACE_COMMENT, TAIL_COMMENT
-  SPACE, HASH, RIGHT_DELIMITER, KEYWORD, CONJUNCTION
-  CODE_BLOCK_COMMENT_LEAD_SYMBOL
-  PREFIX, SUFFIX, BINARY
-}
-
 fs = require('fs')
 path = require('path')
 
@@ -111,6 +54,8 @@ exports.firstSymbolCharset = charset(firstSymbolChars)
 # is head a operator for meta expression?
 isMetaOperation = isMetaOperation = (head) -> (head[0]=='#' and head[1]!='-') or head=='include!' or head=='import!' or head=='export!'
 
+isArray = (item) -> item instanceof Array
+
 exports.str = str = (item) ->
   if isArray(item) then '['+(str(x) for x in item).join(' ')+']'
   else if typeof item =='object'
@@ -124,13 +69,6 @@ exports.assert = assert = (value, message) ->
   if not value
     trace2('assert:', message or 'assert failed')
     throw new Error message or 'assert failed'
-
-exports.isArray = isArray = (exp) -> Object::toString.call(exp) == '[object Array]'
-
-exports.extend = extend = (object, args...) ->
-  if !object then return object;
-  for arg in args then(for key, value of arg then object[key] = value)
-  object
 
 exports.error = error = (message, symbol) ->
   if symbol then throw message+': '+symbol else throw message
@@ -162,24 +100,12 @@ exports.extend = (object, args...) ->
   for arg in args then(for key, value of arg then object[key] = value)
   object
 
-exports.isArray = isArray = (exp) -> Object::toString.call(exp) == '[object Array]'
-
 exports.mergeSet = (sets...) ->
   result = {}
   for x in sets
     for k in x
       if hasOwnProperty.call(x, k) then result[k] = true
   result
-
-exports.entity = entity = (exp) ->
-  if exp instanceof Array
-    if exp.length==0 then return exp
-    else return (for e in exp then entity e)
-  if typeof exp == 'object'
-    return entity(exp.value)
-  exp
-
-exports.kindSymbol = (e) -> {value:e, kind:SYMBOL}
 
 # return value:
 # undefined: meet return, throw, break, continue
@@ -237,8 +163,6 @@ exports.return_ = return_ = (exp) ->
 
 exports.pushExp = (lst, v) ->  ['call!', ['attribute!', lst, 'push'], [v]]
 exports.notExp = (exp) ->  ['prefix!', '!', exp]
-exports.undefinedExp = undefinedExp =  'undefined'
-exports.commentPlaceholder = {} # used as the second part of transformExpression of comment
 
 exports.isUndefinedExp = -> (exp) -> exp==undefinedExp
 
@@ -290,11 +214,6 @@ exports.list2dict = (keys...) ->
   for k in keys then d[k] = 1
   d
 
-exports.extendSyntaxInfo = (result, start, stop) ->
-  result.start = start
-  if stop then result.stop = stop
-  result
-
 # pretty print internal result
 exports.formatTaijiJson = formatTaijiJson = (exp, level, start, newline, indent, lineLength) ->
   if newline then head = repeat(repeat(' ', indent), level)
@@ -338,52 +257,6 @@ exports.mergeList = (lists...) ->
   for l in lists then list0.push.apply list0, l
   list0
 
-# the above is coded by Caoxingming
-
-# the below is from github.com/jashkenas/coffeescript and modified by Caoxingming
-
-# Merge objects, returning a fresh copy with attributes from both sides.
-# Used every time `Base#compile` is called, to allow properties in the
-# options hash to propagate down the tree without polluting other branches.
-exports.merge = (options, overrides) ->
-  extend (extend {}, options), overrides
-
-# Return a flattened version of an array.
-# Handy for getting a list of `children` from the nodes.
-exports.flatten = flatten = (array) ->
-  flattened = []
-  for element in array
-    if element instanceof Array
-      flattened = flattened.concat flatten element
-    else
-      flattened.push element
-  flattened
-
-# Typical Array::some
-exports.some = Array::some ? (fn) ->
-  return true for e in this when fn e
-  false
-
-# Merge two jison-style location data objects together.
-# If `last` is not provided, this will simply return `first`.
-buildLocationData = (first, last) ->
-  if not last
-    first
-  else
-    first_line: first.first_line
-    first_column: first.first_column
-    last_line: last.last_line
-    last_column: last.last_column
-
-# Convert jison location data to a string.
-# `obj` can be a token, or a locationData.
-exports.locationDataToString = (obj) ->
-  if ("2" of obj) and ("first_line" of obj[2]) then locationData = obj[2]
-  else if "first_line" of obj then locationData = obj
-
-  if locationData "{locationData.first_line + 1}:{locationData.first_column + 1}-{locationData.last_line + 1}:{locationData.last_column + 1}"
-  else "No location data"
-
 # A `.taiji.md` compatible version of `basename`, that returns the file sans-extension.
 exports.baseFileName = (file, stripExt = no, useWinPathSep = no) ->
   pathSep = if useWinPathSep then /\\|\// else /\//
@@ -397,70 +270,4 @@ exports.baseFileName = (file, stripExt = no, useWinPathSep = no) ->
 
 # Determine if a filename represents a taiji file.
 exports.isTaiji = (file) -> /\.(taiji|tj|taiji.json|tj.json)$/.test file
-
-# Throws a SyntaxError from a given location.
-# The error's `toString` will return an error message following the "standard"
-# format <filename>:<line>:<col>: <message> plus the line with the error and a marker showing where the error is.
-exports.throwSyntaxError = (message, location) ->
-  error = new SyntaxError message
-  error.location = location
-  error.toString = syntaxErrorToString
-  # Instead of showing the compiler's stacktrace, show our custom error message
-  # (this is useful when the error bubbles up in Node.js applications that compile taiji for example).
-  error.stack = error.toString()
-  throw error
-
-# Update a compiler SyntaxError with source code information if it didn't have it already.
-exports.updateSyntaxError = (error, code, filename) ->
-  # Avoid screwing up the `stack` property of other errors (i.e. possible bugs).
-  if error.toString is syntaxErrorToString
-    error.code or= code
-    error.filename or= filename
-    error.stack = error.toString()
-  error
-
-syntaxErrorToString = ->
-  return Error::toString.call @ unless @code and @location
-
-  {first_line, first_column, last_line, last_column} = @location
-  last_line ?= first_line
-  last_column ?= first_column
-
-  filename = @filename or '[stdin]'
-  codeLine = @code.split('\n')[first_line]
-  start    = first_column
-  # Show only the first line on multi-line errors.
-  end      = if first_line is last_line then last_column + 1 else codeLine.length
-  marker   = repeat(' ', start) + repeat('^', end - start)
-
-  # Check to see if we're running on a color-enabled TTY.
-  if process? then colorsEnabled = process.stdout.isTTY and not process.env.NODE_DISABLE_COLORS
-
-  if @colorful ? colorsEnabled
-    colorize = (str) -> "\x1B[1;31m#{str}\x1B[0m"
-    codeLine = codeLine[...start] + colorize(codeLine[start...end]) + codeLine[end..]
-    marker   = colorize marker
-
-  """
-    #{filename}:#{first_line + 1}:#{first_column + 1}: error: #{@message}
-    #{codeLine}
-    #{marker}
-  """
-
-# Repeat a string `n` times.
-exports.repeat = repeat = (str, n) ->
-  # Use clever algorithm to have O(log(n)) string concatenation operations.
-  res = ''
-  while n > 0
-    res += str if n & 1
-    n >>>= 1
-    str += str
-  res
-
-javascriptKeywordText = ("break export return case for switch comment function this continue if typeof default import" +
-" var delete in void do label while else new with catch enum throw class super extends try const finally debugger")
-exports.javascriptKeywordSet = javascriptKeywordSet = {}
-do ->
-  for w in javascriptKeywordText.split(' ')
-    javascriptKeywordSet[w] = 1
 

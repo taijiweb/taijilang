@@ -1,6 +1,6 @@
-{extend, str, javascriptKeywordSet, entity, identifierCharSet, assert, constant} = require '../utils'
+{extend, str, javascriptKeywordSet, entity, identifierCharSet, assert} = require '../utils'
 
-{SYMBOL} = constant
+{SYMBOL} = '../constant'
 
 hasOwnProperty = Object::hasOwnProperty
 

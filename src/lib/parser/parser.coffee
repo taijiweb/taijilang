@@ -1,11 +1,13 @@
-{str, hasOwnProperty, extend, letterCharSet, firstIdentifierCharSet, firstSymbolCharset, taijiIdentifierCharSet, constant, trace} = require '../utils'
+{str, hasOwnProperty, extend, letterCharSet, firstIdentifierCharSet, firstSymbolCharset, taijiIdentifierCharSet, trace} = require '../utils'
 
 {NULL, NUMBER,  STRING,  IDENTIFIER, SYMBOL, REGEXP, PUNCTUATION
 PAREN, BRACKET, CURVE,  NEWLINE,  SPACES
 LINE_COMMENT, EOI, INDENT, UNDENT, HALF_DENT, SPACE_COMMENT, TAIL_COMMENT
 SPACE, RIGHT_DELIMITER, KEYWORD, CONJUNCTION, PREFIX, SUFFIX, BINARY
 COMPACT_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION
-} = constant
+
+UNDEFINED, BEGIN, IF, PREFIX, SUFFIX, BINARY, WHILE, BREAK, CONTINUE, THROW, RETURN, NEW, FORIN, FOROF, TRY, SHARP
+} = require '../constant'
 
 {prefixOperatorDict, binaryOperatorDict} = require './operator'
 
@@ -16,13 +18,13 @@ exports.conjMap = conjMap = {'then':1, 'else':1, 'catch':1, 'finally':1, 'case':
 conjunctionHasOwnProperty = hasOwnProperty.bind(exports.conjMap)
 
 begin = (exps) ->
-  if not exps then return  'undefined'
-  else if exps.length==0 then  'undefined'
+  if not exps then return  UNDEFINED
+  else if exps.length==0 then  UNDEFINED
   else if exps.length==1 then exps[0]
   else
-    result = ['begin!']
+    result = [BEGIN]
     for exp in exps
-      if exp[0]=='begin!' then result.push.apply exps[1...]
+      if exp[0]==BEGIN then result.push.apply exps[1...]
       else result.push exp
     result
 
@@ -399,13 +401,13 @@ exports.Parser = ->
       if tokenType==RIGHT_DELIMITER then error 'unexpected '+tokenValue
       else if tokenType==EOI then error 'unexpected end of input'
       else if tokenType==INDENT or tokenType==NEWLINE or tokenType==UNDENT then nextToken()
-    {value:opToken.value, priority:op.priority}
+    {value:opToken.value, priority:op.priority, kind:SYMBOL}
 
   @binaryOperator = (mode, dent) ->
     start = token
     switch tokenType
-      when PAREN then return  {value:'concat()', priority:200, start:token}
-      when BRACKET then return {value:'concat[]', priority:200, start:token}
+      when PAREN then return  {value:'concat()', priority:200, kind:SYMBOL}
+      when BRACKET then return {value:'concat[]', priority:200, kind:SYMBOL}
     if tokenType==SPACE
       if mode== COMPACT_CLAUSE_EXPRESSION then return
       else
@@ -419,7 +421,7 @@ exports.Parser = ->
         else if indent<dent then parseError 'wrong indent' else nextToken()
       when PUNCTUATION
         if mode== COMPACT_CLAUSE_EXPRESSION then return
-        else if tokenValue==',' then nextNonspaceToken(); return {value:',', priority:5}
+        else if tokenValue==',' then nextNonspaceToken(); return {value:',', priority:5, kind:SYMBOL}
         else return
     if tokenType!=IDENTIFIER and tokenType!=SYMBOL then return
     if not hasOwnProperty.call(binaryOperatorDict, tokenValue) then setToken(start);  return
@@ -436,7 +438,7 @@ exports.Parser = ->
       pri = if priority>op.priority then priority else op.priority
       x = parser.expression(mode, pri, true)
       if x
-        return extend ['prefix!', op.value, x], {
+        return extend [PREFIX, op, x], {
         expressionType:PREFIX, priority:op.priority, rightAssoc:op.rightAssoc}
       else setToken(start); return
 
@@ -449,7 +451,7 @@ exports.Parser = ->
         if (opPri=op.priority)>priority  or (opPri==priority and not leftAssoc)
           # should assure that a right operand is here while parsing binary operator
           if y = expression(mode, opPri, not op.rightAssoc)
-            x = extend ['binary!', op.value, x, y], {
+            x = extend [BINARY, op, x, y], {
             expressionType:BINARY, priority:op.priority, rightAssoc:op.rightAssoc}
             continue
         setToken(tkn2);  break
@@ -510,14 +512,14 @@ exports.Parser = ->
 
   @keyword2statement = keyword2statement =
 
-    'break': breakContinueStatement('break')
-    'continue': breakContinueStatement('continue')
-    'throw': throwReturnStatement('throw')
-    'return': throwReturnStatement('return')
-    'new': throwReturnStatement('new')
+    'break': breakContinueStatement(BREAK)
+    'continue': breakContinueStatement(CONTINUE)
+    'throw': throwReturnStatement(THROW)
+    'return': throwReturnStatement(RETURN)
+    'new': throwReturnStatement(NEW)
 
-    'if': keywordThenElseStatement('if')
-    'while': keywordThenElseStatement('while')
+    'if': keywordThenElseStatement(IF)
+    'while': keywordThenElseStatement(WHILE)
 
     'for': (isHeadStatement) ->
       ind = indent; nextToken()
@@ -536,7 +538,7 @@ exports.Parser = ->
       obj = parser.clause()
       expectThen(isHeadStatement, ind)
       body = parser.block() or parser.line()
-      if inOf=='in' then kw = 'forIn!' else kw = 'forOf!'
+      if inOf=='in' then kw = FORIN else kw = FOROF
       [kw, name1, name2, obj, begin(body)]
 
     'try': (isHeadStatement) ->
@@ -557,8 +559,8 @@ exports.Parser = ->
       if maybeConjunction("finally", isHeadStatement, ind)
         skipSPACE()
         final = parser.block() or parser.line()
-        ['try', test, catchVar, begin(catch_)]
-      else ['try', begin(test), catchVar, begin(catch_), begin(final)]
+        [TRY, test, catchVar, begin(catch_)]
+      else [TRY, begin(test), catchVar, begin(catch_), begin(final)]
 
   @sequence = ->
     clause = []
@@ -642,8 +644,8 @@ exports.Parser = ->
       clauses
 
     else if tokenValue=='#' and nextToken()
-      if tokenType==INDENT then clauses = parser.block(); return ['#', makeClause(items), clauses]
-      else clauses = parser.clauses(); return ['#', makeClause(items), clauses]
+      if tokenType==INDENT then clauses = parser.block(); return [SHARP, makeClause(items), clauses]
+      else clauses = parser.clauses(); return [SHARP, makeClause(items), clauses]
 
     else if tokenType==INDENT
       tkn = token; nextToken()

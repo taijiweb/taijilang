@@ -1,6 +1,6 @@
-{str, isArray, extend, charset, begin, undefinedExp, isValue, digitCharSet, letterCharSet, identifierCharSet, constant, assert, trace} = require '../utils'
+{str, isArray, extend, charset, begin, undefinedExp, isValue, digitCharSet, letterCharSet, identifierCharSet, assert, trace} = require '../utils'
 
-{SYMBOL, VALUE, LIST} = constant
+{SYMBOL, VALUE, LIST} = '../constant'
 
 # sort of tokenize, where "sort" means kind or type
 TKN_PAREN=1; TKN_BRACKET = 2; TKN_CURVE=3; TKN_LIST=4; TKN_STATEMENT_LIST=5; TKN_WRAP_BLOCK=6; TKN_BLOCK=7; TKN_MAYBE=8; TKN_STATEMENT=9;

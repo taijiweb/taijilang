@@ -5,8 +5,8 @@ lib = '../../lib/'
 {transformExpression, transform, ShiftStatementInfo} =  require lib+'compiler/transform'
 {tokenize} =  require lib+'compiler/textize'
 
-{constant, norm, trace} = require lib+'utils'
-{VALUE, SYMBOL, LIST} = constant
+{trace} = require lib+'utils'
+{VALUE, SYMBOL, LIST} = require lib+'constant'
 
 {convert, metaConvert, nonMetaCompileExpNoOptimize} = require lib+'compiler'
 {SymbolLookupError} = require lib+'compiler/env'

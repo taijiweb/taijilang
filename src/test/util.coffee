@@ -7,14 +7,14 @@ exports.nit = ->
 
 lib = '../lib/'
 
-{constant, isArray, str} = require lib+'utils'
+{str} = require lib+'utils'
 {Parser} = require lib+'parser'
 taiji = require lib+'taiji'
 {realCode} = require lib+'utils'
 
 exports.str = str
 
-{NEWLINE, INDENT, SPACE} = constant
+{NEWLINE, INDENT, SPACE} = require lib+'constant'
 
 exports.matchRule = (parser, rule) -> ->
   token = parser.nextToken()

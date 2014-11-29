@@ -1,11 +1,11 @@
 #https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence
-{extend, charset, digitCharSet, letterCharSet, identifierCharSet, constant, isArray, wrapSyntaxInfo} = base = require '../utils'
+{extend, charset, digitCharSet, letterCharSet, identifierCharSet} = base = require '../utils'
 
 {NUMBER,  STRING,  IDENTIFIER, SYMBOL, REGEXP,  HEAD_SPACES, CONCAT_LINE, PUNCT, FUNCTION, PAREN, BRACKET, INDENT_EXPRESSION
 NEWLINE,  SPACES,  INLINE_COMMENT, SPACES_INLINE_COMMENT, LINE_COMMENT, BLOCK_COMMENT, CODE_BLOCK_COMMENT,
 NON_INTERPOLATE_STRING, INTERPOLATE_STRING, DATA_BRACKET, BRACKET
 INDENT, UNDENT, HALF_DENT, CURVE,
-PREFIX, SUFFIX, BINARY} = constant
+PREFIX, SUFFIX, BINARY} = require '../constant'
 
 # :: can be prefix, suffix, binary and atom at the same time
 

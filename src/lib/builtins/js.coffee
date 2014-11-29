@@ -1,5 +1,5 @@
-{isArray, error, begin, undefinedExp, pushExp, identifierCharSet, constant, str} = require '../utils'
-{SYMBOL, VALUE, LIST} = constant
+{isArray, error, begin, undefinedExp, pushExp, identifierCharSet, str} = require '../utils'
+{SYMBOL, VALUE, LIST} = '../constant'
 
 {convertList, convert} = require '../compiler'
 

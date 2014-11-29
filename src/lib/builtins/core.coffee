@@ -1,5 +1,5 @@
-{constant, str, trace, convertIdentifier, begin, return_, error, isArray, error, extend, splitSpace, undefinedExp, addPrelude} = require '../utils'
-{VALUE, SYMBOL, LIST} = constant
+{str, trace, convertIdentifier, begin, return_, error, error, extend, splitSpace, undefinedExp, addPrelude} = require '../utils'
+{VALUE, SYMBOL, LIST} = '../constant'
 
 {compileError} = require '../compiler/helper'
 

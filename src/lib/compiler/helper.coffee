@@ -1,5 +1,5 @@
-{constant, extend, str, trace} = require '../utils'
-{VALUE, SYMBOL, LIST, COMMAND} = constant
+{extend, str, trace} = require '../utils'
+{VALUE, SYMBOL, LIST, COMMAND} = '../constant'
 
 exports.compileError = compileError = (exp, message) ->
   if message

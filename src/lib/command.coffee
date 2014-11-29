@@ -47,7 +47,7 @@ mkdirp = require 'mkdirp'
 optparse = require './optparse'
 taiji = require './taiji'
 TaijiModule = require './module'
-SourceMap = require './sourcemap'
+#SourceMap = require './sourcemap'
 
 useWinPathSep  = path.sep is '\\'
 
@@ -162,7 +162,7 @@ compileScript = (action, file, input, base = null) ->
       t.output = compiled
       taiji.emit 'success', task
       if o.print then printLine t.output.trim()
-      else if o.compile then writeJs base, t.file, t.output, options.outputPath, t.sourceMap
+      else if o.compile then writeJs base, t.file, t.output, options.outputPath
       else writeResult base, t.file, t.output, options.outputPath, action
   catch err
     taiji.emit 'failure', err, task

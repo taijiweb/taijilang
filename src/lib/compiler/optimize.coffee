@@ -1,4 +1,4 @@
-{str, extend, error, begin, undefinedExp, constant, norm, trace} = require '../utils'
+{str, extend, error, begin, undefinedExp, norm, trace} = require '../utils'
 {compileError} = require './helper'
 
 {NUMBER, STRING, IDENTIFIER, SYMBOL, REGEXP, HEAD_SPACES, CONCAT_LINE, PUNCT, FUNCTION,
@@ -8,7 +8,7 @@ MODULE_HEADER, MODULE
 NON_INTERPOLATE_STRING, INTERPOLATE_STRING
 INDENT, UNDENT, HALF_DENT
 VALUE, SYMBOL, LIST, COMMAND
-} = constant
+} = '../constant'
 
 {isExpression} = require './transform'
 {tocode} = require './textize'

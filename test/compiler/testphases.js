@@ -1,4 +1,4 @@
-var LIST, SYMBOL, ShiftStatementInfo, SymbolLookupError, VALUE, constant, convert, expect, idescribe, iit, lib, metaConvert, ndescribe, nit, nonMetaCompileExpNoOptimize, norm, parse, str, strConvert, strMetaConvert, strNonOptCompile, taiji, tokenize, trace, transform, transformExpression, _ref, _ref1, _ref2, _ref3;
+var LIST, SYMBOL, ShiftStatementInfo, SymbolLookupError, VALUE, convert, expect, idescribe, iit, lib, metaConvert, ndescribe, nit, nonMetaCompileExpNoOptimize, parse, str, strConvert, strMetaConvert, strNonOptCompile, taiji, tokenize, trace, transform, transformExpression, _ref, _ref1, _ref2, _ref3;
 
 _ref = require('../util'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, strConvert = _ref.strConvert, str = _ref.str, parse = _ref.parse;
 
@@ -8,9 +8,9 @@ _ref1 = require(lib + 'compiler/transform'), transformExpression = _ref1.transfo
 
 tokenize = require(lib + 'compiler/textize').tokenize;
 
-_ref2 = require(lib + 'utils'), constant = _ref2.constant, norm = _ref2.norm, trace = _ref2.trace;
+trace = require(lib + 'utils').trace;
 
-VALUE = constant.VALUE, SYMBOL = constant.SYMBOL, LIST = constant.LIST;
+_ref2 = require(lib + 'constant'), VALUE = _ref2.VALUE, SYMBOL = _ref2.SYMBOL, LIST = _ref2.LIST;
 
 _ref3 = require(lib + 'compiler'), convert = _ref3.convert, metaConvert = _ref3.metaConvert, nonMetaCompileExpNoOptimize = _ref3.nonMetaCompileExpNoOptimize;
 

@@ -1,11 +1,11 @@
 {expect, ndescribe, idescribe, iit, nit, matchRule} = require '../util'
 
 lib = '../../lib/'
-{constant, isArray, str} = require lib+'utils'
+{str} = require lib+'utils'
 {Parser} = require lib+'parser'
 
 {IDENTIFIER, NUMBER, NEWLINE, INDENT, UNDENT, HALF_DENT, PAREN, BLOCK_COMMENT, EOI, SPACE
-PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION} = constant
+PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION} = require lib+'constant'
 
 describe "parse operator expression: ", ->
   parse = (text) ->

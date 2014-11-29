@@ -1,14 +1,14 @@
-var BLOCK_COMMENT, COMPACT_CLAUSE_EXPRESSION, EOI, HALF_DENT, IDENTIFIER, INDENT, NEWLINE, NUMBER, OPERATOR_EXPRESSION, PAREN, PAREN_OPERATOR_EXPRESSION, Parser, SPACE, SPACE_CLAUSE_EXPRESSION, UNDENT, constant, expect, idescribe, iit, isArray, lib, matchRule, ndescribe, nit, str, _ref, _ref1;
+var BLOCK_COMMENT, COMPACT_CLAUSE_EXPRESSION, EOI, HALF_DENT, IDENTIFIER, INDENT, NEWLINE, NUMBER, OPERATOR_EXPRESSION, PAREN, PAREN_OPERATOR_EXPRESSION, Parser, SPACE, SPACE_CLAUSE_EXPRESSION, UNDENT, expect, idescribe, iit, lib, matchRule, ndescribe, nit, str, _ref, _ref1;
 
 _ref = require('../util'), expect = _ref.expect, ndescribe = _ref.ndescribe, idescribe = _ref.idescribe, iit = _ref.iit, nit = _ref.nit, matchRule = _ref.matchRule;
 
 lib = '../../lib/';
 
-_ref1 = require(lib + 'utils'), constant = _ref1.constant, isArray = _ref1.isArray, str = _ref1.str;
+str = require(lib + 'utils').str;
 
 Parser = require(lib + 'parser').Parser;
 
-IDENTIFIER = constant.IDENTIFIER, NUMBER = constant.NUMBER, NEWLINE = constant.NEWLINE, INDENT = constant.INDENT, UNDENT = constant.UNDENT, HALF_DENT = constant.HALF_DENT, PAREN = constant.PAREN, BLOCK_COMMENT = constant.BLOCK_COMMENT, EOI = constant.EOI, SPACE = constant.SPACE, PAREN_OPERATOR_EXPRESSION = constant.PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION = constant.COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION = constant.SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION = constant.OPERATOR_EXPRESSION;
+_ref1 = require(lib + 'constant'), IDENTIFIER = _ref1.IDENTIFIER, NUMBER = _ref1.NUMBER, NEWLINE = _ref1.NEWLINE, INDENT = _ref1.INDENT, UNDENT = _ref1.UNDENT, HALF_DENT = _ref1.HALF_DENT, PAREN = _ref1.PAREN, BLOCK_COMMENT = _ref1.BLOCK_COMMENT, EOI = _ref1.EOI, SPACE = _ref1.SPACE, PAREN_OPERATOR_EXPRESSION = _ref1.PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION = _ref1.COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION = _ref1.SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION = _ref1.OPERATOR_EXPRESSION;
 
 describe("parse operator expression: ", function() {
   var parse;

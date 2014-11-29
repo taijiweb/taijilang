@@ -1,8 +1,8 @@
 # before analysis and transformation phase, the symbol, number and string should be unboxed  ???
 
-{str, entity, isValue, isArray, extend, error, wrapInfo1, constant} = require '../utils'
+{str, entity, isValue, extend, error} = require '../utils'
 
-{SYMBOL, VALUE, LIST} = constant
+{SYMBOL, VALUE, LIST} = '../constant'
 
 truth = (exp, env) ->
   exp = entity(exp)

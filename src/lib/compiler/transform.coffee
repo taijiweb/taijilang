@@ -1,8 +1,8 @@
-{str, extend, begin, pushExp, notExp, norm, undefinedExp, entity, wrapInfo1, constant,
+{str, extend, begin, pushExp, notExp, undefinedExp,
 assert, hasOwnProperty, commentPlaceholder, trace} = require '../utils'
 {assignVarsOf, varsOf, pollutedOf, compileError} = require './helper'
 
-{VALUE, SYMBOL, LIST, COMMAND} = constant
+{VALUE, SYMBOL, LIST, COMMAND} = '../constant'
 
 # todo: keep the env of the function definition expression to optimization phase
 

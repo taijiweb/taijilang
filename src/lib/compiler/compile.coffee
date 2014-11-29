@@ -3,7 +3,7 @@ path = require 'path'
 {compileError, symbolLookupError} = require './helper'
 
 {evaljs, isArray, extend, str, formatTaijiJson, wrapInfo1, extendSyntaxInfo, entity, pushExp, undefinedExp, begin,
-__TJ__QUOTE, constant, trace} = require '../utils'
+__TJ__QUOTE, trace} = require '../utils'
 
 {NUMBER, STRING, IDENTIFIER, SYMBOL, REGEXP, HEAD_SPACES, CONCAT_LINE, PUNCT, FUNCTION,
 BRACKET, PAREN, DATA_BRACKET, CURVE, INDENT_EXPRESSION
@@ -12,7 +12,7 @@ MODULE_HEADER, MODULE
 NON_INTERPOLATE_STRING, INTERPOLATE_STRING
 INDENT, UNDENT, HALF_DENT
 VALUE, LIST
-} = constant
+} = '../constant'
 
 {Environment} = require './env'
 exports.Environment = Environment
@@ -53,39 +53,26 @@ madeCall = (head, tail, env) ->
   else tail.shift();  ['call!', head, tail]
 
 exports.convert = convert = (exp, env) ->
-#  tmp = 1
-#  console.log 'convert:', exp
   trace('convert: ', str(exp))
-  switch exp.kind
-    when LIST
-      expValue = exp.value
-      exp0 = expValue[0]
-      switch exp0.kind
-        when LIST
-          head = convert(exp0)
-          tail = convertArgumentList(expValue[1...], env)
-          return madeCall(head, tail, env)
-        when SYMBOL
-#          console.log 'is symbol'
-#          console.log env, 'get is what:', env.get
-          head = env.get(exp0.value)
-          if not head then symbolLookupError(exp0, exp)
-          if typeof head == 'function'
-            result = head(expValue, env)
-            result.start = exp.start; result.stop = exp.stop
-            return result
-          else
-            tail = convertArgumentList(expValue[1...], env)
-            return madeCall head, tail, env
-        when VALUE
-          result = for e in exp then convert(e, env)
-          result.start = exp.start; result.stop = exp.stop
-        else compileError exp0, 'convert: wrong kind: '+exp0.kind
-    when SYMBOL
+  if exp instanceof Array
+    exp0 = exp[0]
+    if exp0 instanceof Array
+      head = convert(exp0)
+      tail = convertArgumentList(exp[1...], env)
+      return madeCall(head, tail, env)
+    else if exp0.kind==SYMBOL
+      head = env.get(exp0.value)
+      if not head then symbolLookupError(exp0, exp)
+      if typeof head == 'function'
+        return head(expValue, env)
+      else
+        tail = convertArgumentList(expValue[1...], env)
+        return madeCall head, tail, env
+    else return (for e in exp then convert(e, env))
+  else if exp.kind==SYMBOL
       if result=env.get(exp.value) then return result
       else symbolLookupError(exp)
-    when VALUE then return exp
-    else compileError exp, 'convert: wrong kind: '+exp.kind
+  else return exp
 
 exports.convertExps = convertExps = (exp, env) -> begin(for e in exp then convert e, env)
 exports.convertList = (exp, env) -> for e in exp then convert(e, env)
