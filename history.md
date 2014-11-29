@@ -1,5 +1,8 @@
 2014
 2014-11
+11-29
+  nextToken do not use token.next, use cursor2token instead, more robust
+
 11-13 pass several simple compile tests
 11-9 
  gramatical element expression pass all 494 tests (testoperator, testbasic, testparser)
