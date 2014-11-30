@@ -1,6 +1,7 @@
-{str, isArray, extend, charset, begin, undefinedExp, isValue, digitCharSet, letterCharSet, identifierCharSet, assert, trace} = require '../utils'
+{str, isArray, extend, charset, begin, undefinedExp, isValue, digitCharSet, letterCharSet, identifierCharSet,
+assert, trace, headSymbol, isObject} = require '../utils'
 
-{SYMBOL, VALUE, LIST} = '../constant'
+{SYMBOL, VALUE} = require '../constant'
 
 # sort of tokenize, where "sort" means kind or type
 TKN_PAREN=1; TKN_BRACKET = 2; TKN_CURVE=3; TKN_LIST=4; TKN_STATEMENT_LIST=5; TKN_WRAP_BLOCK=6; TKN_BLOCK=7; TKN_MAYBE=8; TKN_STATEMENT=9;
@@ -93,8 +94,6 @@ tokenFnMap =
     priority([(if x.pri>15 then paren(x) else x), '? ',
               (if y.pri>15 then paren(y) else y), ': ',  (if z.pri>15 then paren(z) else z)],15) # test? then: else
   'noop!': (exp) ->  ''
-  'directLineComment!': (exp) -> exp[1].value
-  'directCBlockComment!': (exp) -> exp[1].value
   'var': (exp) ->
     trace 'tokenize var: '+str(exp)
     result = ['var']
@@ -116,24 +115,7 @@ tokenFnMap =
       result.push t
     result.push undentToken(4)
     result
-  'begin!': (exp) ->
-    trace 'tokenize begin!:', str(exp)
-    exps = []
-    e1 = ''
-    for e in exp[1...]
-      assert(e, 'unexpected undefined while textizing '+str(exp))
-      eValue = e.value
-      if e1 and (e1Value=e1.value)[0].value=='var'
-        if (eValue0=eValue[0])
-          if eValue0.value=='var' then e1Value.push eValue[1]
-          else if eValue0.value=='=' and (eValue1Value=eValue[1].value) and (typeof eValue1Value == 'string') and eValue1Value==eValue[eValue.length-1].value
-            e1Value.pop(); e1Value.push e
-          else exps.push e; e1 = e
-        else exps.push e; e1 = e
-      else exps.push e; e1 = e
-    if e=='' or e==undefinedExp then exps.pop()
-    if exps.length==1 then return statement exps[0]
-    else statementList(exps)
+  'begin!': (exp) -> statementList(exp[1...])
   'debugger!': (exp) -> 'debugger'
   'label!': (exp) -> [tokenize(exp[1]), ': ', tokenize(exp[2])]
   'break': (exp) -> ['break ', tokenize(exp[1])]
@@ -158,34 +140,21 @@ tokenFnMap =
       compound('if ', paren(tokenize(exp[1])), block(tokenize(exp[2])), clause('else ', elseClause))
     else compound('if ', paren(tokenize(exp[1])), block(tokenize(exp[2])))
   'while': (exp) -> compound('while ', paren(tokenize(exp[1])), block(tokenize(exp[2])))
-  'doWhile!': (exp) -> compound('do ', wrapBlock(tokenize(exp[1])), ' while ', paren(tokenize(exp[2])))
   'try': (exp) ->
     result = ['try ', wrapBlock(tokenize(exp[1])), clause('catch ', paren(tokenize(exp[2]))),  wrapBlock(tokenize(exp[3]))]
     if exp[4] then result.push  clause('finally ', wrapBlock tokenize(exp[4]))
     compound result
   # javascript has no "for key of hash {...}", has "for key in hash {...}" instead.
   'jsForIn!': (exp) -> compound('for ', paren([tokenize(exp[1]), ' in ', tokenize(exp[2])]), block(tokenize(exp[3])))
-  #'forOf!': (exp) -> compound('for ', paren([tokenize(exp[1]), 'of ', tokenize(exp[2])]), block(tokenize(exp[3])))
-  'cfor!': (exp) ->  compound('for ', paren([tokenize(exp[1]), ';', tokenize(exp[2]), ';', tokenize(exp[3])]), block(tokenize(exp[4])))
-  'switch': (exp) ->
-    body = []
-    for e in exp[2]
-      cases = []
-      for x in e[0] then body.push 'case '; body.push tokenize(x); body.push ': '
-      body.push tokenize(e[1]); body.push ';'
-    if exp[3] then body.push clause('default: ', tokenize(exp[3]))
-    compound('switch ', paren(tokenize(exp[1])), wrapBlock(body))
-
-  'with!': (exp) -> compound('with ', paren(tokenize(exp[1])), block(tokenize(exp[2])))
 
 exports.tokenize = tokenize = (exp) ->
   trace('tokenize: ', str(exp))
-  switch exp.kind
-    when SYMBOL, VALUE then exp.value
-    when LIST
-      assert tokenFnMap[exp.value[0].value], 'found no tokenize function: '+exp.value[0].value
-      tokenFnMap[exp.value[0].value](exp.value)
-    else throw 'tokenize: wrong kind: '+str(exp)
+  if exp instanceof Array
+    cmd = headSymbol(exp)
+    assert tokenFnMap[cmd], 'no function found in tokenFnMap for '+str(exp)+':'+cmd
+    tokenFnMap[cmd](exp)
+  else if isObject(exp) then exp.value
+  else exp.toString()
 
 makeTextizer = (options) ->
   code = ''; prev = ''; indentRow = 0; lineno = 0; row = 0

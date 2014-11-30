@@ -10,7 +10,7 @@ Parser = require(lib + 'parser').Parser;
 
 _ref1 = require(lib + 'constant'), IDENTIFIER = _ref1.IDENTIFIER, NUMBER = _ref1.NUMBER, NEWLINE = _ref1.NEWLINE, INDENT = _ref1.INDENT, UNDENT = _ref1.UNDENT, HALF_DENT = _ref1.HALF_DENT, PAREN = _ref1.PAREN, BLOCK_COMMENT = _ref1.BLOCK_COMMENT, EOI = _ref1.EOI, SPACE = _ref1.SPACE, PAREN_OPERATOR_EXPRESSION = _ref1.PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION = _ref1.COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION = _ref1.SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION = _ref1.OPERATOR_EXPRESSION;
 
-describe("parse operator expression: ", function() {
+ndescribe("parse operator expression: ", function() {
   var parse;
   parse = function(text) {
     var parser, x;
@@ -69,6 +69,9 @@ describe("parse operator expression: ", function() {
     });
     it("parse (1, 2)", function() {
       return expect(str(parse('(1, 2)'))).to.deep.equal("[() [binary! , 1 2]]");
+    });
+    it("parse (1, 2,3)", function() {
+      return expect(str(parse('(1, 2,3)'))).to.deep.equal("[() [binary! , [binary! , 1 2] 3]]");
     });
     it("parse (1, 2+3)", function() {
       return expect(str(parse('(1, 2+3)'))).to.deep.equal("[() [binary! , 1 [binary! + 2 3]]]");

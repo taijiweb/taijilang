@@ -8,7 +8,7 @@ _ref1 = require(lib + 'utils'), constant = _ref1.constant, isArray = _ref1.isArr
 
 Parser = require(lib + 'parser').Parser;
 
-describe("parse: ", function() {
+ndescribe("parse: ", function() {
   describe("clause: ", function() {
     var parse;
     parse = function(text) {
@@ -41,6 +41,9 @@ describe("parse: ", function() {
       });
       it('should parse 1 2', function() {
         return expect(parse('1 2 ')).to.equal('[1 2]');
+      });
+      it('should parse print +1', function() {
+        return expect(parse('print +1')).to.equal("[print [prefix! + 1]]");
       });
       it('should parse print : 1 , 2', function() {
         return expect(parse('print : 1 , 2')).to.equal("[print 1 2]");

@@ -1,3 +1,9 @@
+{SYMBOL, symbol
+UNDEFINED, BEGIN, IF, PREFIX, SUFFIX, BINARY, WHILE, BREAK, CONTINUE, THROW, RETURN, NEW, FORIN, FOROF, TRY,
+SHARP, CURVE_PAIR, PAREN_PAIR, BRACKET_PAIR
+CALL, ATTR, INDEX
+} = require './constant'
+
 fs = require('fs')
 path = require('path')
 
@@ -18,8 +24,7 @@ _trace = (stackIndex, args) ->
     line = sp[3]
     pos = sp[4]
     fs.appendFileSync("./debug.log", file+': '+method+': '+line+':'+pos+': '+argsStr+'\r\n')
-  else
-    fs.appendFileSync("./debug.log", 'noname:  noname: xx: yy: '+argsStr+'\r\n')
+  else fs.appendFileSync("./debug.log", 'noname:  noname: xx: yy: '+argsStr+'\r\n')
 
 exports.log = log = (level, args...) -> _trace(level, args); console.log(args...)
 exports.trace = trace = (args...) ->  _trace(0, args)
@@ -27,6 +32,15 @@ exports.trace0 = trace0 = (args...) -> _trace(0, args)
 exports.trace1 = trace1 = (args...) -> _trace(1, args)
 exports.trace2 = trace2 = (args...) -> _trace(2, args)
 exports.trace3 = trace3 = (args...) -> _trace(3, args)
+
+exports.assert = assert = (value, message) ->
+  if not value
+    trace2('assert:', message or 'assert failed')
+    throw new Error message or 'assert failed'
+
+exports.isArray = isArray = (exp) -> Object::toString.call(exp) == '[object Array]'
+exports.isObject = isObject = (exp) -> exp instanceof Object
+exports.isSymbol = isSymbol = (exp) -> typeof exp == "string"  or (exp and exp.kind==SYMBOL)
 
 exports.charset = charset = (string) ->
   result = {}
@@ -65,10 +79,12 @@ exports.str = str = (item) ->
   else if item==null then 'null'
   else item.toString()
 
-exports.assert = assert = (value, message) ->
-  if not value
-    trace2('assert:', message or 'assert failed')
-    throw new Error message or 'assert failed'
+exports.symbolOf = symbolOf = (exp) -> if isObject(exp) then return exp.value else exp
+
+exports.headSymbol = (exp) ->
+  assert(isArray(exp), 'expect head symbol of list')
+  if isObject (exp[0]) then exp[0].value
+  else exp[0]
 
 exports.error = error = (message, symbol) ->
   if symbol then throw message+': '+symbol else throw message
@@ -77,8 +93,6 @@ exports.hasOwnProperty = Object.hasOwnProperty
 
 exports.debugging = false
 exports.testing = false
-exports.debug = (message) -> if exports.debugging then console.log message
-exports.warn = (message) -> if exports.debugging or exports.testing then console.log message
 
 exports.convertIdentifier = (name) ->
   result = ''
@@ -107,6 +121,17 @@ exports.mergeSet = (sets...) ->
       if hasOwnProperty.call(x, k) then result[k] = true
   result
 
+exports.isEllipsis = (exp) -> symbolOf(exp[0])=='suffix!' and  symbolOf(exp[1])=='...'
+
+# ['binary!' "," left right]
+exports.commaList = commaList = (exp) ->
+  exp2 = exp[2]
+  if isArray(exp2) and symbolOf(exp2[0])=='binary!' and symbolOf(exp[1])==','
+    result = commaList(exp2)
+    result.push exp[3]
+    result
+  else [exp2, exp[3]]
+
 # return value:
 # undefined: meet return, throw, break, continue
 # value, symbol: meet value or symbol
@@ -114,12 +139,12 @@ exports.mergeSet = (sets...) ->
 addBeginItem = (result, exp) ->
   if exp not instanceof Array then return exp
   exp0 = exp[0]
-  if exp0=='begin!'
+  if exp0==BEGIN
     for e in exp[1...]
       last = addBeginItem(result, e)
       if not last then return
     return last
-  else if exp0=='return' or exp0=='throw' or exp0=='break' or exp0=='continue'
+  else if exp0==RETURN or exp0==THROW or exp0==BREAK or exp0==CONTINUE
     result.push(exp); return
   else result.push exp; return true
 
@@ -129,7 +154,7 @@ exports.begin = begin = (exp) ->
       last = addBeginItem(result, e)
       if not last then break
     if last and last!=true then result.push last
-    if result.length>1 then result.unshift 'begin!'; return (result)
+    if result.length>1 then result.unshift BEGIN; return (result)
     else if result.length==1 then return result[0]
     else return undefinedExp
 
@@ -157,12 +182,13 @@ returnFnMap =
 
 exports.return_ = return_ = (exp) ->
   if not exp then return exp
-  if not exp.push then return [('return'), exp]
+  if not exp.push then return [RETURN, exp]
   if fn=returnFnMap[exp[0]] then return fn(exp)
-  [('return'), exp]
+  [RETURN, exp]
 
-exports.pushExp = (lst, v) ->  ['call!', ['attribute!', lst, 'push'], [v]]
-exports.notExp = (exp) ->  ['prefix!', '!', exp]
+exports.pushExp = (lst, v) ->  [CALL, [ATTRI, lst, PUSH], [v]]
+exports.notExp = (exp) ->  [PREFIX, '!', exp]
+exports.undefinedExp = undefinedExp = ->  {value:'undefined', kind:SYMBOL}
 
 exports.isUndefinedExp = -> (exp) -> exp==undefinedExp
 
@@ -271,3 +297,33 @@ exports.baseFileName = (file, stripExt = no, useWinPathSep = no) ->
 # Determine if a filename represents a taiji file.
 exports.isTaiji = (file) -> /\.(taiji|tj|taiji.json|tj.json)$/.test file
 
+exports.madeConcat = (head, tail) ->
+  if tail.concated then result =  ['call!', ['attribute!', ['list', head], 'concat'], [tail]]
+  else tail.shift(); result = [head].concat tail
+  result.convertToList = true
+  result
+
+exports.madeCall = (head, tail, env) ->
+  if tail.concated
+    if head instanceof Array and ((head0=head[0].value)=='attribute!' or head0=='index!')
+      head1 = head[1]
+      if head1.kind==SYMBOL then  ['call!', ['attribute!', head, 'apply'], [head, tail]]
+      else
+        result =  ['begin!', ['var', obj=env.ssaVar('obj')], ['=', obj, head1]]
+        result.push  ['call!', ['attribute!', [head0, obj, head[1]], 'apply'], [obj, tail]]
+        result
+    else  ['call!', ['attribute!', head, 'apply'], ['null', tail]]
+  else tail.shift();  ['call!', head, tail]
+
+
+exports.getStackTrace = ->
+  obj = {}
+  Error.captureStackTrace(obj, getStackTrace)
+  obj.stack
+
+javascriptKeywordText = ("break export return case for switch comment function this continue if typeof default import" +
+  " var delete in void do label while else new with catch enum throw class super extends try const finally debugger")
+exports.javascriptKeywordSet = javascriptKeywordSet = {}
+do ->
+  for w in javascriptKeywordText.split(' ')
+    javascriptKeywordSet[w] = 1

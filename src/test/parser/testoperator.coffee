@@ -7,7 +7,7 @@ lib = '../../lib/'
 {IDENTIFIER, NUMBER, NEWLINE, INDENT, UNDENT, HALF_DENT, PAREN, BLOCK_COMMENT, EOI, SPACE
 PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, SPACE_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION} = require lib+'constant'
 
-describe "parse operator expression: ", ->
+ndescribe "parse operator expression: ", ->
   parse = (text) ->
     parser = new Parser()
     x = parser.parse(text, matchRule(parser, parser.operatorExpression), 0)
@@ -53,6 +53,8 @@ describe "parse operator expression: ", ->
 
     it "parse (1, 2)", ->
       expect(str parse('(1, 2)')).to.deep.equal "[() [binary! , 1 2]]"
+    it "parse (1, 2,3)", ->
+      expect(str parse('(1, 2,3)')).to.deep.equal "[() [binary! , [binary! , 1 2] 3]]"
     it "parse (1, 2+3)", ->
       expect(str parse('(1, 2+3)')).to.deep.equal "[() [binary! , 1 [binary! + 2 3]]]"
     it "parse (1,2 + 3)", ->

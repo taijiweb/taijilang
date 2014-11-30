@@ -7,7 +7,7 @@ lib = '../../lib/'
 {IDENTIFIER, NUMBER, SYMBOL, NEWLINE, INDENT, UNDENT, HALF_DENT, PAREN, BLOCK_COMMENT, EOI, SPACE
 PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION} = require lib+'constant'
 
-describe "parser basic: ",  ->
+ndescribe "parser basic: ",  ->
   describe "nextToken: ",  ->
     parser = new Parser()
     parse = (text) ->

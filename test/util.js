@@ -1,4 +1,4 @@
-var INDENT, NEWLINE, Parser, SPACE, chai, head, lib, realCode, str, taiji, _ref;
+var INDENT, NEWLINE, Parser, SPACE, SYMBOL, VALUE, assert, chai, head, lib, norm, realCode, str, taiji, _ref, _ref1;
 
 chai = require("chai");
 
@@ -14,7 +14,7 @@ exports.nit = function() {};
 
 lib = '../lib/';
 
-str = require(lib + 'utils').str;
+_ref = require(lib + 'utils'), str = _ref.str, assert = _ref.assert;
 
 Parser = require(lib + 'parser').Parser;
 
@@ -24,7 +24,7 @@ realCode = require(lib + 'utils').realCode;
 
 exports.str = str;
 
-_ref = require(lib + 'constant'), NEWLINE = _ref.NEWLINE, INDENT = _ref.INDENT, SPACE = _ref.SPACE;
+_ref1 = require(lib + 'constant'), NEWLINE = _ref1.NEWLINE, INDENT = _ref1.INDENT, SPACE = _ref1.SPACE, VALUE = _ref1.VALUE, SYMBOL = _ref1.SYMBOL;
 
 exports.matchRule = function(parser, rule) {
   return function() {
@@ -38,6 +38,42 @@ exports.matchRule = function(parser, rule) {
     }
     return rule();
   };
+};
+
+exports.norm = norm = function(exp) {
+  var e, _i, _len, _results;
+  assert(exp !== void 0, 'norm(exp) meet undefined');
+  if (exp.kind) {
+    return exp;
+  }
+  if (exp instanceof Array) {
+    _results = [];
+    for (_i = 0, _len = exp.length; _i < _len; _i++) {
+      e = exp[_i];
+      _results.push(norm(e));
+    }
+    return _results;
+  } else if (typeof exp === 'string') {
+    if (exp[0] === '"') {
+      return {
+        value: exp,
+        kind: VALUE
+      };
+    } else {
+      return {
+        value: exp,
+        kind: SYMBOL
+      };
+    }
+  } else if (typeof exp === 'object' && (exp.kind == null)) {
+    exp.kind = SYMBOL;
+    return exp;
+  } else {
+    return {
+      value: exp,
+      kind: VALUE
+    };
+  }
 };
 
 head = 'taiji language 0.1\n';

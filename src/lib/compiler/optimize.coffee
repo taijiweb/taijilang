@@ -8,7 +8,7 @@ MODULE_HEADER, MODULE
 NON_INTERPOLATE_STRING, INTERPOLATE_STRING
 INDENT, UNDENT, HALF_DENT
 VALUE, SYMBOL, LIST, COMMAND
-} = '../constant'
+} = require '../constant'
 
 {isExpression} = require './transform'
 {tocode} = require './textize'

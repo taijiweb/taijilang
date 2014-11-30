@@ -4,7 +4,7 @@ lib = '../../lib/'
 {constant, isArray, str} = require lib+'utils'
 {Parser} = require lib+'parser'
 
-describe "parse: ",  ->
+ndescribe "parse: ",  ->
   describe "clause: ",  ->
     parse = (text) ->
       parser = new Parser()
@@ -28,6 +28,8 @@ describe "parse: ",  ->
         expect(parse('1 , 2')).to.equal "1"
       it 'should parse 1 2', ->
         expect(parse('1 2 ')).to.equal '[1 2]'
+      it 'should parse print +1', ->
+        expect(parse('print +1')).to.equal "[print [prefix! + 1]]"
       it 'should parse print : 1 , 2', ->
         expect(parse('print : 1 , 2')).to.equal "[print 1 2]"
       it 'should parse print : and 1 2', ->
@@ -58,6 +60,7 @@ describe "parse: ",  ->
         expect(parse("[[2]]")).to.equal "[[] [[[] [2]]]]"
       it 'should parse [[[2] 3]]', ->
         expect(parse("[ [[2] 3] ]")).to.equal "[[] [[[] [[[[] [2]] 3]]]]]"
+
     describe "normal clause 2: ",  ->
       it 'should parse a = 1', ->
         expect(parse('a = 1')).to.equal "[= a 1]"

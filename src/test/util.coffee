@@ -7,20 +7,36 @@ exports.nit = ->
 
 lib = '../lib/'
 
-{str} = require lib+'utils'
+{str, assert} = require lib+'utils'
 {Parser} = require lib+'parser'
 taiji = require lib+'taiji'
 {realCode} = require lib+'utils'
 
 exports.str = str
 
-{NEWLINE, INDENT, SPACE} = require lib+'constant'
+{NEWLINE, INDENT, SPACE, VALUE, SYMBOL} = require lib+'constant'
 
 exports.matchRule = (parser, rule) -> ->
   token = parser.nextToken()
   if token.type==NEWLINE then parser.nextToken()
   if token.type==SPACE then parser.nextToken()
   rule()
+
+# set exp.kind attribute, recursively if exp is array
+# normalize expression for compilation, used in multiple phases
+# todo: this should be compile time function in taijilang bootstrap compilation program, so it can be optimized greatly.
+# to make "analyzed", "transformed", "optimized" being true here, we can avoid switch branch in the following phases.
+exports.norm = norm = (exp) ->
+  # trace('norm: ', str(exp))
+  assert exp!=undefined, 'norm(exp) meet undefined'
+  if exp.kind then return exp
+  if exp instanceof Array
+    for e in exp then norm e
+  else if typeof exp == 'string'
+    if exp[0]=='"' then {value:exp, kind:VALUE}
+    else {value:exp, kind:SYMBOL}
+  else if typeof exp =='object' and not exp.kind? then exp.kind = SYMBOL; exp
+  else {value:exp, kind:VALUE}
 
 head = 'taiji language 0.1\n'
 

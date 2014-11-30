@@ -1,5 +1,6 @@
-{str, trace, convertIdentifier, begin, return_, error, error, extend, splitSpace, undefinedExp, addPrelude} = require '../utils'
-{VALUE, SYMBOL, LIST} = '../constant'
+{str, trace, convertIdentifier, begin, return_, error, error, extend, splitSpace, undefinedExp, addPrelude, symbolOf, commaList, isArray} = require '../utils'
+{VALUE, SYMBOL, LIST
+LIST$} = require '../constant'
 
 {compileError} = require '../compiler/helper'
 
@@ -16,53 +17,23 @@ metaIndex = 0
 exports['extern!'] = (exp, env) ->
   if exp[1]=='const' then isConst = true; exp = exp[2...]
   for e in exp[1...]
-    if env.hasLocal(v=e.value)
+    if env.hasLocal(v=symbolOf(e))
       error v+' has been declared as local variable, so it can not be declared as extern variable any more.', e
-    env.set(v, v)
+    env.set(v, e)
     if isConst then e.const = true
   ''
 
-# todo: while transform(exp, env), [metaConvertVar name] should be transformed a proper variable name
-# avoid to conflict with other names
-exports['metaConvertVar!'] = (exp, env) -> exp
-
-# always generate a new var a const
-# so continuous "var a; var a;" will generate two different variable.
-# [var [a = 1] [a = a+1]] , second right a will be evaluated in old env
-declareVar = (fn) -> (exp, env) ->
-  result = []
-  len = exp.length
-  i = 1;
-  while i<len
-    e = exp[i++]
-    switch e.kind
-      when VALUE then error 'illegal variable name'
-      when SYMBOL
-        eValue = e.value
-        if env.hasLocal(e.value) then error 'repeat declaring variable: '+str(e)
-        v = env.set(eValue, e); fn(v) # when convert [const v], fn(v) will set v.const = true
-        if v.const then error 'const need to be initialized to a value'
-        result.push ['var', v]
-      when LIST
-        e0 = e[0]
-        if e0.kind==SYMBOL
-          if e0.value=='metaConvertVar!'
-            result.push [('var'), e]
-          else if e0.value=='='
-            e1 = e[1]
-            if e1.kind!=SYMBOL
-              error 'illegal variable name in variable initialization: '+str(e1)
-            if env.hasLocal(e1Value=e1.value) then error 'repeat declaring variable: '+str(e1)
-            v = env.newVar(e1Value); fn(v);  result.push((['var', v]))
-            result.push(['=', v, convert(e[2], env)])
-            # [var [a = a+1]] ,right a will be evaluated in old env
-            env.set(e1Value, e1);
-        else compileError e, 'wrong form of var initialization'
-  begin(result)
-
 # assure when transforming, only there exists ['var', variable]
-exports['var'] = declareVar((v) -> v)
-exports['const'] = declareVar( (v) -> v.const=true; v )
+exports['var'] = (exp, env) ->
+  result = []
+  for e in exp[1...]
+    trace 'convert ', str e
+    if e.kind==SYMBOL
+      if env.hasLocal(e.value) then error 'repeat declaring variable: '+str(e)
+      v = env.set(e.value, e)
+      result.push [exp[0], v]
+    else error 'only identifiers can be in var statement'
+  begin(result)
 
 exports['newvar!'] = (exp, env) -> '"'+env.newVar((x=exp[1].value).slice(1, x.length-1)).symbol+'"'
 
@@ -71,8 +42,7 @@ makeSlice = (obj, start, stop) ->
   if stop==undefined then ['call!', ['attribute!', '__slice', 'call'], [obj, start]]
   else ['call!', ['attribute!', '__slice', 'call'], [obj, start, stop]]
 
-convertAssign = (exp, env) ->
-  left = exp[1]
+convertAssign = (left, right, env) ->
   if left.kind==SYMBOL
     leftValue = left.value
     if env.hasLocal(leftValue)
@@ -81,14 +51,14 @@ convertAssign = (exp, env) ->
       if left.outer
         env.set(leftValue, left=env.newVar(leftValue))
         left.const = true # create const by default
-        ['begin!', ['var', left], ['=', left, convert(exp[2], env)], left]
-      else ['=', left, convert(exp[2], env)]
+        ['begin!', ['var', left], ['=', left, convert(right, env)], left]
+      else ['=', left, convert(right, env)]
     else
       env.set(leftValue, left=env.newVar(leftValue))
       left.const = true # create const by default
-      ['begin!', ['var', left], ['=', left, convert(exp[2], env)], left]
+      ['begin!', ['var', left], ['=', left, convert(right, env)], left]
   # left is assignable expression list
-  else if left[0]=='list!'
+  else if left[0]==LIST$
     # right is already list in the compilation time
     ellipsis = undefined
     for item, i in left
@@ -97,9 +67,8 @@ convertAssign = (exp, env) ->
         if not ellipsis then ellipsis = i; left[i] = x[1]
         else error 'can not have multiple ellipsis item in the left side of assign'
     if ellipsis==undefined
-      right = exp[2]
       # no exp... is met in the left side, just do the al list assign
-      if right[0]=='list!'
+      if right[0]==LIST$
         if left.length>1
           result = []
           for e, i in left[1...] then result.push convertAssign(e, right[i+1], env)
@@ -115,7 +84,7 @@ convertAssign = (exp, env) ->
         else return convertAssign(left[1], (['index!', right, 0]), env)
     else
       result = []; leftLength = left.length
-      if right[0]=='list!'
+      if right[0]==LIST$
         rightLength = right.length
         if leftLength>rightLength
           for e, i in left
@@ -155,10 +124,10 @@ convertAssign = (exp, env) ->
   # ['@@' varName] is included by this case, see below: exports['@@'] = (exp, env) ->
   else
     # we should convert the right side at first
-    [exp[0], convert(left, env), convert(exp[2], env)]
+    [exp[0], convert(left, env), convert(right, env)]
 
 # al assign in object language
-exports['='] = (exp, env) -> convertAssign(exp, env)
+exports['='] = (exp, env) -> convertAssign(exp[1], exp[2], env)
 
 # {a, b, c } = x
 # {a} = x
@@ -199,45 +168,6 @@ exports['@@'] = (exp, env) ->
   env.set(name, v)
   v
 
-# create a block with new scope (i.e. evaluate all exp in new environment
-exports['block!'] = (exp, env) -> convertExps exp[1...], env.extend({})
-
-exports['let'] = (exp, env) ->
-  newEnv = env.extend(scope={})
-  result = []
-  for x in exp[1]
-    x0 = x[0].value
-    scope[x0] = var1 = newEnv.newVar(x0)
-    result.push (['var', var1])
-    result.push ['=', var1, convert(x[2], env)]
-  result.push convert(exp[1], newEnv)
-  result = begin(result)
-  result.env = newEnv
-  result
-
-# don't convert the bound expression, similar to macro
-exports['letm!'] = (exp, env) ->
-  newEnv = env.extend(scope={})
-  result = []
-  for x in exp[1]
-    x0 = x[0].value
-    scope[x0] = var1 = env.newVar(x0)
-    result.push [('var'), var1]
-    result.push [('='), var1, x[1]]
-  result.push convert(exp[1], newEnv)
-  result = begin(result)
-  result
-
-exports['letrec!'] = (exp, env) ->
-  newEnv = env.extend(scope={})
-  result = []
-  for x in exp[1] then scope[x0=x[0].value] = var1 = newEnv.newVar(x0); result.push [('var'), var1]
-  for x in exp[1] then result.push [('='), var1, convert(x[2], newEnv)]
-  result.push convert(exp[1], newEnv)
-  result = begin(result)
-  result.env = newEnv
-  result
-
 # don't convert the bound expression, similar to macro
 # #letrecm is the same as the #letm exactly, so don't add it to meta builtins to avoid confusion
 
@@ -257,34 +187,18 @@ exports['list!'] = (exp, env) -> convertArgumentList(exp[1...], env)
 
 exports['if'] = (exp, env) ->
   if exp[3]!=undefined
-    [('if'), convert(exp[1], env), convert(exp[2], env), convert(exp[3], env)]
-  else [('if'), convert(exp[1], env), convert(exp[2], env), undefinedExp]
-
-exports['switch!'] = (exp, env) ->
-  assert false, 'todo: rewrite switch'
-  result = ['switch', convert(exp[1], env)]
-  # cases: [list! case1, case2, ...]
-  # case clause: [list! ...] body
-  result.push (for e in exp[2][1...] then [convertList(e[0][1...], env), convert(e[1], env)])
-  if exp[3] then result.push convert(exp[3], env)
-  result
+    [IF, convert(exp[1], env), convert(exp[2], env), convert(exp[3], env)]
+  else [IF, convert(exp[1], env), convert(exp[2], env), undefinedExp]
 
 idConvert = (keyword) -> (exp, env) -> [keyword, exp[1]]
 
 do -> for word in splitSpace 'break continue' then exports[word] = idConvert(word)
-
-exports['lineComment!'] = (exp, env) ->  ''
-exports['directLineComment!'] = (exp, env) -> [('directLineComment!'), exp[1]]
-exports['codeBlockComment!'] = (exp, env) -> ''
-exports['directCBlockComment!'] = (exp, env) -> [('directCBlockComment!'), exp[1]]
 
 exports['direct!'] = (exp, env) -> exp[1]
 exports['quote!'] = (exp, env) -> [('quote!'), exp[1]]
 exports['~'] = (exp, env) -> [('quote!'), exp[1]]
 
 exports['call!'] = (exp, env) -> convert([exp[1]].concat(exp[2]), env)
-
-exports['label!'] = (exp, env) -> [('label!'), convertIdentifier(exp[1]), convert(exp[2], env)]
 
 argumentsLength = ['attribute!', 'arguments', 'length']
 
@@ -363,8 +277,8 @@ quasiquote = (exp, env, level) ->
   if not isArray(exp1) then return JSON.stringify entity(exp1)
   else if not exp1.length then return []
   if (head=entity exp1[0])=='unquote!' or head=='unquote-splice' then return convert(exp1[1], env, level-1)
-  else if head=='quasiquote!' then return ['list!', '"quasiquote!"', quasiquote(exp1[1], env, level+1)]
-  result = ['list!']
+  else if head=='quasiquote!' then return [LIST$, '"quasiquote!"', quasiquote(exp1[1], env, level+1)]
+  result = [LIST$]
   meetSplice = false
   for e in exp1
     if isArray(e) and e.length
@@ -374,25 +288,25 @@ quasiquote = (exp, env, level) ->
         meetSplice = true
       else if not meetSplice
         if head=='unquote-splice'
-          result.push ['list!', '"unquote-splice"', quasiquote(e[1], env, level-1)]
+          result.push [LIST$, '"unquote-splice"', quasiquote(e[1], env, level-1)]
         else if head=='unquote!'
           if level==0 then result.push convert(e[1], env)
           else result.push ['unquote!', quasiquote(e[1], env, level-1)]
-        else if head=='quasiquote!' then result.push ['list!',  '"quasiquote!"', quasiquote(e[1], env, level+1)]
+        else if head=='quasiquote!' then result.push [LIST$,  '"quasiquote!"', quasiquote(e[1], env, level+1)]
         else result.push quasiquote([e], env, level)
       else
         if head=='unquote-splice'
-          item = [['list!', quasiquote(e[1], env, level-1)]]
+          item = [[LIST$, quasiquote(e[1], env, level-1)]]
         else
           if head=='unquote!'
-            if level==0 then item = [['list!', convert(e[1], env)]]
-            else item = [['list!', ['"unquote!"', quasiquote(e[1], env, level-1)]]]
-          else if head=='quasiquote!' then item = [['list!', ['quasiquote!', quasiquote(e[1], env, level+1)]]]
-          else item = [['list!', [quasiquote(e, env, level)]]]
+            if level==0 then item = [[LIST$, convert(e[1], env)]]
+            else item = [[LIST$, ['"unquote!"', quasiquote(e[1], env, level-1)]]]
+          else if head=='quasiquote!' then item = [[LIST$, ['quasiquote!', quasiquote(e[1], env, level+1)]]]
+          else item = [[LIST$, [quasiquote(e, env, level)]]]
         result = ['call!', ['attribute', result, 'concat'], item]
     else
       if not meetSplice then result.push JSON.stringify entity e
-      else result = ['call!', ['attribute!', result, 'concat'], [['list!', JSON.stringify entity e]]]
+      else result = ['call!', ['attribute!', result, 'concat'], [[LIST$, JSON.stringify entity e]]]
   result
 
 exports['eval!'] = (exp, env) ->
@@ -462,7 +376,11 @@ exports['prefix!'] = (exp, env, compiler) -> prefixConverters[exp[1].value](exp,
 
 exports.prefixConverters = prefixConverters = {}
 
+for symbol in '++ -- yield new typeof void ! ~ + -'.split(' ')
+  prefixConverters['+'] = (exp, env) ->  ['prefix!', exp[1], convert exp[2], env]
+
 prefixConverters['@'] = (exp, env) ->
+  if symbolOf(exp[2])=='::' then return ['attribute!', 'this', 'prototype']
   ['attribute!', 'this', exp[2]]
 
 prefixConverters['::'] = (exp, env) ->
@@ -479,6 +397,8 @@ exports['binary!'] = (exp, env, compiler) -> binaryConverters[exp[1].value](exp,
 
 exports.binaryConverters = binaryConverters = {}
 
+binaryConverters['='] = (exp, env) -> convertAssign(exp[2], exp[3], env)
+
 # todo a[x], a[x, y]
 binaryConverters['concat[]'] = (exp, env, compiler) ->
   trace("binaryConverters('concat[]'):", str(exp))
@@ -489,32 +409,36 @@ binaryConverters['concat[]'] = (exp, env, compiler) ->
 
 ## todo: a(1), a(1, 2), need to be refined.
 binaryConverters['concat()'] = (exp, env, compiler) ->
-  ['call!', convert(exp[2], env), convert(exp[3], env)]
+  exp3 = exp[3]; args = exp3[1]
+  if isArray args
+    if symbolOf(args[0])=='binary!' and symbolOf(args[1])==','
+      # should pass the whole exp to commaList
+      args = convertArgumentList commaList(args), env
+    else args = [convert args, env]
+  else if args then args = [convert args, env]
+  else args =  []
+  ['call!', convert(exp[2], env), args]
 
 binaryConverters['::'] = (exp, env, compiler) ->
   ['attribute!', ['attribute!', convert(exp[2], env), 'prototype'], exp[3]]
 
 exports['{}'] = (exp, env) -> convert exp[1], env
 
-# ['binary!' "," left right]
-commaList = (exp) ->
-  exp2 = exp[2]
-  if exp2.kind==LIST and exp2[0].value=='binary!' and exp2[1].value==','
-    result = commaList(exp2)
-    result.push exp[3]
-    result
-  else [exp2, exp[3]]
-
 binaryConverters[','] = (exp, env) ->
   result = for e in commaList(exp) then convert(e, env)
-  result.unshift 'list!'
+  result.unshift LIST$
   result
 
 exports['()'] = (exp, env) ->
-  if exp[1] then convert exp[1], env
-  else ['list!']
+  if isArray exp[1]
+    if symbolOf(exp[1][0])=='binary!' and symbolOf(exp[1][1])==','
+      # should pass the whole exp to commaList
+      convertArgumentList commaList(exp[1]), env
+    else convert exp[1], env
+  else if exp[1] then convert exp[1], env
+  else return []
 
 exports['[]'] = (exp, env) ->
   items = for e in exp[1] then convert e, env
-  items.unshift 'list!'
+  items.unshift LIST$
   {value:items, kind:LIST}

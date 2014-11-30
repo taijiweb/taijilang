@@ -10,7 +10,7 @@ Parser = require(lib + 'parser/parser').Parser;
 
 _ref1 = require(lib + 'constant'), IDENTIFIER = _ref1.IDENTIFIER, NUMBER = _ref1.NUMBER, SYMBOL = _ref1.SYMBOL, NEWLINE = _ref1.NEWLINE, INDENT = _ref1.INDENT, UNDENT = _ref1.UNDENT, HALF_DENT = _ref1.HALF_DENT, PAREN = _ref1.PAREN, BLOCK_COMMENT = _ref1.BLOCK_COMMENT, EOI = _ref1.EOI, SPACE = _ref1.SPACE, PAREN_OPERATOR_EXPRESSION = _ref1.PAREN_OPERATOR_EXPRESSION, COMPACT_CLAUSE_EXPRESSION = _ref1.COMPACT_CLAUSE_EXPRESSION, OPERATOR_EXPRESSION = _ref1.OPERATOR_EXPRESSION;
 
-describe("parser basic: ", function() {
+ndescribe("parser basic: ", function() {
   describe("nextToken: ", function() {
     var parse, parser;
     parser = new Parser();

@@ -1,4 +1,4 @@
-{expect, idescribe, ndescribe, iit, nit, strConvert, str, parse} = require '../util'
+{expect, idescribe, ndescribe, iit, nit, strConvert, str, parse, norm} = require '../util'
 
 lib = '../../lib/'
 
@@ -143,5 +143,11 @@ ndescribe "test phases: ",  ->
       exp = tokenize(norm(exp), env)
       str exp
 
+    it "['list!', 1]", ->
+      expect(str token(norm ['list!', 1])).to.equal "[var a , b]"
+
+    it "['list!', 1, 2]", ->
+      expect(str token(norm ['list!', 1, 2])).to.equal "[var a , b]"
+
     it "['begin!', ['var', 'a'], ['var', 'b']]", ->
-      expect(str token(['begin!', ['var', 'a'], ['var', 'b']])).to.equal "[var a , b]"
+      expect(str token(norm ['begin!', ['var', 'a'], ['var', 'b']])).to.equal "[var a , b]"

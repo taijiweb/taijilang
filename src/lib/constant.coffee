@@ -1,7 +1,6 @@
-
 SYMBOL = 4
 
-symbol = (value) -> {value: value, kind: SYMBOL}
+exports.symbol = symbol = (value) -> {value: value, kind: SYMBOL}
 
 module.exports = {
 
@@ -33,6 +32,17 @@ RETURN: symbol 'return'
 NEW: symbol 'new'
 FORIN: symbol 'forIn!'
 FOROF: symbol 'forOf!'
+JSFORIN: symbol 'jsForIn!'
 TRY: symbol 'try'
 SHARP: symbol '#'
+PAREN_PAIR: symbol '()'
+BRACKET_PAIR: symbol '[]'
+CURVE_PAIR: symbol '{}'
+LABEL: symbol 'label!'
+VAR: symbol 'var'
+CALL: symbol 'call!'
+ATTR: symbol 'attribute!'
+INDEX: symbol 'index!'
+FUNCTION: symbol 'function'
+LIST$: symbol 'list!'
 }

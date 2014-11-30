@@ -1,6 +1,6 @@
-var LIST, SYMBOL, ShiftStatementInfo, SymbolLookupError, VALUE, convert, expect, idescribe, iit, lib, metaConvert, ndescribe, nit, nonMetaCompileExpNoOptimize, parse, str, strConvert, strMetaConvert, strNonOptCompile, taiji, tokenize, trace, transform, transformExpression, _ref, _ref1, _ref2, _ref3;
+var LIST, SYMBOL, ShiftStatementInfo, SymbolLookupError, VALUE, convert, expect, idescribe, iit, lib, metaConvert, ndescribe, nit, nonMetaCompileExpNoOptimize, norm, parse, str, strConvert, strMetaConvert, strNonOptCompile, taiji, tokenize, trace, transform, transformExpression, _ref, _ref1, _ref2, _ref3;
 
-_ref = require('../util'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, strConvert = _ref.strConvert, str = _ref.str, parse = _ref.parse;
+_ref = require('../util'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, strConvert = _ref.strConvert, str = _ref.str, parse = _ref.parse, norm = _ref.norm;
 
 lib = '../../lib/';
 
@@ -182,8 +182,14 @@ ndescribe("test phases: ", function() {
       exp = tokenize(norm(exp), env);
       return str(exp);
     };
+    it("['list!', 1]", function() {
+      return expect(str(token(norm(['list!', 1])))).to.equal("[var a , b]");
+    });
+    it("['list!', 1, 2]", function() {
+      return expect(str(token(norm(['list!', 1, 2])))).to.equal("[var a , b]");
+    });
     return it("['begin!', ['var', 'a'], ['var', 'b']]", function() {
-      return expect(str(token(['begin!', ['var', 'a'], ['var', 'b']]))).to.equal("[var a , b]");
+      return expect(str(token(norm(['begin!', ['var', 'a'], ['var', 'b']])))).to.equal("[var a , b]");
     });
   });
 });

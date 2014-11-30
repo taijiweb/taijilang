@@ -1,19 +1,31 @@
-{expect, idescribe, ndescribe, iit, nit} = require '../util'
+{expect, idescribe, ndescribe, iit, nit, matchRule, parse, compile} = require '../util'
 
 lib = '../../lib/'
-{constant, isArray, str, realCode} = require lib+'utils'
+
+{str} = require lib+'utils'
 {Parser} = require lib+'parser'
+
 taiji = require lib+'taiji'
+{nonMetaCompileExpNoOptimize} = require lib+'compiler'
 
-compile = (code) ->
-  head = 'taiji language 0.1\n'
-  realCode taiji.compile(head+code, taiji.rootModule, taiji.builtins, {})
+parse = (text) ->
+  parser = new Parser()
+  x = parser.parse(text, parser.module, 0)
 
-compileNoOptimize = (code) ->
-  head = 'taiji language 0.1\n'
-  realCode taiji.compileNoOptimize(head+code, taiji.rootModule, taiji.builtins, {})
+parseClause = (text) ->
+  parser = new Parser()
+  x = parser.parse(text, matchRule(parser, parser.clause), 0)
+  str x
 
-ndescribe "compile operator expression: ", ->
+# below is compile without metaConvert
+# if comment the definiton below ,will use "compile" required from util, which is a full compile funciton
+compile = noOptCompile = (text) ->
+  exp = parse(text)
+  env = taiji.initEnv(taiji.builtins, taiji.rootModule, {})
+  exp = nonMetaCompileExpNoOptimize exp, env
+  exp
+
+describe "compile operator expression: ", ->
   describe "atom: ", ->
     it "compile 1", ->
       expect(compile('1')).to.have.string '1'
@@ -22,23 +34,23 @@ ndescribe "compile operator expression: ", ->
     it "compile extern! a; a", ->
       expect(compile('extern! a; a')).to.have.string "a"
     it "compile 'a'", ->
-      expect(compile("'a'")).to.have.string "\"a\""
+      expect(compile("'a'")).to.have.string '\'a\''
     it 'compile "a"', ->
-      expect(compile('"a"')).to.have.string "\"a\""
+      expect(compile('"a"')).to.have.string '"a"'
 
   describe "prefix: ",  ->
-    it 'should compile + 1', ->
-      expect(compile('+ 1 ')).to.have.string "1"
-    it 'should compile ( + + 1)', ->
-      expect(compile('( + + 1) ')).to.have.string "1"
-    it 'should compile console.log', ->
-      expect(compile('console.log')).to.have.string "console.log"
-    it 'should compile print 1', ->
-      expect(compile('print 1 ')).to.have.string "console.log(1)"
+    it 'should compile +1', ->
+      expect(compile('+1 ')).to.have.string "1"
+    it 'should compile print', ->
+      expect(compile('print()')).to.have.string "console.log(1)"
     it 'should compile print +1', ->
       expect(compile('print +1 ')).to.have.string "console.log(1)"
 
-  describe "multi lines and indent expression", ->
+  describe "attribute: ",  ->
+    it 'should compile console.log', ->
+      expect(compile('console.log')).to.have.string "console.log"
+
+  ndescribe "multi lines and indent expression", ->
     it "compile 1+2\n*3", ->
       expect(compile('(1+2\n*3)')).to.have.string '9'
 
@@ -58,6 +70,12 @@ ndescribe "compile operator expression: ", ->
       expect(compile('(1+2\n+4\n*3)')).to.have.string '21'
 
   describe "add and multiply", ->
+    it "compile 1+2", ->
+      expect(compile('1+2')).to.have.string '1 + 2'
+
+    it "compile (1,2)", ->
+      expect(compile('(1,2)')).to.have.string '1 + 2'
+
     it "compile (1+2)", ->
       expect(compile('(1+2)')).to.have.string "3"
 
@@ -134,14 +152,20 @@ ndescribe "compile operator expression: ", ->
       expect(compile('require.extensions[".tj"]')).to.have.string "require.extensions[\".tj\"]"
 
   describe "call: ", ->
+    it "compile a()", ->
+      expect(compile('var a; a()')).to.have.string "var a;\na()"
     it "compile a(1)", ->
       expect(compile('var a; a(1)')).to.have.string "var a;\na(1)"
+    it "parse a(1 , 2)", ->
+      expect(str parse('a(1 , 2)')).to.have.string '[binary! concat() a [() [binary! , 1 2]]]'
+    it "compile a(1 , 2, 3)", ->
+      expect(compile('var a; a(1 , 2, 3)')).to.have.string 'var a;\na(1, 2, 3)'
+    it "compile a(1 , 2)", ->
+      expect(compile('var a; a(1 , 2)')).to.have.string "var a;\na(1, 2)"
     it "compile a.b(1)", ->
       expect(compile('var a; a.b(1)')).to.have.string "var a;\na.b(1)"
     it "compile a['b'](1)", ->
       expect(compile("var a; a['b'](1)")).to.have.string "var a;\na[\"b\"](1)"
-    it "compile a(1 , 2)", ->
-      expect(compile('var a; a(1 , 2)')).to.have.string "var a;\na(1, 2)"
     it "compile a(1, x..., 2, y..., z)", ->
       expect(compile('var a, x, y, z; a(1, x..., 2, y..., z)')).to.have.string "var a, x, y, z;\na.apply(null, [1].concat(x).concat([2]).concat(y).concat([z]))"
     it "compile a.f(1, x..., 2, y..., z)", ->
@@ -167,13 +191,14 @@ ndescribe "compile operator expression: ", ->
 
   describe "assign and right assocciation ", ->
     it "compile a=1", ->
-      expect(compile('a=1')).to.have.string "var a = 1;\na"
+      expect(compile('a=1')).to.have.string 'var a;\na = 1;\na'
 
     it "compile a = 1", ->
-      expect(compile('a = 1')).to.have.string "var a = 1;\na"
+      expect(str parse ('a = 1')).to.have.string '[= a 1]'
+      expect(compile('a = 1')).to.have.string 'var a;\na = 1;\na'
 
-    it "compile a = b = 1", ->
-      expect(compile('a = b = 1')).to.have.string "var a, b = 1;\na = b;\na"
+    iit "compile a = b = 1", ->
+      expect(compile('a = b = 1')).to.have.string 'var a;\nvar b;\nb = 1;\na = b;\na'
 
     it "compile a += b = 1", ->
       expect(compile('var a; a += b = 1')).to.have.string "var a, b = 1;\na += b"

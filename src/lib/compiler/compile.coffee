@@ -3,16 +3,9 @@ path = require 'path'
 {compileError, symbolLookupError} = require './helper'
 
 {evaljs, isArray, extend, str, formatTaijiJson, wrapInfo1, extendSyntaxInfo, entity, pushExp, undefinedExp, begin,
-__TJ__QUOTE, trace} = require '../utils'
+__TJ__QUOTE, trace, madeConcat, madeCall, isEllipsis, isSymbol, symbolOf} = require '../utils'
 
-{NUMBER, STRING, IDENTIFIER, SYMBOL, REGEXP, HEAD_SPACES, CONCAT_LINE, PUNCT, FUNCTION,
-BRACKET, PAREN, DATA_BRACKET, CURVE, INDENT_EXPRESSION
-NEWLINE, SPACES, INLINE_COMMENT, SPACES_INLINE_COMMENT, LINE_COMMENT, BLOCK_COMMENT, CODE_BLOCK_COMMENT, CONCAT_LINE
-MODULE_HEADER, MODULE
-NON_INTERPOLATE_STRING, INTERPOLATE_STRING
-INDENT, UNDENT, HALF_DENT
-VALUE, LIST
-} = '../constant'
+{SYMBOL, VALUE} = require '../constant'
 
 {Environment} = require './env'
 exports.Environment = Environment
@@ -29,48 +22,25 @@ doAnalyze = (exp, env) ->
 {tocode} = require './textize'
 {Parser} = require '../parser'
 
-getStackTrace = ->
-  obj = {}
-  Error.captureStackTrace(obj, getStackTrace)
-  obj.stack
-
-madeConcat = (head, tail) ->
-  if tail.concated then result =  ['call!', ['attribute!', ['list', head], 'concat'], [tail]]
-  else tail.shift(); result = [head].concat tail
-  result.convertToList = true
-  result
-
-madeCall = (head, tail, env) ->
-  if tail.concated
-    if head instanceof Array and ((head0=head[0].value)=='attribute!' or head0=='index!')
-      head1 = head[1]
-      if head1.kind==SYMBOL then  ['call!', ['attribute!', head, 'apply'], [head, tail]]
-      else
-        result =  ['begin!', ['var', obj=env.ssaVar('obj')], ['=', obj, head1]]
-        result.push  ['call!', ['attribute!', [head0, obj, head[1]], 'apply'], [obj, tail]]
-        result
-    else  ['call!', ['attribute!', head, 'apply'], ['null', tail]]
-  else tail.shift();  ['call!', head, tail]
-
 exports.convert = convert = (exp, env) ->
   trace('convert: ', str(exp))
   if exp instanceof Array
     exp0 = exp[0]
     if exp0 instanceof Array
-      head = convert(exp0)
+      head = convert(exp0, env)
       tail = convertArgumentList(exp[1...], env)
       return madeCall(head, tail, env)
-    else if exp0.kind==SYMBOL
-      head = env.get(exp0.value)
+    else if isSymbol(exp0)
+      head = env.get(symbolOf(exp0))
       if not head then symbolLookupError(exp0, exp)
       if typeof head == 'function'
-        return head(expValue, env)
+        return head(exp, env)
       else
-        tail = convertArgumentList(expValue[1...], env)
+        tail = convertArgumentList(exp[1...], env)
         return madeCall head, tail, env
     else return (for e in exp then convert(e, env))
-  else if exp.kind==SYMBOL
-      if result=env.get(exp.value) then return result
+  else if isSymbol(exp)
+      if result=env.get(symbolOf(exp)) then return result
       else symbolLookupError(exp)
   else return exp
 
@@ -79,17 +49,15 @@ exports.convertList = (exp, env) -> for e in exp then convert(e, env)
 
 # convert list! construct which contains x..., e.g. [x, y, z..., m]
 exports.convertArgumentList = convertArgumentList = (exp, env) ->
-  if exp.length==0 then return ['list!']
+  if exp.length==0 then return []
   if exp.length==1
-    if (exp0=exp[0]) and exp0[0] and exp0[0].value=='x...' then return convert exp0[0][1], env
-    result = convert(exp0, env)
-    if result and result.convertToList then return ['list!'].concat result
-    else return ['list!', result]
+    if isEllipsis(exp[0]) then return convert exp[0][2], env
+    else return [convert(exp[0], env)]
   ellipsis = undefined
   for item, i in exp
-    if item and item[0].value=='x...' then ellipsis = i; break
+    if isEllipsis(item) then ellipsis = i; break
   if ellipsis==undefined
-    return (['list!'].concat(for e in exp then convert(e, env)))
+    return (for e in exp then convert(e, env))
   else
     concated = false # tell call! whether it need to be transformed to fn.apply(obj, ...)
     concating = false
@@ -99,7 +67,7 @@ exports.convertArgumentList = convertArgumentList = (exp, env) ->
       else result = exp01; concating = true; concated = true
     else result = piece = ['list!', convert(exp[0], env)]
     for e in exp[1...]
-      if e and e[0].value=='x...'
+      if isEllipsis(e)
         e1 = convert(e[1], env)
         if e1 and e1[0]=='list!'
           if concating then result =  ['call!', ['attribute!', result, 'concat'], [e1]]; piece = e1; concating = false
@@ -144,32 +112,6 @@ preprocessMetaConvertFnMap =
       pushExp(resultExpList, metaConvert(exp[2], metaExpList, env))],
      resultExpList]
 
-  #['doWhile!', body, condition]
-  'doWhile!': (exp, metaExpList, env) ->
-    resultExpList =  ['metaConvertVar!', 'whileResult']
-    ['begin!',
-     ['var', resultExpList],
-     ['=', resultExpList, []],
-     ['doWhile!',
-      pushExp(resultExpList, metaConvert(exp[1], metaExpList, env)),
-      metaTransform(exp[2], metaExpList, env) # while test:exp[1] body
-     ],
-     resultExpList]
-  # doUntil! is parsed to doWhile!
-
-  'cFor!': (exp, metaExpList, env) ->
-    resultExpList =  ['metaConvertVar!', 'whileResult']
-    ['begin!',
-     ['var', resultExpList],
-     ['=', resultExpList, []],
-     ['cFor!',
-        metaTransform(exp[1], metaExpList, env),
-        metaTransform(exp[2], metaExpList, env),
-        metaTransform(exp[3], metaExpList, env),
-        pushExp(resultExpList, metaConvert(exp[4], metaExpList, env))
-     ],
-     resultExpList]
-
   'forIn!': (exp, metaExpList, env) ->
     resultExpList =  ['metaConvertVar!', 'whileResult']
     ['begin!',
@@ -187,31 +129,6 @@ preprocessMetaConvertFnMap =
     ['begin!',
      ['var', resultExpList],
      ['=', resultExpList, []],
-     ['forOf!',
-      metaTransform(exp[1], metaExpList, env),
-      metaTransform(exp[2], metaExpList, env),
-      pushExp(resultExpList, metaConvert(exp[3], metaExpList, env))
-     ],
-     resultExpList]
-
-  'forIn!!': (exp, metaExpList, env) ->
-    resultExpList =  ['metaConvertVar!', 'whileResult']
-    ['begin!',
-     ['var', resultExpList],
-     ['=', resultExpList, []],
-     ['forIn!!',
-      metaTransform(exp[1], metaExpList, env),
-      metaTransform(exp[2], metaExpList, env),
-      metaTransform(exp[3], metaExpList, env),
-      pushExp(resultExpList, metaConvert(exp[4], metaExpList, env))
-     ],
-     resultExpList]
-
-  'forOf!': (exp, metaExpList, env) ->
-    resultExpList =  ['metaConvertVar!', 'whileResult']
-    ['begin!',
-     ['var', resultExpList],
-     ['=', resultExpList, []],
      ['forOf!!',
       metaTransform(exp[1], metaExpList, env),
       metaTransform(exp[2], metaExpList, env),
@@ -220,20 +137,6 @@ preprocessMetaConvertFnMap =
      ],
      resultExpList]
 
-  'let': (exp, metaExpList, env) ->
-    ['let',
-     metaTransform(exp[1], metaExpList, env) #bindings is in meta level
-     metaConvert(exp[2], metaExpList, env)]
-  # {do ... where binding} is parsed to let binding body
-
-  'letrec!': (exp, metaExpList, env) ->
-    ['letrec!',
-     metaTransform(exp[1], metaExpList, env) #bindings is in meta level
-     metaConvert(exp[2], metaExpList, env)]
-
-  # do not consider letloop! while preprocessing
-  #'letloop!': (exp, metaExpList, env) ->
-
   # todo add more construct here ...
 
 taijiExports =  ['jsvar!', 'exports']
@@ -241,7 +144,6 @@ taijiExports =  ['jsvar!', 'exports']
 # use index! so taiji identifier like undefined? will not be illegal in javascript
 # if use 'attribute!' then "exports.undefined?" will be illegel javascript code
 exportsIndex = (name) ->  ['index!', taijiExports , '"'+entity(name)+'"']
-
 
 # does exp contains any meta operations?
 # use the standard with most tolerance, avoid missing any possible meta operation
@@ -519,4 +421,3 @@ exports.optimizeExp = optimizeExp = (exp, env) ->
   doAnalyze exp, env
   exp = optimize exp, env
   exp
-

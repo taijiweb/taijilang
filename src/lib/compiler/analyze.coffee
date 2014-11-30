@@ -2,7 +2,7 @@
 
 {str, entity, isValue, extend, error} = require '../utils'
 
-{SYMBOL, VALUE, LIST} = '../constant'
+{SYMBOL, VALUE} = require '../constant'
 
 truth = (exp, env) ->
   exp = entity(exp)
@@ -92,13 +92,6 @@ analyzeFnMap =
     env = exp.env; env.optimizeInfoMap = {}
     for e in exp[1] then env.optimizeInfoMap[entity(e)] = info = {}; info.assign = []
     analyze(exp[2], exp.env)
-
-  'letloop': (exp, env) ->
-    #[params, bindings, body]
-    env = exp.env; env.optimizeInfoMap = {}
-    bindings = exp[2]
-    for b in bindings then transform(b[1], env)
-    analyze(exp[3], env)
 
 exports.analyze = analyze = (exp, env) ->
   if exp.analyzed then return
