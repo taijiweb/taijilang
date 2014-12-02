@@ -45,28 +45,9 @@ ndescribe "compiler basic: ",  ->
     it 'should compile (a)', ->
       expect(compile('var a; (a)')).to.have.string 'var a;\na'
     it 'should compile (a,b)', ->
-      expect(compile('var a b; (a,b)')).to.have.string 'var a;\nvar b;\n[a, b]'
+      expect(compile('var a; var b; (a,b)')).to.have.string 'var a;\nvar b;\n[a, b]'
     it 'should compile (1,2)', ->
       expect(compile('(1,2)')).to.have.string '[1, 2]'
-
-  describe "@ as this", ->
-    it 'should compile @', ->
-      expect(compile('@')).to.have.string 'this'
-    it 'should compile @a', ->
-      expect(compile('@a')).to.have.string "this.a"
-    it 'should compile @ a', ->
-      expect(compile('var a; @ a')).to.have.string "var a;\nthis(a)"
-
-  describe ":: as prototype: ", ->
-    it 'should compile @:: ', ->
-      expect(compile('@::')).to.have.string "this.prototype"
-    nit 'should compile a:: ', ->
-      # need add suffix, do not do this now
-      expect(compile('var a; a::')).to.have.string "var a;\na.prototype"
-    it 'should compile a::b ', ->
-      expect(compile('var a; a::b')).to.have.string "var a;\na.prototype.b"
-    it 'should compile ::a', ->
-      expect(compile('::a')).to.have.string "this.prototype.a"
 
   ndescribe "quote expression:", ->
     describe "quote expression:", ->

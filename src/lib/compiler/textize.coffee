@@ -80,6 +80,7 @@ tokenFnMap =
   'hash!': (exp) -> priority([('{ '), list(exp[1]), '}'], 0) # { a: 1, b:2 ...}
   'hashitem!': (exp) -> priority([tokenize(exp[1]), ': ', tokenize(exp[2])], 0) # a.b
   'binary!': (exp) ->
+    trace 'textize binary!', str exp
     pri = binaryPriority[op=exp[1]]; x = tokenize(exp[2]); y = tokenize(exp[3])
     priority(binary([(if x.pri>pri then paren(x) else x), op, (if y.pri>pri then paren(y) else y)]), pri)
   'prefix!': (exp) ->

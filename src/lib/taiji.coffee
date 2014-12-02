@@ -8,7 +8,7 @@ exports.Parser = Parser
 {Environment, metaConvert, transformExp, optimizeExp, compileExp, metaCompile, compileExpNoOptimize} = require './compiler'
 exports.Environment = Environment
 exports.compileExp = compileExp
-exports.builtins =  extend {}, require('./builtins/core'), require('./builtins/js')
+exports.builtins =  extend {}, require('./builtins/js')
 
 exports.textizerOptions = textizerOptions = {
   indentWidth: 2, lineLength: 80

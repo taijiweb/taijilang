@@ -1,176 +1,146 @@
-{isArray, error, begin, undefinedExp, pushExp, identifierCharSet, str, symbolOf, trace} = require '../utils'
-{SYMBOL, VALUE, LIST} = require '../constant'
+{str, trace, begin, extend, splitSpace, undefinedExp, symbolOf, commaList, isArray, isSymbol} = require '../utils'
+{compileError} = require '../compiler/helper'
 
-{convertList, convert, convertArgumentList} = require '../compiler'
+{convert, convertList} = require '../compiler'
 
-{binaryConverters} = require './core'
+exports['extern!'] = (exp, env) ->
+  if env.hasLocal(v=symbolOf(exp[1]))
+    error v+' has been declared as local variable, so it can not be declared as extern variable any more.', e
+  env.set(v, exp[1])
+  undefinedExp
 
-ellipsisIndex = (kind, list, start, stop, env) ->
-  if start==undefined then start = 0
-  if kind=='...'
-    if stop==undefined then ['call!', ['attribute!', list, 'slice'], [start]]
-    else ['call!', ['attribute!', list, 'slice'], [start, stop]]
-  else # if kind=='..'
-    if stop==undefined then ['call!', ['attribute!', list, 'slice'], [start]]
-    else ['call!', ['attribute!', list, 'slice'], [start, ['+', stop, 1]]]
+# assure when transforming, only there exists ['var', variable]
+exports['var'] = (exp, env) ->
+  if isSymbol(exp[1])
+    if env.hasLocal(sym=symbolOf(exp[1])) then error 'repeat declaring variable: '+str(e)
+    return [exp[0], env.set(sym, exp[1])]
+  else error 'only identifiers can be in var statement'
 
-exports['index!'] = (exp, env) ->
-  exp2 = exp[2]; exp20Value = exp2[0]
-  if exp2 instanceof Array
-    if exp20Value=='...' or exp20Value=='..'
-      return convert ellipsisIndex(exp20Value, exp[1], exp2[1], exp2[2]), env
-    else if exp20Value=='x...'
-      return convert ellipsisIndex('...', exp[1], exp2[1], undefined), env
-    else if exp20Value=='...x'
-      return convert ellipsisIndex('...', exp[1], undefined, exp2[1]), env
-    else if exp20Value=='..x'
-      return convert ellipsisIndex('..', exp[1], undefined, exp2[1]), env
-    else return ['index!', convert(exp[1], env), convert exp[2], env]
-  else if (exp2Value=exp2.value)=='..'or exp2Value=='...'
-    return  convert (['call!', ['attribute!', exp[1], 'slice'], []]), env
-  ['index!', convert(exp[1], env), convert exp[2], env]
+exports['newvar!'] = (exp, env) -> '"'+env.newVar((x=exp[1].value).slice(1, x.length-1)).symbol+'"'
 
-exports['::'] = ['jsvar!', 'prototype']
+convertAssign = (left, right, env) ->
+  if isSymbol(left)
+    leftValue = symbolOf(left)
+    if env.hasLocal(leftValue)
+      left = env.get(leftValue)
+      if left.const then error 'should not assign value to const variable: '+leftValue
+      if left.outer
+        env.set(leftValue, left=env.newVar(leftValue))
+        left.const = true # create const by default
+        ['begin!', ['var', left], ['=', left, convert(right, env)], left]
+      else ['=', left, convert(right, env)]
+    else
+      env.set(leftValue, left=env.newVar(leftValue))
+      left.const = true # create const by default
+      ['begin!', ['var', left], ['=', left, convert(right, env)], left]
+  else
+    # left is assignable expression list
+    # we should convert the right side at first
+    right = convert(right, env)
+    [exp[0], convert(left, env), right]
 
-exports['attribute!'] = exports['.'] =  (exp, env) -> convertAttribute(exp[1], exp[2], env)
+# al assign in object language
+exports['='] = (exp, env) -> convertAssign(exp[1], exp[2], env)
 
-convertAttribute = (obj, attr, env) ->
-  obj = convert(obj, env); attr = symbolOf attr
-  trace str obj, attr
-  if symbolOf(attr)=='::' then return ['attribute!', obj, 'prototype']
-  nonJs = false
-  for c in attr
-    if not identifierCharSet[c] then nonJs = true; break
-  if nonJs then ['index!', obj, '"'+attr+'"']
-  else ['attribute!', obj, attr]
+exports['begin!'] = (exp, env) -> begin(for e in exp[1...] then convert e, env)
 
-#call = (caller) -> (exp, env) -> ['call!', caller, convert(exp, env)]
+exports['if'] = (exp, env) ->
+  if exp[3]!=undefined
+    [IF, convert(exp[1], env), convert(exp[2], env), convert(exp[3], env)]
+  else [IF, convert(exp[1], env), convert(exp[2], env), undefinedExp]
 
-idBinaryConvert = (exp, env) -> [exp[0], exp[1], convert(exp[2], env), convert(exp[3], env)]
+exports['->'] = (exp, env) ->
+  newEnv = env.extend(scope={}, env.parser, env.module, {})
+  for param in exp[1] then scope[symbolOf(param)] = param
+  body =  return_(convert(begin(exp[2]), newEnv))
+  ['function', params, body]
 
-binary = (symbol) -> (exp, env) -> (['binary!', symbol]).concat convertList exp, env
+quasiquote = (exp, env, level) ->
+  exp1 = exp[1]
+  if not isArray(exp1) then return JSON.stringify entity(exp1)
+  else if not exp1.length then return []
+  if (head=entity exp1[0])=='unquote!' or head=='unquote-splice' then return convert(exp1[1], env, level-1)
+  else if head=='quasiquote!' then return ['list!', '"quasiquote!"', quasiquote(exp1[1], env, level+1)]
+  result = ['list!']
+  meetSplice = false
+  for e in exp1
+    if isArray(e) and e.length
+      head = entity(e[0])
+      if head=='unquote-splice' and level==0
+        result = ['call!', ['attribute!', result, 'concat'], [convert(e[1], env)]]
+        meetSplice = true
+      else if not meetSplice
+        if head=='unquote-splice'
+          result.push ['list!', '"unquote-splice"', quasiquote(e[1], env, level-1)]
+        else if head=='unquote!'
+          if level==0 then result.push convert(e[1], env)
+          else result.push ['unquote!', quasiquote(e[1], env, level-1)]
+        else if head=='quasiquote!' then result.push ['list!',  '"quasiquote!"', quasiquote(e[1], env, level+1)]
+        else result.push quasiquote([e], env, level)
+      else
+        if head=='unquote-splice'
+          item = [['list!', quasiquote(e[1], env, level-1)]]
+        else
+          if head=='unquote!'
+            if level==0 then item = [['list!', convert(e[1], env)]]
+            else item = [['list!', ['"unquote!"', quasiquote(e[1], env, level-1)]]]
+          else if head=='quasiquote!' then item = [['list!', ['quasiquote!', quasiquote(e[1], env, level+1)]]]
+          else item = [['list!', [quasiquote(e, env, level)]]]
+        result = ['call!', ['attribute', result, 'concat'], item]
+    else
+      if not meetSplice then result.push JSON.stringify entity e
+      else result = ['call!', ['attribute!', result, 'concat'], [['list!', JSON.stringify entity e]]]
+  result
 
-for symbol in '+ - * / && || << >> >>> != !== > < >= <='.split(' ')
-  exports[symbol] = binary symbol
-  binaryConverters[symbol] = idBinaryConvert
+exports['{}'] = (exp, env) -> convert begin(exp[1]), env
 
-binaryConverters['.'] = (exp, env) -> convertAttribute(exp[2], exp[3], env)
+exports['()'] = (exp, env) ->
+  if exp[1].length==1 then convert exp[1][0], env
+  else ['list!'].concat(convertList(exp[1], env))
 
-# learn coffee-script
-exports['=='] = binary '==='
-exports['!='] = binary '!=='
-# less used, more danger operation need more typing
-exports['==='] = binary '=='
-exports['!=='] = binary '!='
+exports['[]'] = (exp, env) -> ['list!'].concat(convertList(exp[1], env))
 
-exports['and'] = binary '&&'
-exports['or'] = binary '||'
-exports['binary,'] = binary ','
-for symbol in '+ -'.split ' '
-  do (symbol=symbol) ->
-    exports[symbol] = (exp, env) ->
-      if exp.length==2 then (['binary!', symbol]).concat convertList exp, env
-      else (['prefix!', symbol]).concat convert exp[1], env
+exports['~'] = (exp, env) -> ['quote!', exp[1]]
 
-#augmentAssign = (symbol) -> (exp, env) -> ['augmentAssign', symbol].concat convertList exp, env
-for symbol in '+ - * / && || << >> >>> ,'.split(' ')
-  op = symbol+'='
-  exports[op] = binary op
-  binaryConverters[op] = (exp, env) -> [exp[0], exp[1], convert(exp[2], env), convert(exp[3], env)]
+exports['prefix!'] = (exp, env) -> prefixConverters[exp[1].value](exp, env)
 
-exports['instanceof'] = binary 'instanceof'
+exports.prefixConverters = prefixConverters = {}
 
-prefix = (symbol) -> (exp, env) -> [('prefix!'), (symbol), convert exp[1], env]
-for symbol in '++x --x yield new typeof void !x ~x +x -x'.split(' ')
-  if symbol[symbol.length-1]=='x' then exports[symbol] = prefix symbol[...symbol.length-1]
-  else exports[symbol] = prefix symbol
-exports['not'] = prefix '!'
+exports['^'] = prefixConverters['^'] = (exp, env) -> compileError('unexpected ^', exp)
+exports['^&'] = prefixConverters['^&'] = (exp, env) -> compileError('unexpected ^&', exp)
+exports['`'] = (exp, env) -> quasiquote(exp, env, 0)
 
-suffix = (symbol) -> (exp, env) -> [('suffix!'), (symbol), convert exp[1], env]
-for symbol in 'x++ x--'.split(' ')
-  if symbol[0]=='x' then exports[symbol] = suffix symbol[1...]
-  else exports[symbol] = suffix symbol
+for symbol in '++ -- yield new typeof void ! ~ + -'.split(' ')
+  prefixConverters[symbol] = (exp, env) ->  ['prefix!', exp[1], convert exp[2], env]
 
-exports['!!x'] = (exp, env) -> ['prefix!', '!', ['prefix!', '!', convert(exp[1], env)]]
+exports['binary!'] = (exp, env, compiler) -> binaryConverters[exp[1].value](exp, env)
 
-exports['print'] = (exp, env) -> ['call!', ['attribute!', 'console', 'log'], convertArgumentList(exp[1...], env)]
+exports.binaryConverters = binaryConverters = {}
 
-exports['jsvar!'] = (exp, env) ->
-  env.set(exp[1].value, exp[1])
-  exp
+binaryConverters['='] = (exp, env) -> convertAssign(exp[2], exp[3], env)
 
-exports['return'] = (exp, env) -> ['return', convert(exp[1], env)]
+#['binary! concat[] obj [[] subscript]
+# todo a[x], a[x, y]
+binaryConverters['concat[]'] = (exp, env, compiler) ->
+  trace("binaryConverters('concat[]'):", str(exp))
+  subscript = exp[3][1]
+  if subscript.length!=1 then compileError exp, 'the length of subscript should be 1'
+  ['index!', convert(exp[2], env), convert(subscript[0], env)]
 
-# javascript
-do -> for sym in 'undefined null true false this console Math Object Array'.split ' ' then exports[sym] = ['jsvar!', sym]
-# javascript in browser
-do -> for sym in 'window document'.split ' ' then exports[sym] = ['jsvar!', sym]
-# node.js
-do -> for sym in 'require module exports process'.split ' ' then exports[sym] = ['jsvar!', sym]
+## todo: a(1), a(1, 2), need to be refined.
+binaryConverters['concat()'] = (exp, env) -> ['call!', convert(exp[2], env), convertList(exp[3][1], env)]
 
-exports['__$taiji_$_$parser__'] = ['jsvar!', '__$taiji_$_$parser__']
+for symbol in '+ - * / && || << >> >>> == === != !== > < >= <= instanceof'.split(' ')
+  binaryConverters[symbol] = (exp, env) -> [exp[0], exp[1], convert(exp[2], env), convert(exp[3], env)]
 
-exports['@'] =  ['jsvar!', 'this']
-exports['::'] =  ['jsvar!', 'prototype']
-exports['arguments'] =  ['jsvar!', 'arguments']
-#exports['__slice'] =  ['jsvar!', '__slice']
-#exports['__hasProp'] =  ['jsvar!', '__hasProp']
+binaryConverters[','] = (exp, env) -> ['list!'].concat(convertList(commaList(exp), env))
+binaryConverters['.'] = (exp, env) -> ['attribute!', convert(exp[2], env), exp[3]]
 
-exports['regexp!'] = (exp, env) -> ['regexp!', exp[1]]
-exports['eval'] = ['jsvar!', 'eval']
+exports['forOf!'] = (exp, env) -> ['jsForIn!', convert(exp[1], env), convert(exp[2], env), convert(exp[3], env)]
 
-# node module variable
-exports['__filename'] = ['jsvar!', '__filename']
-exports['__dir'] = ['jsvar!', '__dir']
+do -> for sym, i in splitSpace 'throw return if while try return list!'
+  exports[sym] = (exp, env) -> [exp[0]].concat(convertList(exp[1...], env))
 
-convertForInOf = (head) ->
+do -> for word in splitSpace 'break continue' then exports[word] = (exp, env) -> exp
 
-exports['forOf!'] = (exp, env) ->
-  [key, obj, body] = exp
-  if key[0]!='metaConvertVar!' and not env.hasFnLocal(key.value)
-    env.set(key.value, key); key = ['var', key]
-  else key = convert(key, env)
-  ['jsForIn!', key, convert(obj, env), convert(body, env)]
-
-exports['forIn!'] = (exp, env) ->
-  [item, range, body] = exp
-  result = []
-  vRange = env.newVar('range')
-  result.push ['direct!', ['var', vRange]]
-  env.set(vRange.symbol, vRange)
-  result.push ['=', vRange, range]
-  length = env.newVar('length')
-  env.set(length.symbol, length)
-  result.push ['direct!', ['var', length]]
-  result.push ['=', length, ['attribute!', vRange, 'length']]
-  i = env.newVar('i')
-  result.push ['direct!', ['var', i]]
-  env.set(i.symbol, i)
-  result.push ['=', i, 0]
-  result.push ['while', ['<', i, length], begin([['=', item, ['index!', vRange, ['x++', i]]], body])]
-  convert begin(result), env
-
-ellipsisStopOp = {'...':'<', '..': '<='}
-
-convertEllipsisRange = (kind) -> (exp, env) ->
-  [start, stop] = exp
-  result = []
-  list = env.newVar('list')
-  result.push ['direct!', ['var', list]]
-  env.set(list.symbol, list)
-  result.push ['=', list, []]
-  vStop = env.newVar('stop')
-  result.push ['direct!', ['var', vStop]]
-  env.set(vStop.symbol, vStop)
-  result.push ['=', vStop, stop]
-  i = env.newVar('i')
-  result.push ['direct!', ['var', i]]
-  env.set(i.symbol, i)
-  result.push ['=', i, start]
-  result.push ['while', [ellipsisStopOp[kind], i, vStop], begin([pushExp(list, ['x++', i])])]
-  result.push(list)
-  convert begin(result), env
-
-exports['..'] = convertEllipsisRange('..')
-exports['...'] = convertEllipsisRange('...')
-
+do -> for sym in 'undefined null true false this console Math Object Array arguments eval require module exports'.split ' ' then exports[sym] = ['jsvar!', sym]

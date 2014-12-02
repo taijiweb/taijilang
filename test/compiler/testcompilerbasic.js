@@ -59,35 +59,10 @@ ndescribe("compiler basic: ", function() {
       return expect(compile('var a; (a)')).to.have.string('var a;\na');
     });
     it('should compile (a,b)', function() {
-      return expect(compile('var a b; (a,b)')).to.have.string('var a;\nvar b;\n[a, b]');
+      return expect(compile('var a; var b; (a,b)')).to.have.string('var a;\nvar b;\n[a, b]');
     });
     return it('should compile (1,2)', function() {
       return expect(compile('(1,2)')).to.have.string('[1, 2]');
-    });
-  });
-  describe("@ as this", function() {
-    it('should compile @', function() {
-      return expect(compile('@')).to.have.string('this');
-    });
-    it('should compile @a', function() {
-      return expect(compile('@a')).to.have.string("this.a");
-    });
-    return it('should compile @ a', function() {
-      return expect(compile('var a; @ a')).to.have.string("var a;\nthis(a)");
-    });
-  });
-  describe(":: as prototype: ", function() {
-    it('should compile @:: ', function() {
-      return expect(compile('@::')).to.have.string("this.prototype");
-    });
-    nit('should compile a:: ', function() {
-      return expect(compile('var a; a::')).to.have.string("var a;\na.prototype");
-    });
-    it('should compile a::b ', function() {
-      return expect(compile('var a; a::b')).to.have.string("var a;\na.prototype.b");
-    });
-    return it('should compile ::a', function() {
-      return expect(compile('::a')).to.have.string("this.prototype.a");
     });
   });
   ndescribe("quote expression:", function() {

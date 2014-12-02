@@ -1,4 +1,5 @@
-{str, hasOwnProperty, extend, letterCharSet, firstIdentifierCharSet, firstSymbolCharset, taijiIdentifierCharSet, trace, symbol} = require '../utils'
+{str, hasOwnProperty, extend, letterCharSet, firstIdentifierCharSet, firstSymbolCharset, taijiIdentifierCharSet, trace,
+symbol, isSymbol, symbolOf, commaList} = require '../utils'
 
 {NULL, NUMBER,  STRING,  IDENTIFIER, SYMBOL, REGEXP, PUNCTUATION
 PAREN, BRACKET, CURVE,  NEWLINE,  SPACES
@@ -344,17 +345,20 @@ exports.Parser = ->
     if tokenType==UNDENT then parseError 'unexpected undent while parsing parenethis "(...)"'
     ind = indent = lexIndent
     if tokenType==SPACE or tokenType==NEWLINE or tokenType==INDENT then nextToken()
-    if tokenValue==')' then tokenValue = [PAREN_PAIR]
+    if tokenValue==')' then tokenValue = [PAREN_PAIR, []]
     else
       exp = parser.operatorExpression()
       if tokenType==UNDENT
         if token.indent<ind then parseError 'expect ) indent equal to or more than ('
         else nextToken()
       else skipSPACE(); if tokenValue!=')' then parseError 'expect )'
+      if symbolOf(exp[0])=='binary!' and symbolOf(exp[1])==',' then exp = commaList(exp)
+      else exp = [exp]
       tokenValue = [PAREN_PAIR, exp]
     # do not char = text[++cursor] or nextToken(); because cursor is at the stop position of ')'
     return extend tokenValue, {type:tokenType=PAREN, value:tokenValue, start:pos, stop:cursor
     line:line, column:pos-lineStart, indent:lexIndent, atom:true, parameter:true}
+
 
   tokenFnMap['['] = tokenOnLeftBracketChar = ->
     trace "tokenFnMap['[']: ",  nextPiece()
@@ -373,13 +377,13 @@ exports.Parser = ->
     pos = cur; char = text[++cursor]; line = lineno; ind = lexIndent
     nextToken(); skipSPACE()
     if tokenValue=='}' and nextToken()
-      return tokenValue=[CURVE_PAIR]
+      return tokenValue=[CURVE_PAIR, []]
     else
       body = parser.block() or parser.lineBlock()
       if tokenType==UNDENT and token.indent<ind then nextToken()
       if tokenValue!='}' then parseError 'expect }'
       if indent<ind then parseError 'unexpected undent while parsing parenethis "{...}"'
-      tokenValue = [CURVE_PAIR, begin(body)]
+      tokenValue = [CURVE_PAIR, body]
     extend tokenValue, {type:tokenType=CURVE, value:tokenValue, atom:true, start:pos, stop:cursor
     line:line, column:pos-lineStart, indent:lexIndent}
 
