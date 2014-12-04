@@ -1,11 +1,7 @@
 {str, extend, begin, pushExp, notExp, undefinedExp, assert, hasOwnProperty, commentPlaceholder, trace, symbolOf} = require '../utils'
 {assignVarsOf, varsOf, pollutedOf, compileError} = require './helper'
 
-{VALUE, SYMBOL
-
-UNDEFINED, BEGIN, IF, PREFIX, SUFFIX, BINARY, WHILE, BREAK, CONTINUE, THROW, RETURN, NEW, FORIN, FOROF, TRY,
-SHARP, CURVE_PAIR, PAREN_PAIR, BRACKET_PAIR, LIST$
-} = require '../constant'
+{VALUE, SYMBOL} = require '../constant'
 
 # todo: keep the env of the function definition expression to optimization phase
 
@@ -54,14 +50,14 @@ transformAndOrExpression = (op) ->
   testFn = if op=='&&' then notExp else (x) -> x
   (exp, env, shiftStmtInfo) ->
     [[leftStmt, leftExp], [rightStmt, rightExp]] = transformExpressionSequence(exp[2..3], env, shiftStmtInfo)
-    if not rightStmt then return [leftStmt, [BINARY, exp[1], leftExp, rightExp]]
+    if not rightStmt then return [leftStmt, ['binary!', exp[1], leftExp, rightExp]]
     leftVar=env.ssaVar('x'); resultVar=env.ssaVar('t')
-    ifStmt = [IF, testFn(leftVar),
+    ifStmt = ['if', testFn(leftVar),
               ['=', resultVar, leftVar],
               begin([ rightStmt, ['=', resultVar, rightExp]])]
     stmt =  begin([leftStmt,
-      [VAR, leftVar], ['=', leftVar, leftExp],
-      [VAR, resultVar]
+      ['var', leftVar], ['=', leftVar, leftExp],
+      ['var', resultVar]
       ifStmt])
     [stmt, resultVar]
 
@@ -74,11 +70,11 @@ transformReturnThrowExpression = (exp, env, shiftStmtInfo) ->
 transformExpressionFnMap =
   'index!': (exp, env, shiftStmtInfo) ->
     [stmt, es] = transformExpressionList(exp[1...], env, shiftStmtInfo)
-    [begin(stmt,  [VAR, (t=env.ssaVar('t'))], ['=', t, [exp[0], es...]]), t]
+    [begin(stmt,  ['var', (t=env.ssaVar('t'))], ['=', t, [exp[0], es...]]), t]
 
   'attribute!': (exp, env, shiftStmtInfo) ->
     [stmt, objExp] = transformExpression(exp[1], env, shiftStmtInfo)
-    [begin(stmt,  [VAR, (t=env.ssaVar('t'))], ['=', t, [exp[0], objExp, exp[2]]]), t]
+    [begin(stmt,  ['var', (t=env.ssaVar('t'))], ['=', t, [exp[0], objExp, exp[2]]]), t]
 
   # '++' '--' should be excluded in converting phase
   'prefix!': (exp, env, shiftStmtInfo) ->
@@ -93,21 +89,21 @@ transformExpressionFnMap =
     [[leftStmt, leftExp], [rightStmt, rightExp]] = result
     # in js, it can be assured that all binary operator has no effects
     # in python, this must be rethought.
-    [begin([leftStmt, rightStmt]),  [BINARY, exp[1], leftExp, rightExp]]
+    [begin([leftStmt, rightStmt]),  ['binary!', exp[1], leftExp, rightExp]]
 
   '=': (exp, env, shiftStmtInfo) ->
     exp1 = exp[1] # left
     if exp1.kind==SYMBOL
       [rightStmt, rightExp] = transformExpression(exp[2], env, shiftStmtInfo)
       if shiftStmtInfo.affect(exp1.value)
-        [begin([rightStmt, [VAR, (t=env.ssaVar('t'))], (['=', t, rightExp]), (['=', exp1, t])]), t]
+        [begin([rightStmt, ['var', (t=env.ssaVar('t'))], (['=', t, rightExp]), (['=', exp1, t])]), t]
       else if hasOwnProperty.call(shiftStmtInfo.vars, exp1.value)
         [begin([rightStmt, (['=', exp1, rightExp])]), exp1]
       else [rightStmt, (['=', exp1, rightExp])]
     else
       # a.x = 1; b[2] = 3, ...
       [[leftStmt, leftExp], [rightStmt, rightExp]] = transformExpressionSequence(exp[1..2], env, shiftStmtInfo)
-      [begin([leftStmt, rightStmt, ([VAR, (t=env.ssaVar('t'))]), (['=', t, rightExp]), (['=', leftExp, t])]), t]
+      [begin([leftStmt, rightStmt, (['var', (t=env.ssaVar('t'))]), (['=', t, rightExp]), (['=', leftExp, t])]), t]
 
   'list!':(exp, env, shiftStmtInfo) ->
     [argsStmts, argsValues] = transformExpressionList(exp[1...], env, shiftStmtInfo)
@@ -115,7 +111,7 @@ transformExpressionFnMap =
     for e in argsValues
       if e==commentPlaceholder then continue
       else args.push e
-    [argsStmts, [LIST$].concat(args)]
+    [argsStmts, ['list!'].concat(args)]
 
   'debugger': (exp, env, shiftStmtInfo) -> [(exp), undefinedExp]
 
@@ -131,7 +127,7 @@ transformExpressionFnMap =
   'new': (exp, env, shiftStmtInfo) ->
     # [new X] should be converted to standardized form [new [call X []]]
     [stmt, e] = transformExpression(exp[1], env, shiftStmtInfo)
-    [begin([([VAR, t=env.ssaVar('t')]), stmt, (['=', t, ([NEW, e])])]), t]
+    [begin([(['var', t=env.ssaVar('t')]), stmt, (['=', t, ([NEW, e])])]), t]
 
   'return': transformReturnThrowExpression
 
@@ -143,7 +139,7 @@ transformExpressionFnMap =
       env = env.outerVarScopeEnv()
       metaVar = exp[1][1]
       variable = metaVar+(env.getSymbolIndex(metaVar) or '')
-      [([VAR, variable]), variable]
+      [(['var', variable]), variable]
     else [(exp), undefinedExp]
 
   'label!': (exp, env, shiftStmtInfo) ->
@@ -154,7 +150,7 @@ transformExpressionFnMap =
 
   'jsvar!': (exp, env, shiftStmtInfo) ->
     if shiftStmtInfo.affect(exp[1].value)
-      stmt = begin([[VAR, t=env.ssaVar('t')], ['=', t, exp[1]]])
+      stmt = begin([['var', t=env.ssaVar('t')], ['=', t, exp[1]]])
       stmt.vars = {}; stmt[exp[1].value] = true
       [stmt, t]
     else [undefinedExp, exp]
@@ -172,11 +168,11 @@ transformExpressionFnMap =
     for e in argsValues
       if e==commentPlaceholder then continue
       else args.push e
-    [begin([callerStmt, argsStmts, [VAR, (t=env.ssaVar('t'))],  ['=', t, [CALL, callerValue, argsValues]]]), t]
+    [begin([callerStmt, argsStmts, ['var', (t=env.ssaVar('t'))],  ['=', t, [CALL, callerValue, argsValues]]]), t]
 
   'function': (exp, env, shiftStmtInfo) ->
     env = exp.env
-    exp = [FUNCTION, exp[1], transform(exp[2], env)]
+    exp = ['function', exp[1], transform(exp[2], env)]
     exp.env = env
     [undefinedExp, exp]
 
@@ -199,26 +195,26 @@ transformExpressionFnMap =
     [stmtElse, elseExp] = transformExpression(exp[3], env, elseInfo=shiftStmtInfo.copy())
     if testInfo.polluted or thenInfo.polluted or elseInfo.polluted then shiftStmtInfo.polluted = true
     resultVar = env.ssaVar('t')
-    ifStmt = [IF, testExp,
+    ifStmt = ['if', testExp,
               begin([stmtThen, ['=', resultVar, thenExp]]),
               begin([stmtElse, ['=', resultVar, elseExp]])]
-    [begin([stmtTest, [VAR, resultVar], ifStmt]), resultVar]
+    [begin([stmtTest, ['var', resultVar], ifStmt]), resultVar]
 
   'while': (exp, env, shiftStmtInfo) ->
     lst = env.newVar('list')
     [stmtTest, expTest] = transformExpression(exp[1], env, shiftStmtInfo)
     [bodyStmt, bodyValue] = transformExpression(exp[2], env, shiftStmtInfo)
     if stmtTest
-      whileStmt = [WHILE, 1,
+      whileStmt = ['while', 1,
                  begin([stmtTest,
-                        [IF, notExp(expTest), [BREAK]],
+                        ['if', notExp(expTest), [BREAK]],
                         bodyStmt,
                         pushExp(lst, bodyValue)])]
     else
-      whileStmt = [WHILE, expTest,
+      whileStmt = ['while', expTest,
                    begin([bodyStmt,
                           pushExp(lst, bodyValue)])]
-    [begin([[VAR, lst], ['=', lst, []], whileStmt]), lst]
+    [begin([['var', lst], ['=', lst, []], whileStmt]), lst]
 
   'jsForIn!': (exp, env, shiftStmtInfo) ->
     lst = env.newVar('list')
@@ -227,16 +223,16 @@ transformExpressionFnMap =
     [rangeStmt, rangeValue] = transformExpression(exp[2], env, shiftStmtInfo)
     [bodyStmt, bodyValue] = transformExpression(exp[3], env, shiftStmtInfo)
     # exp[0]: forIn! or forOf!
-    forInStmt = [JSFORIN, exp[1], rangeValue,
+    forInStmt = ['jsForIn!', exp[1], rangeValue,
                  begin([bodyStmt, pushExp(lst, bodyValue)])]
-    [begin([[VAR, lst], ['=', lst, [LIST]], rangeStmt, forInStmt]), lst]
+    [begin([['var', lst], ['=', lst, [LIST]], rangeStmt, forInStmt]), lst]
 
   'try': (exp, env, shiftStmtInfo) ->
     [bodyStmt, bodyValue] = transformExpression(exp[1], env, bodyInfo=shiftStmtInfo.copy())
     catchAction = transform(exp[3], env, catchInfo=shiftStmtInfo.copy())
     finallyAction = transform(exp[4], env, finallyInfo=shiftStmtInfo.copy())
     if bodyInfo.polluted or finallyInfo.polluted or finallyInfo.polluted then shiftStmtInfo.polluted = true
-    [[TRY, bodyStmt, exp[2], catchAction, finallyAction], bodyValue]
+    [['try!', bodyStmt, exp[2], catchAction, finallyAction], bodyValue]
 
 statementHeadMap = {'break':1, 'continue':1, 'switch':1, 'try':1, 'throw':1, 'return':1,
 'jsForIn!':1, 'forOf!': 1, 'cFor!':1, 'while':1, 'doWhile!':1,  'letloop':1,
@@ -262,7 +258,7 @@ exports.transformExpression = transformExpression = (exp, env, shiftStmtInfo) ->
     when SYMBOL
       if exp.ssa then return [undefinedExp, exp]
       else if shiftStmtInfo.affect(exp.value)
-        stmt = begin([([VAR, t=env.ssaVar('t')]), (['=', t, exp])])
+        stmt = begin([(['var', t=env.ssaVar('t')]), (['=', t, exp])])
         stmt.vars = [exp.value]
         return [stmt, t]
       else return [undefinedExp, exp]
@@ -270,7 +266,7 @@ exports.transformExpression = transformExpression = (exp, env, shiftStmtInfo) ->
       assert (exp instanceof Array), 'wrong kind of expression while transformExpression'
       if toExpression(exp)
         if shiftStmtInfo.affectExp(exp)
-          stmt = begin([[VAR, t=env.ssaVar('t')], ['=', t, exp]])
+          stmt = begin([['var', t=env.ssaVar('t')], ['=', t, exp]])
           # while calling shiftStmtInfo.affectExp(exp), we call varsOf(exp) at first
           stmt.vars = exp.vars
           return [stmt, t]
@@ -319,23 +315,23 @@ transformFnMap =
 
   'if': (exp, env) ->
     [stmtTest, testExp] = transformExpression(exp[1], env, new ShiftStatementInfo({}, {}))
-    begin([stmtTest, [IF, testExp, transform(exp[2], env), transform(exp[3], env)]])
+    begin([stmtTest, ['if', testExp, transform(exp[2], env), transform(exp[3], env)]])
 
   'while': (exp, env) ->
     [stmt, testExp] = transformExpression(exp[1], env, new ShiftStatementInfo({}, {}))
     bodyStmt = transform(exp[2], env)
-    if stmt  then [WHILE, 1, begin([stmt,[IF, notExp(testExp), [BREAK]],bodyStmt])]
-    else [WHILE, testExp, bodyStmt]
+    if stmt  then ['while', 1, begin([stmt,['if', notExp(testExp), [BREAK]],bodyStmt])]
+    else ['while', testExp, bodyStmt]
 
   # for key in hash {...}
   # [forIn! key hash body]
   'jsForIn!': (exp, env) ->
     [stmt, hashExp] = transformExpression(exp[2], env, new ShiftStatementInfo({}, {}))
     # do not transform exp[1], because it must be [var name] or name
-    if stmt then [BEGIN, stmt, [JSFORIN, exp[1], hashExp, transform(exp[3], env)]]
-    else [JSFORIN, exp[1], hashExp, transform(exp[3], env)]
+    if stmt then ['begin!', stmt, ['jsForIn!', exp[1], hashExp, transform(exp[3], env)]]
+    else ['jsForIn!', exp[1], hashExp, transform(exp[3], env)]
 
-  'try': (exp, env) -> [TRY, transform(exp[1], env), exp[2], transform(exp[3], env), transform(exp[4], env)]
+  'try': (exp, env) -> ['try!', transform(exp[1], env), exp[2], transform(exp[3], env), transform(exp[4], env)]
 
 # todo: we can assure "transformed" of value and symbol always be true in the previous phases.
 # so we can simplify this function by removing the first two cases of switch

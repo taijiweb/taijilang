@@ -3,7 +3,7 @@
 lib = '../../lib/'
 
 {transformExpression, transform, ShiftStatementInfo} =  require lib+'compiler/transform'
-{tokenize} =  require lib+'compiler/textize'
+{code} =  require lib+'compiler/code'
 
 {trace} = require lib+'utils'
 {VALUE, SYMBOL, LIST} = require lib+'constant'
@@ -32,7 +32,7 @@ strNonOptCompile = (exp) ->
   exp = nonMetaCompileExpNoOptimize exp, env
   str exp
 
-ndescribe "test phases: ",  ->
+describe "test phases: ",  ->
   describe "convert: ",  ->
     describe "convert simple: ",  ->
       it "convert 1", ->
@@ -138,16 +138,36 @@ ndescribe "test phases: ",  ->
     it "var a; a[1] = -> 1", ->
       expect(str parseTransform("var a; a[1] = -> 1")).to.equal "[begin! [var a] [var t] [= t [function [] [return 1]]] [= [index! a 1] t] t]"
 
-  describe "tokenize: ",  ->
-    token = (exp) ->
-      exp = tokenize(norm(exp), env)
-      str exp
+  idescribe "generate code: ",  ->
+    it "1", ->
+      expect(code(norm 1)).to.equal "1"
 
-    it "['list!', 1]", ->
-      expect(str token(norm ['list!', 1])).to.equal "[var a , b]"
+    it "['binary!', '+', 1, 2]", ->
+      expect(code(norm ['binary!', '+', 1, 2])).to.equal "1 + 2"
+
+    it "['binary!', '+', 1, ['binary!', '+', 2, 3]]", ->
+      expect(code(norm ['binary!', '+', 1, ['binary!', '+', 2, 3]])).to.equal "1 + (2 + 3)"
+
+    it "['binary!', '*', ['binary!', '+', 1, 2], 3]", ->
+      expect(code(norm ['binary!', '*', ['binary!', '+', 1, 2], 3])).to.equal "(1 + 2) * 3"
+
+    it "['binary!', '+', ['binary!', '+', 1, 2], 3]", ->
+      expect(code(norm ['binary!', '+', ['binary!', '+', 1, 2], 3])).to.equal "1 + 2 + 3"
 
     it "['list!', 1, 2]", ->
-      expect(str token(norm ['list!', 1, 2])).to.equal "[var a , b]"
+      expect(code(norm ['list!', 1, 2])).to.equal "[1, 2]"
 
-    it "['begin!', ['var', 'a'], ['var', 'b']]", ->
-      expect(str token(norm ['begin!', ['var', 'a'], ['var', 'b']])).to.equal "[var a , b]"
+    it "['if', 1, 2, 3]", ->
+      expect(code(norm ['if', 1, 2, 3])).to.equal "if (1) {\n  2\n} else {\n  3\n}"
+
+    it "['begin!', 1, 2, 3]", ->
+      expect(code(norm ['begin!', 1, 2, 3])).to.equal "1;\n2;\n3"
+
+    it "['function', [], 1", ->
+      expect(code(norm ['function', [], 1])).to.equal "function () {\n  1\n}"
+
+    it "['function', ['a'], 1]", ->
+      expect(code(norm ['function', ['a'], 1])).to.equal "function (a) {\n  1\n}"
+
+    it "['function', ['a'], ['begin!', 1, 2]]", ->
+      expect(code(norm ['function', ['a'], ['begin!', 1, 2]])).to.equal "function (a) {\n  1;\n  2\n}"

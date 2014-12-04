@@ -19,7 +19,7 @@ doAnalyze = (exp, env) ->
   analyze(exp, env)
 
 {optimize} = require './optimize'
-{tocode} = require './textize'
+{tocode} = require './code'
 {Parser} = require '../parser'
 
 exports.convert = convert = (exp, env) ->

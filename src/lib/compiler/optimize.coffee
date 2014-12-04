@@ -11,7 +11,7 @@ VALUE, SYMBOL, LIST, COMMAND
 } = require '../constant'
 
 {isExpression} = require './transform'
-{tocode} = require './textize'
+{tocode} = require './code'
 
 # todo:
 # variable add a tag field, which is a different index number in the whole program

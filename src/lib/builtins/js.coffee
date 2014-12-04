@@ -1,4 +1,4 @@
-{str, trace, begin, extend, splitSpace, undefinedExp, symbolOf, commaList, isArray, isSymbol} = require '../utils'
+{str, trace, begin, extend, splitSpace, undefinedExp, symbolOf, commaList, isArray, isSymbol, return_} = require '../utils'
 {compileError} = require '../compiler/helper'
 
 {convert, convertList} = require '../compiler'
@@ -52,8 +52,8 @@ exports['if'] = (exp, env) ->
 exports['->'] = (exp, env) ->
   newEnv = env.extend(scope={}, env.parser, env.module, {})
   for param in exp[1] then scope[symbolOf(param)] = param
-  body =  return_(convert(begin(exp[2]), newEnv))
-  ['function', params, body]
+  body =  return_(convert(exp[2], newEnv))
+  ['function', exp[1], body]
 
 quasiquote = (exp, env, level) ->
   exp1 = exp[1]

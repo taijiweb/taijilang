@@ -81,6 +81,8 @@ exports.str = str = (item) ->
 
 exports.symbolOf = symbolOf = (exp) -> if isObject(exp) then return exp.value else exp
 
+exports.valueOf = (exp) -> if exp instanceof String then exp else if isObject(exp) then return exp.value else exp
+
 exports.headSymbol = (exp) ->
   assert(isArray(exp), 'expect head symbol of list')
   if isObject (exp[0]) then exp[0].value

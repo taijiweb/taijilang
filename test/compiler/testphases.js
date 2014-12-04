@@ -1,4 +1,4 @@
-var LIST, SYMBOL, ShiftStatementInfo, SymbolLookupError, VALUE, convert, expect, idescribe, iit, lib, metaConvert, ndescribe, nit, nonMetaCompileExpNoOptimize, norm, parse, str, strConvert, strMetaConvert, strNonOptCompile, taiji, tokenize, trace, transform, transformExpression, _ref, _ref1, _ref2, _ref3;
+var LIST, SYMBOL, ShiftStatementInfo, SymbolLookupError, VALUE, code, convert, expect, idescribe, iit, lib, metaConvert, ndescribe, nit, nonMetaCompileExpNoOptimize, norm, parse, str, strConvert, strMetaConvert, strNonOptCompile, taiji, trace, transform, transformExpression, _ref, _ref1, _ref2, _ref3;
 
 _ref = require('../util'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, strConvert = _ref.strConvert, str = _ref.str, parse = _ref.parse, norm = _ref.norm;
 
@@ -6,7 +6,7 @@ lib = '../../lib/';
 
 _ref1 = require(lib + 'compiler/transform'), transformExpression = _ref1.transformExpression, transform = _ref1.transform, ShiftStatementInfo = _ref1.ShiftStatementInfo;
 
-tokenize = require(lib + 'compiler/textize').tokenize;
+code = require(lib + 'compiler/code').code;
 
 trace = require(lib + 'utils').trace;
 
@@ -44,7 +44,7 @@ strNonOptCompile = function(exp) {
   return str(exp);
 };
 
-ndescribe("test phases: ", function() {
+describe("test phases: ", function() {
   describe("convert: ", function() {
     describe("convert simple: ", function() {
       it("convert 1", function() {
@@ -176,20 +176,39 @@ ndescribe("test phases: ", function() {
       return expect(str(parseTransform("var a; a[1] = -> 1"))).to.equal("[begin! [var a] [var t] [= t [function [] [return 1]]] [= [index! a 1] t] t]");
     });
   });
-  return describe("tokenize: ", function() {
-    var token;
-    token = function(exp) {
-      exp = tokenize(norm(exp), env);
-      return str(exp);
-    };
-    it("['list!', 1]", function() {
-      return expect(str(token(norm(['list!', 1])))).to.equal("[var a , b]");
+  return idescribe("generate code: ", function() {
+    it("1", function() {
+      return expect(code(norm(1))).to.equal("1");
+    });
+    it("['binary!', '+', 1, 2]", function() {
+      return expect(code(norm(['binary!', '+', 1, 2]))).to.equal("1 + 2");
+    });
+    it("['binary!', '+', 1, ['binary!', '+', 2, 3]]", function() {
+      return expect(code(norm(['binary!', '+', 1, ['binary!', '+', 2, 3]]))).to.equal("1 + (2 + 3)");
+    });
+    it("['binary!', '*', ['binary!', '+', 1, 2], 3]", function() {
+      return expect(code(norm(['binary!', '*', ['binary!', '+', 1, 2], 3]))).to.equal("(1 + 2) * 3");
+    });
+    it("['binary!', '+', ['binary!', '+', 1, 2], 3]", function() {
+      return expect(code(norm(['binary!', '+', ['binary!', '+', 1, 2], 3]))).to.equal("1 + 2 + 3");
     });
     it("['list!', 1, 2]", function() {
-      return expect(str(token(norm(['list!', 1, 2])))).to.equal("[var a , b]");
+      return expect(code(norm(['list!', 1, 2]))).to.equal("[1, 2]");
     });
-    return it("['begin!', ['var', 'a'], ['var', 'b']]", function() {
-      return expect(str(token(norm(['begin!', ['var', 'a'], ['var', 'b']])))).to.equal("[var a , b]");
+    it("['if', 1, 2, 3]", function() {
+      return expect(code(norm(['if', 1, 2, 3]))).to.equal("if (1) {\n  2\n} else {\n  3\n}");
+    });
+    it("['begin!', 1, 2, 3]", function() {
+      return expect(code(norm(['begin!', 1, 2, 3]))).to.equal("1;\n2;\n3");
+    });
+    it("['function', [], 1", function() {
+      return expect(code(norm(['function', [], 1]))).to.equal("function () {\n  1\n}");
+    });
+    it("['function', ['a'], 1]", function() {
+      return expect(code(norm(['function', ['a'], 1]))).to.equal("function (a) {\n  1\n}");
+    });
+    return it("['function', ['a'], ['begin!', 1, 2]]", function() {
+      return expect(code(norm(['function', ['a'], ['begin!', 1, 2]]))).to.equal("function (a) {\n  1;\n  2\n}");
     });
   });
 });
