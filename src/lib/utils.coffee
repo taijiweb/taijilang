@@ -13,8 +13,9 @@ stackReg2 = /at\s+()(.*):(\d*):(\d*)/gi
 _trace = (stackIndex, args) ->
   argsStr = ''
   for arg in args
-    if argsStr=='' or argsStr[argsStr.length-2...]==': ' or argsStr[argsStr.length-1]==':' then argsStr += arg.toString()
-    else argsStr += ', '+ arg.toString()
+    if argsStr=='' or argsStr[argsStr.length-2...]==': ' or argsStr[argsStr.length-1]==':'
+      argsStr += str(arg)
+    else argsStr += ', '+ str(arg)
   stacklist = (new Error()).stack.split('\n').slice(3)
   s = stacklist[stackIndex]
   sp = stackReg.exec(s) || stackReg2.exec(s)
@@ -26,12 +27,17 @@ _trace = (stackIndex, args) ->
     fs.appendFileSync("./debug.log", file+': '+method+': '+line+':'+pos+': '+argsStr+'\r\n')
   else fs.appendFileSync("./debug.log", 'noname:  noname: xx: yy: '+argsStr+'\r\n')
 
-exports.log = log = (level, args...) -> _trace(level, args); console.log(args...)
+exports._log = _log = (level, args...) -> _trace(level, args); console.log(args...)
 exports.trace = trace = (args...) ->  _trace(0, args)
 exports.trace0 = trace0 = (args...) -> _trace(0, args)
 exports.trace1 = trace1 = (args...) -> _trace(1, args)
 exports.trace2 = trace2 = (args...) -> _trace(2, args)
 exports.trace3 = trace3 = (args...) -> _trace(3, args)
+exports.log = log = (args...) ->  _log(0, args)
+exports.log0 = log0 = (args...) -> _trace(0, args)
+exports.log1 = log1 = (args...) -> _trace(1, args)
+exports.log2 = log2 = (args...) -> _trace(2, args)
+exports.log3 = log3 = (args...) -> _trace(3, args)
 
 exports.assert = assert = (value, message) ->
   if not value
@@ -141,7 +147,7 @@ exports.commaList = commaList = (exp) ->
 addBeginItem = (result, exp) ->
   if exp not instanceof Array then return exp
   exp0 = exp[0]
-  if exp0==BEGIN
+  if exp0=='begin!'
     for e in exp[1...]
       last = addBeginItem(result, e)
       if not last then return
@@ -156,7 +162,7 @@ exports.begin = begin = (exp) ->
       last = addBeginItem(result, e)
       if not last then break
     if last and last!=true then result.push last
-    if result.length>1 then result.unshift BEGIN; return (result)
+    if result.length>1 then result.unshift 'begin!'; return (result)
     else if result.length==1 then return result[0]
     else return undefinedExp
 
@@ -188,7 +194,7 @@ exports.return_ = return_ = (exp) ->
   if fn=returnFnMap[exp[0]] then return fn(exp)
   [RETURN, exp]
 
-exports.pushExp = (lst, v) ->  [CALL, [ATTRI, lst, PUSH], [v]]
+exports.pushExp = (lst, v) ->  [CALL, ['attribute!', lst, PUSH], [v]]
 exports.notExp = (exp) ->  [PREFIX, '!', exp]
 exports.undefinedExp = undefinedExp = ->  {value:'undefined', kind:SYMBOL}
 

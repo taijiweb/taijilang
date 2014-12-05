@@ -1,4 +1,4 @@
-{str, trace, begin, extend, splitSpace, undefinedExp, symbolOf, commaList, isArray, isSymbol, return_} = require '../utils'
+{str, log, trace, begin, extend, splitSpace, undefinedExp, symbolOf, commaList, isArray, isSymbol, return_} = require '../utils'
 {compileError} = require '../compiler/helper'
 
 {convert, convertList} = require '../compiler'
@@ -37,7 +37,7 @@ convertAssign = (left, right, env) ->
     # left is assignable expression list
     # we should convert the right side at first
     right = convert(right, env)
-    [exp[0], convert(left, env), right]
+    ['=', convert(left, env), right]
 
 # al assign in object language
 exports['='] = (exp, env) -> convertAssign(exp[1], exp[2], env)
@@ -113,6 +113,12 @@ exports['`'] = (exp, env) -> quasiquote(exp, env, 0)
 for symbol in '++ -- yield new typeof void ! ~ + -'.split(' ')
   prefixConverters[symbol] = (exp, env) ->  ['prefix!', exp[1], convert exp[2], env]
 
+exports['x++'] = (exp, env) ->
+  if isArray(exp[1]) and symbolOf(exp[1][0])=='attribute!'
+    t = env.newVar('t'); obj =  exp[1][1]; left =  ['attribute!', t, exp[1][2]];
+    ['begin!', ['var', t], ['=', t, obj], ['=', left, ['binary!', '+', left, 1]]]
+  else if isSymbol(exp[1]) then convert(['=', exp[1], ['binary!', '+', exp[1], 1]])
+
 exports['binary!'] = (exp, env, compiler) -> binaryConverters[exp[1].value](exp, env)
 
 exports.binaryConverters = binaryConverters = {}
@@ -132,11 +138,52 @@ binaryConverters['concat()'] = (exp, env) -> ['call!', convert(exp[2], env), con
 
 for symbol in '+ - * / && || << >> >>> == === != !== > < >= <= instanceof'.split(' ')
   binaryConverters[symbol] = (exp, env) -> [exp[0], exp[1], convert(exp[2], env), convert(exp[3], env)]
+  exports[symbol] = (exp, env) -> ['binary!', exp[0], convert(exp[1], env), convert(exp[2], env)]
 
 binaryConverters[','] = (exp, env) -> ['list!'].concat(convertList(commaList(exp), env))
 binaryConverters['.'] = (exp, env) -> ['attribute!', convert(exp[2], env), exp[3]]
+exports['attribute!'] = (exp, env) -> ['attribute!', convert(exp[1], env), exp[2]]
+exports['index!'] = (exp, env) -> ['index!', convert(exp[1], env), convert(exp[2], env)]
+
 
 exports['forOf!'] = (exp, env) -> ['jsForIn!', convert(exp[1], env), convert(exp[2], env), convert(exp[3], env)]
+
+#exports['forIn!'] = (exp, env) ->
+#  log str exp
+#  item = exp[1]; range = exp[2]; body = exp[3]
+#  result = []
+#  vRange = env.newVar('range')
+#  result.push ['direct!', ['var', vRange]]
+#  env.set(vRange.symbol, vRange)
+#  result.push ['=', vRange, range]
+#  length = env.newVar('length')
+#  env.set(length.symbol, length)
+#  result.push ['direct!', ['var', length]]
+#  result.push ['=', length, ['attribute!', vRange, 'length']]
+#  i = env.newVar('i')
+#  result.push ['direct!', ['var', i]]
+#  env.set(i.symbol, i)
+#  result.push ['=', i, 0]
+#  result.push ['while', ['<', i, length], begin([['=', item, ['index!', vRange, ['x++', i]]], body])]
+#  convert begin(result), env
+
+exports['forIn!'] = (exp, env) ->
+  log str exp
+  item = exp[1]; index = exp[2]; range = exp[3]; body = exp[4]
+  result = []
+  vRange = env.newVar('range')
+  result.push ['direct!', ['var', vRange]]
+  env.set(vRange.value, vRange)
+  result.push ['=', vRange, range]
+  if not index
+    index = env.newVar('i')
+    result.push ['direct!', ['var', index]]
+  length = env.newVar('length')
+  result.push ['direct!', ['var', length]]
+  result.push ['=', length, ['attribute!', vRange, 'length']]
+  result.push ['=', index, 0]
+  result.push ['while', ['<', index, length], begin([['=', item, ['index!', vRange, ['x++', index]]], body])]
+  convert begin(result), env
 
 do -> for sym, i in splitSpace 'throw return if while try return list!'
   exports[sym] = (exp, env) -> [exp[0]].concat(convertList(exp[1...], env))
@@ -144,3 +191,6 @@ do -> for sym, i in splitSpace 'throw return if while try return list!'
 do -> for word in splitSpace 'break continue' then exports[word] = (exp, env) -> exp
 
 do -> for sym in 'undefined null true false this console Math Object Array arguments eval require module exports'.split ' ' then exports[sym] = ['jsvar!', sym]
+
+exports['direct!'] = (exp, env) -> exp[1]
+exports['print'] = (exp, env) -> ['call!', ['attribute!', 'console', 'log'], convertList(exp[1], env)]

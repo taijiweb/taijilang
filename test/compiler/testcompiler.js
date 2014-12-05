@@ -26,14 +26,14 @@ compile = noOptCompile = function(text) {
   return exp;
 };
 
-ndescribe("compile: ", function() {
+describe("compile: ", function() {
   describe("if and if!: ", function() {
     return it('should compile if 1 then 2 else 3', function() {
       return expect(compile("if 1 then 2 else 3")).to.have.string("2");
     });
   });
   describe("for in: ", function() {
-    it('should compile for x in [ 1, 2 ] then print x', function() {
+    iit('should compile for x in [ 1, 2 ] then print x', function() {
       return expect(compile('for x in [ 1 2 ] then print x')).to.have.string('var range = [1, 2], \n    length = range.length, \n    i = 0;\n\nwhile (i < length){ \n  var x = range[i++];\n  console.log(x);\n}');
     });
     return it('should compile for x j in [ 1, 2 ] then print x', function() {
@@ -41,17 +41,14 @@ ndescribe("compile: ", function() {
     });
   });
   return describe("function: ", function() {
-    iit('should compile -> 1', function() {
-      return expect(compile('-> 1')).to.have.string("(function () {\n  return 1;\n})");
-    });
-    it('should compile let f = -> 1 then f()', function() {
-      return expect(compile('let f = -> 1 then f()')).to.have.string("var f = function () {\n  return 1;\n};\nf()");
+    it('should compile -> 1', function() {
+      return expect(compile('-> 1')).to.have.string('function () {\n  return 1\n}');
     });
     it('should compile {-> 1}()', function() {
-      return expect(compile('{-> 1}()')).to.have.string("(function () {\n  return 1;\n})()");
+      return expect(compile('{-> 1}()')).to.have.string('function () {\n  return 1\n}()');
     });
     return it('should compile ->', function() {
-      return expect(compile('->')).to.have.string("(function () {})");
+      return expect(compile('->')).to.have.string('function () {\n  return undefined\n}');
     });
   });
 });

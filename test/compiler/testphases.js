@@ -1,4 +1,4 @@
-var LIST, SYMBOL, ShiftStatementInfo, SymbolLookupError, VALUE, code, convert, expect, idescribe, iit, lib, metaConvert, ndescribe, nit, nonMetaCompileExpNoOptimize, norm, parse, str, strConvert, strMetaConvert, strNonOptCompile, taiji, trace, transform, transformExpression, _ref, _ref1, _ref2, _ref3;
+var LIST, SYMBOL, ShiftStatementInfo, SymbolLookupError, VALUE, convert, expect, idescribe, iit, lib, metaConvert, ndescribe, nit, nonMetaCompileExpNoOptimize, norm, parse, str, strConvert, strMetaConvert, strNonOptCompile, taiji, tocode, trace, transform, transformExpression, _ref, _ref1, _ref2, _ref3;
 
 _ref = require('../util'), expect = _ref.expect, idescribe = _ref.idescribe, ndescribe = _ref.ndescribe, iit = _ref.iit, nit = _ref.nit, strConvert = _ref.strConvert, str = _ref.str, parse = _ref.parse, norm = _ref.norm;
 
@@ -6,7 +6,7 @@ lib = '../../lib/';
 
 _ref1 = require(lib + 'compiler/transform'), transformExpression = _ref1.transformExpression, transform = _ref1.transform, ShiftStatementInfo = _ref1.ShiftStatementInfo;
 
-code = require(lib + 'compiler/code').code;
+tocode = require(lib + 'compiler/code').tocode;
 
 trace = require(lib + 'utils').trace;
 
@@ -44,7 +44,7 @@ strNonOptCompile = function(exp) {
   return str(exp);
 };
 
-describe("test phases: ", function() {
+ndescribe("test phases: ", function() {
   describe("convert: ", function() {
     describe("convert simple: ", function() {
       it("convert 1", function() {
@@ -176,39 +176,39 @@ describe("test phases: ", function() {
       return expect(str(parseTransform("var a; a[1] = -> 1"))).to.equal("[begin! [var a] [var t] [= t [function [] [return 1]]] [= [index! a 1] t] t]");
     });
   });
-  return idescribe("generate code: ", function() {
+  return describe("generate tocode: ", function() {
     it("1", function() {
-      return expect(code(norm(1))).to.equal("1");
+      return expect(tocode(norm(1))).to.equal("1");
     });
     it("['binary!', '+', 1, 2]", function() {
-      return expect(code(norm(['binary!', '+', 1, 2]))).to.equal("1 + 2");
+      return expect(tocode(norm(['binary!', '+', 1, 2]))).to.equal("1 + 2");
     });
     it("['binary!', '+', 1, ['binary!', '+', 2, 3]]", function() {
-      return expect(code(norm(['binary!', '+', 1, ['binary!', '+', 2, 3]]))).to.equal("1 + (2 + 3)");
+      return expect(tocode(norm(['binary!', '+', 1, ['binary!', '+', 2, 3]]))).to.equal("1 + (2 + 3)");
     });
     it("['binary!', '*', ['binary!', '+', 1, 2], 3]", function() {
-      return expect(code(norm(['binary!', '*', ['binary!', '+', 1, 2], 3]))).to.equal("(1 + 2) * 3");
+      return expect(tocode(norm(['binary!', '*', ['binary!', '+', 1, 2], 3]))).to.equal("(1 + 2) * 3");
     });
     it("['binary!', '+', ['binary!', '+', 1, 2], 3]", function() {
-      return expect(code(norm(['binary!', '+', ['binary!', '+', 1, 2], 3]))).to.equal("1 + 2 + 3");
+      return expect(tocode(norm(['binary!', '+', ['binary!', '+', 1, 2], 3]))).to.equal("1 + 2 + 3");
     });
     it("['list!', 1, 2]", function() {
-      return expect(code(norm(['list!', 1, 2]))).to.equal("[1, 2]");
+      return expect(tocode(norm(['list!', 1, 2]))).to.equal("[1, 2]");
     });
     it("['if', 1, 2, 3]", function() {
-      return expect(code(norm(['if', 1, 2, 3]))).to.equal("if (1) {\n  2\n} else {\n  3\n}");
+      return expect(tocode(norm(['if', 1, 2, 3]))).to.equal("if (1) {\n  2\n} else {\n  3\n}");
     });
     it("['begin!', 1, 2, 3]", function() {
-      return expect(code(norm(['begin!', 1, 2, 3]))).to.equal("1;\n2;\n3");
+      return expect(tocode(norm(['begin!', 1, 2, 3]))).to.equal("1;\n2;\n3");
     });
     it("['function', [], 1", function() {
-      return expect(code(norm(['function', [], 1]))).to.equal("function () {\n  1\n}");
+      return expect(tocode(norm(['function', [], 1]))).to.equal("function () {\n  1\n}");
     });
     it("['function', ['a'], 1]", function() {
-      return expect(code(norm(['function', ['a'], 1]))).to.equal("function (a) {\n  1\n}");
+      return expect(tocode(norm(['function', ['a'], 1]))).to.equal("function (a) {\n  1\n}");
     });
     return it("['function', ['a'], ['begin!', 1, 2]]", function() {
-      return expect(code(norm(['function', ['a'], ['begin!', 1, 2]]))).to.equal("function (a) {\n  1;\n  2\n}");
+      return expect(tocode(norm(['function', ['a'], ['begin!', 1, 2]]))).to.equal("function (a) {\n  1;\n  2\n}");
     });
   });
 });

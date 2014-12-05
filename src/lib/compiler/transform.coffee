@@ -164,11 +164,7 @@ transformExpressionFnMap =
     [argsStmts, argsValues] = transformExpressionList(exp[2], env, shiftStmtInfo)
     shiftStmtInfo.addEffect(argsStmts)
     [callerStmt, callerValue] = transformExpression(exp[1], env, shiftStmtInfo)
-    args = []
-    for e in argsValues
-      if e==commentPlaceholder then continue
-      else args.push e
-    [begin([callerStmt, argsStmts, ['var', (t=env.ssaVar('t'))],  ['=', t, [CALL, callerValue, argsValues]]]), t]
+    [begin([callerStmt, argsStmts]), ['call!', callerValue, argsValues]]
 
   'function': (exp, env, shiftStmtInfo) ->
     env = exp.env
@@ -207,7 +203,7 @@ transformExpressionFnMap =
     if stmtTest
       whileStmt = ['while', 1,
                  begin([stmtTest,
-                        ['if', notExp(expTest), [BREAK]],
+                        ['if', notExp(expTest), ['break']],
                         bodyStmt,
                         pushExp(lst, bodyValue)])]
     else
@@ -320,7 +316,7 @@ transformFnMap =
   'while': (exp, env) ->
     [stmt, testExp] = transformExpression(exp[1], env, new ShiftStatementInfo({}, {}))
     bodyStmt = transform(exp[2], env)
-    if stmt  then ['while', 1, begin([stmt,['if', notExp(testExp), [BREAK]],bodyStmt])]
+    if stmt  then ['while', 1, begin([stmt,['if', notExp(testExp), ['break']],bodyStmt])]
     else ['while', testExp, bodyStmt]
 
   # for key in hash {...}

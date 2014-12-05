@@ -1,4 +1,4 @@
-{isArray, trace, symbolOf, valueOf, letterCharSet} = require '../utils'
+{isArray, str, trace, assert, symbolOf, valueOf, letterCharSet} = require '../utils'
 
 {compileError} = require './helper'
 
@@ -17,17 +17,13 @@ binaryPriority = {'*':5, '/':5, '%':5, '+':6, '-':6, '<<':7, '>>':7, '>>>':7
 unaryPriority = {'new':2, '++':3, '--':3, '!':4, '+':4, '-':4, 'typeof':4, 'void':4, 'delete':4, 'yield':16}
 
 exports.makeCoder = makeCoder = (options) ->
-  indentWidth = options.indentWidth or 2
-  indentRow = 0; prev = ''
-
+  indentWidth = options.indentWidth or 2; indentRow = 0
   nl = ->
     result = '\n'; i= 0
     while i++<indentRow then result += ' '
     return result
-
   indent = (width) -> indentRow += width or indentWidth; ''
   undent = (width) -> indentRow -= width or indentWidth; ''
-
   paren = (exp) -> '('+exp+')'
   list = (exp) -> (for e in exp then code(e)).join(', ')
   block = (exp) -> '{'+indent()+nl()+code(exp)+undent()+nl()+'}'
@@ -83,7 +79,10 @@ exports.makeCoder = makeCoder = (options) ->
 
   code = (exp) ->
     trace('generate code', exp)
-    if isArray(exp) then prev = codeFnMap[symbolOf(exp[0])](exp)
-    else prev = string(valueOf(exp))
+    if isArray(exp)
+      #assert(codeFnMap[symbolOf(exp[0])], 'find no entry in codeFnMap: '+str(exp))
+      if fn=codeFnMap[symbolOf(exp[0])] then fn(exp)
+      else '['+list(exp)+']'
+    else string(valueOf(exp))
 
-exports.code = (exp) -> makeCoder({})(exp).toString()
+exports.tocode = (exp) -> makeCoder({})(exp).toString()
