@@ -61,13 +61,16 @@ task 'clean', -> src(cleanFolders, {read:false}).pipe(clean())
 files_copy = (folders_src+name for name in ['**/*.js', '**/*.json', '**/*.html', '**/*.css'])
 task 'copy', -> from(files_copy, {cache:'copy'}).to(folders_dest)
 
-files_coffee = [folders_coffee+'**/*.coffee']
-task 'coffee', -> from(files_coffee, {cache:'coffee'}).pipelog(coffee({bare: true})).to(folders_dest)
+task 'coffee', ->
+  from(['src/**/*.coffee', '!src/bin**/*.coffee'], {cache:'coffee'}).pipelog(coffee({bare: true})).to('./lib')
+  from(['src/bin**/*.coffee'], {cache:'coffee'}).pipelog(coffee({bare: true})).to('./')
+  from(['test/**/*.coffee', '!src/bin**/*.coffee'], {cache:'coffee'}).pipelog(coffee({bare: true})).to('./test-build')
+
 task 'rename', -> from(folders_dest+'bin/*.js').pipe(rename((path) -> path.extname = "")).to(folders_dest+'bin')
 
 task 'make', (callback) -> distributing = false; runSequence('clean', ['copy', 'coffee'], 'rename', callback)
 
-files_mocha = folders_dest+'test/**/*.js'
+files_mocha = folders_dest+'test-build/**/*.js'
 
 onErrorContinue = (err) -> console.log(err.stack); @emit 'end'
 task 'mocha', ->  src(files_mocha).pipe(mocha({reporter: 'spec'})).on("error", onErrorContinue)
